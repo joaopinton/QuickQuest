@@ -150,4 +150,33 @@ describe('Bowling Physics & Geometry (USBC Specs)', () => {
       phys.dispose();
     }
   });
+
+  test('sweeper: toglie i birilli abbattuti e rimette sullo spot quelli in piedi', async () => {
+    const phys = await createBowlingPhysicsWorld();
+    try {
+      phys.launchBall({ startX: 0, dir: 0, speed: 9.0, spin: 0.1 });
+      for (let i = 0; i < 240; i++) phys.step(1 / 60);
+      const before = phys.getPinStatuses();
+      const knocked = before.filter((p) => p.knockedDown).length;
+      expect(knocked).toBeGreaterThan(0);
+
+      phys.clearKnockedPins();
+      expect(phys.isBallActive()).toBe(false);
+      const after = phys.getPinStatuses();
+      // Stesso conteggio: i tolti restano "abbattuti", quelli in piedi tornano dritti sullo spot
+      expect(after.filter((p) => p.knockedDown).length).toBe(knocked);
+      after.forEach((p, i) => {
+        expect(phys.isPinRemoved(i)).toBe(p.knockedDown);
+        if (!p.knockedDown) expect(p.tiltAngleDeg).toBeCloseTo(0, 3);
+      });
+      for (let i = 0; i < 60; i++) phys.step(1 / 60);
+      expect(phys.getPinStatuses().filter((p) => p.knockedDown).length).toBe(knocked);
+
+      phys.resetPins();
+      expect(phys.getPinStatuses().every((p) => !p.knockedDown)).toBe(true);
+      expect(phys.pinBodies.every((b) => b.isEnabled())).toBe(true);
+    } finally {
+      phys.dispose();
+    }
+  });
 });

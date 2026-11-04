@@ -26,6 +26,10 @@ export interface PhysicsWorldState {
   step(dt: number): void;
   launchBall(data: BowlingReleaseData): void;
   resetPins(): void;
+  /** Sweeper tra il 1° e il 2° tiro: toglie i birilli abbattuti e rimette sullo spot quelli in piedi. */
+  clearKnockedPins(): void;
+  /** Il birillo è stato tolto dalla pista dallo sweeper. */
+  isPinRemoved(index: number): boolean;
   getPinStatuses(): BowlingPinStatus[];
   isBallActive(): boolean;
   arePinsSettled(): boolean;
@@ -162,21 +166,29 @@ export async function createBowlingPhysicsWorld(): Promise<PhysicsWorldState> {
     return body;
   }
 
+  // Birilli tolti dallo sweeper (disabilitati fino al prossimo rack completo)
+  const removedPins = new Set<number>();
+
+  function placeOnSpot(body: RAPIER.RigidBody, x: number, z: number) {
+    body.setTranslation({ x, y: PIN_HEIGHT / 2, z }, true);
+    body.setRotation({ w: 1, x: 0, y: 0, z: 0 }, true);
+    body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+    body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+    body.wakeUp();
+  }
+
   function resetPins() {
+    removedPins.clear();
     for (let i = 0; i < PIN_OFFSETS.length; i++) {
       const offset = PIN_OFFSETS[i];
       if (!offset) continue;
       const body = pinBodies[i];
       const targetX = offset.x;
       const targetZ = HEADPIN_Z + offset.z;
-      const targetY = PIN_HEIGHT / 2;
 
       if (body) {
-        body.setTranslation({ x: targetX, y: targetY, z: targetZ }, true);
-        body.setRotation({ w: 1, x: 0, y: 0, z: 0 }, true);
-        body.setLinvel({ x: 0, y: 0, z: 0 }, true);
-        body.setAngvel({ x: 0, y: 0, z: 0 }, true);
-        body.wakeUp();
+        body.setEnabled(true);
+        placeOnSpot(body, targetX, targetZ);
       } else {
         const newBody = spawnPin(offset.id, offset.x, offset.z);
         pinBodies.push(newBody);
@@ -188,6 +200,40 @@ export async function createBowlingPhysicsWorld(): Promise<PhysicsWorldState> {
 
   let isThrown = false;
   let activeSpin = 0;
+
+  function parkBall() {
+    isThrown = false;
+    activeSpin = 0;
+    ballBody.setEnabled(true);
+    ballBody.setTranslation({ x: 0, y: BALL_RADIUS, z: -1.0 }, true);
+    ballBody.setLinvel({ x: 0, y: 0, z: 0 }, true);
+    ballBody.setAngvel({ x: 0, y: 0, z: 0 }, true);
+  }
+
+  function computeStatuses(): BowlingPinStatus[] {
+    return pinBodies.map((body, i) => {
+      const offset = PIN_OFFSETS[i] ?? { id: i + 1, x: 0, z: 0 };
+      const pos = body.translation();
+      if (removedPins.has(i)) {
+        return { id: offset.id, knockedDown: true, x: pos.x, z: pos.z, tiltAngleDeg: 90 };
+      }
+      const rot = body.rotation();
+
+      // Angolo di inclinazione rispetto alla verticale Y:
+      // Vettore (0, 1, 0) ruotato dal quaternione del birillo
+      // cos(theta) = 1 - 2*(x^2 + z^2)
+      const dotUp = 1 - 2 * (rot.x ** 2 + rot.z ** 2);
+      const tiltAngleDeg = Math.acos(Math.max(-1, Math.min(1, dotUp))) * (180 / Math.PI);
+
+      // Spostamento dallo spot originale (metri)
+      const displacement = Math.hypot(pos.x - offset.x, pos.z - (HEADPIN_Z + offset.z));
+
+      // Criterio USBC: abbattuto se inclinato > 25°, spostato > 12 cm, o caduto nel pozzetto (y < 0.1)
+      const knockedDown = tiltAngleDeg > 25 || displacement > 0.12 || pos.y < 0.08 || pos.z > HEADPIN_Z + 1.2;
+
+      return { id: offset.id, knockedDown, x: pos.x, z: pos.z, tiltAngleDeg };
+    });
+  }
 
   return {
     world,
@@ -244,43 +290,36 @@ export async function createBowlingPhysicsWorld(): Promise<PhysicsWorldState> {
     },
 
     resetPins() {
-      isThrown = false;
-      activeSpin = 0;
-      ballBody.setEnabled(true);
-      ballBody.setTranslation({ x: 0, y: BALL_RADIUS, z: -1.0 }, true);
-      ballBody.setLinvel({ x: 0, y: 0, z: 0 }, true);
-      ballBody.setAngvel({ x: 0, y: 0, z: 0 }, true);
+      parkBall();
       resetPins();
     },
 
-    getPinStatuses(): BowlingPinStatus[] {
-      return pinBodies.map((body, i) => {
-        const offset = PIN_OFFSETS[i] ?? { id: i + 1, x: 0, z: 0 };
-        const pos = body.translation();
-        const rot = body.rotation();
-
-        // Angolo di inclinazione rispetto alla verticale Y:
-        // Vettore (0, 1, 0) ruotato dal quaternione del birillo
-        // cos(theta) = 1 - 2*(x^2 + z^2)
-        const dotUp = 1 - 2 * (rot.x ** 2 + rot.z ** 2);
-        const tiltAngleDeg = Math.acos(Math.max(-1, Math.min(1, dotUp))) * (180 / Math.PI);
-
-        // Spostamento dallo spot originale (metri)
-        const expectedX = offset.x;
-        const expectedZ = HEADPIN_Z + offset.z;
-        const displacement = Math.hypot(pos.x - expectedX, pos.z - expectedZ);
-
-        // Criterio USBC: abbattuto se inclinato > 25°, spostato > 12 cm, o caduto nel pozzetto (y < 0.1)
-        const knockedDown = tiltAngleDeg > 25 || displacement > 0.12 || pos.y < 0.08 || pos.z > HEADPIN_Z + 1.2;
-
-        return {
-          id: offset.id,
-          knockedDown,
-          x: pos.x,
-          z: pos.z,
-          tiltAngleDeg,
-        };
+    clearKnockedPins() {
+      const statuses = computeStatuses();
+      parkBall();
+      statuses.forEach((status, i) => {
+        const body = pinBodies[i];
+        const offset = PIN_OFFSETS[i];
+        if (!body || !offset) return;
+        if (status.knockedDown) {
+          removedPins.add(i);
+          // Parcheggiato lontano dalla pista e disabilitato: non interagisce più con palla e birilli
+          body.setTranslation({ x: 0, y: -5, z: HEADPIN_Z + 4 + i * 0.5 }, false);
+          body.setLinvel({ x: 0, y: 0, z: 0 }, false);
+          body.setAngvel({ x: 0, y: 0, z: 0 }, false);
+          body.setEnabled(false);
+        } else {
+          placeOnSpot(body, offset.x, HEADPIN_Z + offset.z);
+        }
       });
+    },
+
+    isPinRemoved(index: number): boolean {
+      return removedPins.has(index);
+    },
+
+    getPinStatuses(): BowlingPinStatus[] {
+      return computeStatuses();
     },
 
     isBallActive(): boolean {
@@ -290,8 +329,8 @@ export async function createBowlingPhysicsWorld(): Promise<PhysicsWorldState> {
     },
 
     arePinsSettled(): boolean {
-      return pinBodies.every((body) => {
-        if (body.isSleeping()) return true;
+      return pinBodies.every((body, i) => {
+        if (removedPins.has(i) || body.isSleeping()) return true;
         const v = body.linvel();
         const w = body.angvel();
         return Math.hypot(v.x, v.y, v.z) < PIN_SETTLE_SPEED && Math.hypot(w.x, w.y, w.z) < 0.6;

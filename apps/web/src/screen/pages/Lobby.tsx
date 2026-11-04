@@ -1,6 +1,7 @@
 import { GAMES, type GameMeta } from '@quickquest/games';
 import { SLOT_IDS, type LobbyPlayer } from '@quickquest/protocol';
-import { Button, Logo, PlayerSlot, showToast, t, type Accessory, type SlotState } from '@quickquest/ui';
+import type { BowlingPlayer } from '@quickquest/games/bowling/screen/useBowlingGame';
+import { Button, Logo, PlayerSlot, pupoColor, showToast, slotStyle, t, type Accessory, type SlotState } from '@quickquest/ui';
 import { lazy, Suspense } from 'preact/compat';
 import { useState } from 'preact/hooks';
 import { useScreenRoom } from '../../net/useScreenRoom';
@@ -11,6 +12,21 @@ import './lobby.css';
 const BowlingSandbox = lazy(() =>
   import('@quickquest/games/bowling/screen/BowlingSandbox').then((m) => m.BowlingSandbox),
 );
+
+/** Giocatori collegati per il bowling: colore del Pupo scelto sul telefono e simbolo dello slot. */
+function bowlingPlayers(players: readonly LobbyPlayer[]): BowlingPlayer[] {
+  return players
+    .filter((p) => p.state !== 'disconnected')
+    .map((p) => {
+      const slot = slotStyle(p.slot);
+      return {
+        id: p.slot,
+        name: `Pupo ${p.slot.slice(1)}`,
+        color: p.profile ? pupoColor(p.profile.color).hex : slot.hex,
+        symbol: slot.symbol,
+      };
+    });
+}
 
 function slotState(p: LobbyPlayer | undefined): SlotState {
   return p ? p.state : 'empty';
@@ -148,10 +164,7 @@ export function Lobby() {
               </div>
             }
           >
-            <BowlingSandbox
-              onEndGame={returnToLobby}
-              playerName={players.find((p) => p.state !== 'disconnected')?.slot ?? 'Pupo 1'}
-            />
+            <BowlingSandbox onEndGame={returnToLobby} players={bowlingPlayers(players)} />
           </Suspense>
         ) : (
           <PlayingScreen players={players} gameId={selectedGame} onEndGame={returnToLobby} />

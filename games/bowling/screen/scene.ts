@@ -10,6 +10,7 @@ import {
   OIL_LENGTH,
   type PhysicsWorldState,
 } from './physics';
+import { createBowlingEnvironment, type ScoreboardInfo } from './environment';
 import { createPinGeometry, PIN_HEIGHT } from './pin-geometry';
 
 export interface BowlingScene {
@@ -18,6 +19,9 @@ export interface BowlingScene {
   readonly renderer: THREE.WebGLRenderer;
   update(dt: number): void;
   resetCamera(): void;
+  setScoreboard(info: ScoreboardInfo): void;
+  setBallColor(color: string): void;
+  playSweep(): void;
   resize(width: number, height: number): void;
   dispose(): void;
 }
@@ -73,13 +77,14 @@ export function createBowlingScene(
   physics: PhysicsWorldState,
 ): BowlingScene {
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color('#161224'); // Sala bowling serale (docs/games/bowling.md § 2)
+  scene.background = new THREE.Color('#0d0919'); // Sala bowling serale (docs/games/bowling.md § 2)
+  scene.fog = new THREE.Fog('#0d0919', 26, 48);
 
   const camera = new THREE.PerspectiveCamera(
     40,
     container.clientWidth / container.clientHeight,
     0.1,
-    60,
+    80,
   );
 
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
@@ -169,6 +174,10 @@ export function createBowlingScene(
     metalness: 0.05,
   });
 
+  // Sala: piste vicine, neon, tabellone, sweeper (environment.ts)
+  const environment = createBowlingEnvironment(pinGeometry, pinMaterial);
+  scene.add(environment.group);
+
   const pinMeshes: THREE.Mesh[] = [];
   for (let i = 0; i < 10; i++) {
     const mesh = new THREE.Mesh(pinGeometry, pinMaterial);
@@ -232,6 +241,9 @@ export function createBowlingScene(
 
     resetCamera,
     resize,
+    setScoreboard: (info) => environment.setScoreboard(info),
+    setBallColor: (color) => ballMat.color.set(color),
+    playSweep: () => environment.playSweep(),
 
     update(dt: number) {
       // 1. Sincronizzazione visiva dei 10 birilli dalla fisica Rapier
@@ -239,6 +251,8 @@ export function createBowlingScene(
         const body = physics.pinBodies[i];
         const mesh = pinMeshes[i];
         if (!body || !mesh) continue;
+        mesh.visible = !physics.isPinRemoved(i);
+        if (!mesh.visible) continue;
 
         const pos = body.translation();
         const rot = body.rotation();
@@ -271,10 +285,12 @@ export function createBowlingScene(
         }
       }
 
+      environment.update(dt);
       renderer.render(scene, camera);
     },
 
     dispose() {
+      environment.dispose();
       renderer.dispose();
       laneGeo.dispose();
       laneMaterial.dispose();
