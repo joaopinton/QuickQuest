@@ -88,6 +88,8 @@ export function BowlingSandbox({ onEndGame, players: playersProp }: BowlingSandb
   const [isFullBoardOpen, setFullBoardOpen] = useState(false);
   const [isFullBoardPinned, setFullBoardPinned] = useState(false);
   const [dragStart, setDragStart] = useState<{ x: number; y: number; time: number } | null>(null);
+  const [isReady, setIsReady] = useState(false); // fisica e scena 3D pronte
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const later = (fn: () => void, ms: number) => {
     timersRef.current.push(window.setTimeout(fn, ms));
@@ -213,7 +215,15 @@ export function BowlingSandbox({ onEndGame, players: playersProp }: BowlingSandb
       ro.observe(container);
     };
 
-    void init();
+    init()
+      .then(() => {
+        if (!disposed) setIsReady(true);
+      })
+      .catch((err: unknown) => {
+        // Senza fisica o WebGL la pista non si può mostrare: lo diciamo invece di restare muti
+        console.error('[bowling] inizializzazione fallita', err);
+        if (!disposed) setLoadError(err instanceof Error ? err.message : String(err));
+      });
 
     return () => {
       disposed = true;
@@ -246,7 +256,7 @@ export function BowlingSandbox({ onEndGame, players: playersProp }: BowlingSandb
   };
 
   const isOver = game !== null && isGameOver(game);
-  const canThrow = game !== null && !isOver && !isBusy;
+  const canThrow = isReady && game !== null && !isOver && !isBusy;
 
   // Esecuzione lancio palla
   const handleThrow = (customRelease?: Partial<BowlingReleaseData>) => {
@@ -458,7 +468,17 @@ export function BowlingSandbox({ onEndGame, players: playersProp }: BowlingSandb
         </div>
       )}
 
-      {game === null && <GameSetup players={lobbyPlayers} onStart={(frames) => startGame(frames)} />}
+      {loadError && (
+        <div class="bw-load-error" role="alert">
+          <p><strong>La pista non si è caricata.</strong></p>
+          <p>Il browser non è riuscito ad avviare la grafica 3D o la fisica del gioco.</p>
+          <button type="button" class="bowling-btn bowling-btn--primary" onClick={() => window.location.reload()}>
+            Riprova
+          </button>
+        </div>
+      )}
+
+      {game === null && !loadError && <GameSetup players={lobbyPlayers} onStart={(frames) => startGame(frames)} />}
 
       {isOver && !isBusy && game && (
         <Podium

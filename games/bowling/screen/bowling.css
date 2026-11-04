@@ -364,3 +364,18 @@
 .bowling-sliders-grid[hidden] {
   display: none;
 }
+
+/* Errore di caricamento della pista (WebGL o fisica non disponibili) */
+.bw-load-error {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  text-align: center;
+  background: rgba(13, 9, 25, 0.92);
+}
