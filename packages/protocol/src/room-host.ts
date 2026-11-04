@@ -1,6 +1,6 @@
 // Host della stanza: collega un HostTransport al reducer. Oggi gira nella scheda dello schermo.
 
-import type { LobbyPlayer, RoomPhase, ServerMessage } from './messages';
+import type { LobbyPlayer, RoomPhase, ServerMessage, SlotId, ThrowParams } from './messages';
 import {
   applyDisconnect,
   applyHello,
@@ -10,9 +10,11 @@ import {
   applySeen,
   applySelectGame,
   applyStart,
+  applyTurn,
   createRoom,
   expireStale,
   lobbyPlayers,
+  throwerSlot,
   type RoomState,
 } from './room';
 import { randomId, type HostTransport } from './transport';
@@ -31,6 +33,13 @@ export interface RoomHostOptions {
   readonly initialState?: RoomState;
   /** Chiamato a ogni cambio di stato che va persistito. */
   readonly onState?: (state: RoomState) => void;
+  /** Lancio valido del giocatore di turno: va consegnato allo schermo. */
+  readonly onThrow?: (slot: SlotId, params: ThrowParams) => void;
+  /**
+   * La connessione è uno schermo? Solo gli schermi possono cambiare turno o chiudere la partita
+   * via messaggio (relay). Con l'host locale lo schermo chiama i metodi direttamente.
+   */
+  readonly isScreen?: (connectionId: string) => boolean;
 }
 
 export interface RoomHost {
@@ -44,11 +53,16 @@ export interface RoomHost {
   selectGame(gameId: string): void;
   startGame(gameId?: string): boolean;
   returnToLobby(): void;
+  /** Lo schermo indica chi può lanciare adesso (`null` = nessuno, es. palla in pista). */
+  setTurn(activeSlot: SlotId | null): void;
   close(): void;
 }
 
 export function createRoomHost(opts: RoomHostOptions): RoomHost {
-  const { code, transport, onLobby, now = Date.now, makeToken = randomId, staleMs = STALE_MS, initialState, onState } = opts;
+  const {
+    code, transport, onLobby, now = Date.now, makeToken = randomId, staleMs = STALE_MS, initialState, onState, onThrow,
+    isScreen = () => false,
+  } = opts;
   let state: RoomState = initialState ?? createRoom(code);
 
   const makeLobbyMsg = (s: RoomState): ServerMessage => ({
@@ -79,16 +93,23 @@ export function createRoomHost(opts: RoomHostOptions): RoomHost {
     if (!r.ok) return false;
     publish(r.state);
     // Invia layout del gioco selezionato a tutti i controller
-    const layoutMsg: ServerMessage = {
-      t: 'layout',
-      p: { gameId: chosen, layoutId: `${chosen}-play` },
-    };
-    transport.broadcast(layoutMsg);
+    transport.broadcast(layoutMsg(chosen));
     return true;
   };
 
+  const layoutMsg = (gameId: string): ServerMessage => ({ t: 'layout', p: { gameId, layoutId: `${gameId}-play` } });
+  const turnMsg = (): ServerMessage => ({ t: 'turn', p: { activeSlot: state.activeSlot ?? null } });
+
   const returnToLobby = () => {
     publish(applyReturnToLobby(state));
+  };
+
+  const setTurn = (activeSlot: SlotId | null) => {
+    const next = applyTurn(state, activeSlot);
+    if (next === state) return;
+    state = next;
+    onState?.(state);
+    transport.broadcast(turnMsg());
   };
 
   const unsubscribe = transport.onMessage((from, result) => {
@@ -105,8 +126,27 @@ export function createRoomHost(opts: RoomHostOptions): RoomHost {
         publish(r.state);
         // se la stanza non è cambiata nessuno ha ricevuto la lobby: la si manda a chi ha chiesto
         if (!changed) transport.sendTo(from, makeLobbyMsg(state));
+        // telefono entrato (o rientrato) a partita in corso: gli si dà subito il gioco e il turno
+        if (r.reply.t === 'welcome' && state.phase === 'playing' && state.selectedGame) {
+          transport.sendTo(from, layoutMsg(state.selectedGame));
+          transport.sendTo(from, turnMsg());
+        }
         break;
       }
+      case 'throw': {
+        // solo il telefono del giocatore di turno può lanciare: gli altri vengono ignorati
+        const slot = throwerSlot(state, from);
+        if (!slot) break;
+        setTurn(null); // un tiro alla volta: il prossimo lo riapre lo schermo
+        onThrow?.(slot, { speed: msg.p.speed, spin: msg.p.spin, dir: msg.p.dir });
+        break;
+      }
+      case 'turn':
+        if (isScreen(from)) setTurn(msg.p.activeSlot);
+        break;
+      case 'end-game':
+        if (isScreen(from)) returnToLobby();
+        break;
       case 'profile':
         publish(applyProfile(state, from, msg.p));
         break;
@@ -149,6 +189,7 @@ export function createRoomHost(opts: RoomHostOptions): RoomHost {
     selectGame,
     startGame,
     returnToLobby,
+    setTurn,
     close: () => {
       unsubscribe();
       transport.close();

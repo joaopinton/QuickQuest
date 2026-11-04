@@ -55,6 +55,7 @@ function RoomFlow({ code }: { code: string }) {
   const [choice, setChoice] = useState<PupoChoice>(loadChoice);
   const [players, setPlayers] = useState<readonly LobbyPlayer[]>([]);
   const [isLost, setLost] = useState(false);
+  const [activeSlot, setActiveSlot] = useState<SlotId | null>(null);
   const simVariant = import.meta.env.DEV ? query.sim : undefined;
   const isBusy = useRef(false);
   const isMounted = useRef(true);
@@ -64,7 +65,15 @@ function RoomFlow({ code }: { code: string }) {
 
   useEffect(() => {
     isMounted.current = true;
-    const offLobby = conn.onLobby(setPlayers);
+    const offLobby = conn.onLobby((p, phase) => {
+      setPlayers(p);
+      // lo schermo ha chiuso la partita: il telefono torna in attesa invece di restare sul pad
+      if (phase === 'lobby' && isMounted.current) {
+        setStep((s) => (s.k === 'game' ? { k: 'waiting' } : s));
+        setActiveSlot(null);
+      }
+    });
+    const offTurn = conn.onTurn(setActiveSlot);
     const offLayout = conn.onLayout((layout) => {
       conn.sendReady(layout.layoutId);
       safeStep({ k: 'game', gameId: layout.gameId, layoutId: layout.layoutId });
@@ -79,6 +88,7 @@ function RoomFlow({ code }: { code: string }) {
       offLobby();
       offLayout();
       offStatus();
+      offTurn();
       conn.close();
     };
   }, [conn]);
@@ -167,6 +177,9 @@ function RoomFlow({ code }: { code: string }) {
           layoutId={step.layoutId}
           isDemo={isDemo}
           isLost={isLost}
+          activeSlot={activeSlot}
+          isSimulated={simVariant !== undefined}
+          onThrow={(params) => conn.sendThrow(params)}
           onLeave={() => { conn.leave(); releaseWakeLock(); route('/'); }}
         />
       );

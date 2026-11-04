@@ -18,6 +18,8 @@ export interface RoomState {
   readonly phase: RoomPhase;
   readonly selectedGame: string | null;
   readonly players: readonly RoomPlayer[];
+  /** Giocatore che può lanciare adesso (deciso dallo schermo); assente o null = nessuno. */
+  readonly activeSlot?: SlotId | null;
 }
 
 export interface HelloInput {
@@ -121,6 +123,7 @@ export function applyStart(state: RoomState, gameId?: string): { state: RoomStat
       ...state,
       phase: 'playing',
       selectedGame: targetGame,
+      activeSlot: null,
     },
     ok: true,
   };
@@ -131,7 +134,22 @@ export function applyReturnToLobby(state: RoomState): RoomState {
   return {
     ...state,
     phase: 'lobby',
+    activeSlot: null,
   };
+}
+
+/** Lo schermo indica chi è di turno: solo quel telefono potrà lanciare. */
+export function applyTurn(state: RoomState, activeSlot: SlotId | null): RoomState {
+  if ((state.activeSlot ?? null) === activeSlot) return state;
+  return { ...state, activeSlot };
+}
+
+/** Slot del giocatore dietro una connessione, se può lanciare adesso. */
+export function throwerSlot(state: RoomState, connectionId: string): SlotId | null {
+  if (state.phase !== 'playing') return null;
+  const player = state.players.find(byConnection(connectionId));
+  if (!player || player.slot !== state.activeSlot) return null;
+  return player.slot;
 }
 
 /** Vista della lobby da mandare allo schermo e ai controller. */

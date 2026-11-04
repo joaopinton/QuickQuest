@@ -209,3 +209,14 @@ body.is-controller { transition: background-color var(--dur-slow) var(--ease-out
 .ctl-action-btn__icon {
   font-size: 2.2rem;
 }
+
+.ctl-action-btn:disabled {
+  cursor: not-allowed; opacity: 0.45; transform: none;
+  box-shadow: 0 4px 0 color-mix(in oklab, var(--slot) 70%, var(--ink-900));
+}
+.ctl-turn {
+  margin: 0; padding: 14px 18px; border-radius: var(--radius-lg);
+  background: var(--surface); box-shadow: var(--shadow-soft);
+  font-weight: 800; text-align: center; color: var(--ink-700);
+}
+.ctl-turn--mine { background: var(--slot); color: #fff; }

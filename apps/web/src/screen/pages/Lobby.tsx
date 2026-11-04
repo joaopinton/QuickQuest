@@ -1,7 +1,7 @@
 import { GAMES, type GameMeta } from '@quickquest/games';
-import { SLOT_IDS, type LobbyPlayer } from '@quickquest/protocol';
+import { SLOT_IDS, type LobbyPlayer, type SlotId } from '@quickquest/protocol';
 import type { BowlingPlayer } from '@quickquest/games/bowling/screen/useBowlingGame';
-import { Button, Logo, PlayerSlot, pupoColor, showToast, slotStyle, t, type Accessory, type SlotState } from '@quickquest/ui';
+import { Button, Logo, PlayerSlot, showToast, slotStyle, t, type Accessory, type SlotState } from '@quickquest/ui';
 import { lazy, Suspense } from 'preact/compat';
 import { useState } from 'preact/hooks';
 import { useScreenRoom } from '../../net/useScreenRoom';
@@ -22,11 +22,14 @@ function bowlingPlayers(players: readonly LobbyPlayer[]): BowlingPlayer[] {
       return {
         id: p.slot,
         name: `Pupo ${p.slot.slice(1)}`,
-        color: p.profile ? pupoColor(p.profile.color).hex : slot.hex,
+        // il telefono manda già l'esadecimale del colore scelto (non l'id della palette)
+        color: p.profile?.color ?? slot.hex,
         symbol: slot.symbol,
       };
     });
 }
+
+const isSlotId = (id: string | null): id is SlotId => id !== null && (SLOT_IDS as readonly string[]).includes(id);
 
 function slotState(p: LobbyPlayer | undefined): SlotState {
   return p ? p.state : 'empty';
@@ -131,7 +134,7 @@ function PlayingScreen({
 }
 
 export function Lobby() {
-  const { code, players, joinUrl, phase, selectedGame, startGame, returnToLobby } = useScreenRoom();
+  const { code, players, joinUrl, phase, selectedGame, startGame, returnToLobby, setActiveSlot, onThrow } = useScreenRoom();
   const [isChoosing, setChoosing] = useState(false);
   const active = players.filter((p) => p.state !== 'disconnected').length;
   const bySlot = new Map(players.map((p) => [p.slot, p]));
@@ -164,7 +167,12 @@ export function Lobby() {
               </div>
             }
           >
-            <BowlingSandbox onEndGame={returnToLobby} players={bowlingPlayers(players)} />
+            <BowlingSandbox
+              onEndGame={returnToLobby}
+              players={bowlingPlayers(players)}
+              subscribeThrows={onThrow}
+              onActivePlayerChange={(id) => setActiveSlot(isSlotId(id) ? id : null)}
+            />
           </Suspense>
         ) : (
           <PlayingScreen players={players} gameId={selectedGame} onEndGame={returnToLobby} />

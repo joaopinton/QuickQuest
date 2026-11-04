@@ -2,7 +2,7 @@
 // succede con un telefono vero finché il relay Cloudflare non esiste (il trasporto è locale).
 import {
   createLocalClient, createWsClient, HEARTBEAT_MS, relayUrl, type Capabilities, type ClientTransport, type ErrorCode, type LobbyPlayer,
-  type Profile, type ServerMessage, type WsClientTransport, type SlotId,
+  type Profile, type RoomPhase, type ServerMessage, type WsClientTransport, type SlotId, type ThrowParams,
 } from '@quickquest/protocol';
 
 export const JOIN_TIMEOUT_MS = 1500;
@@ -28,7 +28,11 @@ export interface ControllerConnection {
   join(capabilities: Capabilities): Promise<JoinResult>;
   sendProfile(profile: Profile): void;
   sendReady(layoutId: string): void;
-  onLobby(cb: (players: readonly LobbyPlayer[]) => void): () => void;
+  /** Lancio misurato dal gesto: lo schermo lo accetta solo se è il nostro turno. */
+  sendThrow(params: ThrowParams): void;
+  onLobby(cb: (players: readonly LobbyPlayer[], phase?: RoomPhase) => void): () => void;
+  /** Cambio di turno: `activeSlot` è chi può lanciare adesso (`null` = nessuno). */
+  onTurn(cb: (activeSlot: SlotId | null) => void): () => void;
   onLayout(cb: (layout: ControllerLayoutInfo) => void): () => void;
   /** Cambi di stato dopo il join: benvenuto in ritardo (demo → live) o schermo perso. */
   onStatus(cb: (s: LinkStatus) => void): () => void;
@@ -70,7 +74,8 @@ function defaultTransport(code: string): ClientTransport {
 }
 
 export function createControllerConnection(code: string, transport: ClientTransport = defaultTransport(code)): ControllerConnection {
-  const lobbyListeners = new Set<(players: readonly LobbyPlayer[]) => void>();
+  const lobbyListeners = new Set<(players: readonly LobbyPlayer[], phase?: RoomPhase) => void>();
+  const turnListeners = new Set<(activeSlot: SlotId | null) => void>();
   const layoutListeners = new Set<(layout: ControllerLayoutInfo) => void>();
   const statusListeners = new Set<(s: LinkStatus) => void>();
   let heartbeat: ReturnType<typeof setInterval> | null = null;
@@ -125,7 +130,10 @@ export function createControllerConnection(code: string, transport: ClientTransp
     if (isClosed) return;
     switch (msg.t) {
       case 'lobby':
-        lobbyListeners.forEach((cb) => cb(msg.p.players));
+        lobbyListeners.forEach((cb) => cb(msg.p.players, msg.p.phase));
+        break;
+      case 'turn':
+        turnListeners.forEach((cb) => cb(msg.p.activeSlot));
         break;
       case 'welcome':
         handleWelcome(msg);
@@ -170,6 +178,13 @@ export function createControllerConnection(code: string, transport: ClientTransp
     },
     sendReady(layoutId) {
       send({ t: 'ready', p: { layoutId } });
+    },
+    sendThrow(params) {
+      send({ t: 'throw', p: params });
+    },
+    onTurn(cb) {
+      turnListeners.add(cb);
+      return () => turnListeners.delete(cb);
     },
     onLobby(cb) {
       lobbyListeners.add(cb);

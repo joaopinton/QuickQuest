@@ -32,6 +32,13 @@ export type ErrorCode = 'ROOM_FULL' | 'ROOM_NOT_FOUND' | 'UNSUPPORTED_DEVICE' | 
 
 export type RoomPhase = 'lobby' | 'starting' | 'playing';
 
+/** Parametri del lancio misurati dal gesto sul telefono (docs/04 § 6). */
+export interface ThrowParams {
+  readonly speed: number; // m/s
+  readonly spin: number; // -1 .. +1
+  readonly dir: number; // radianti
+}
+
 /** Messaggi dal controller. */
 export type ControllerMessage =
   | { t: 'hello'; p: { sessionToken: string | null; capabilities: Capabilities } }
@@ -40,6 +47,11 @@ export type ControllerMessage =
   | { t: 'ready'; p: { layoutId: string } }
   | { t: 'select-game'; p: { gameId: string } }
   | { t: 'start'; p: { gameId: string } }
+  | { t: 'throw'; p: ThrowParams }
+  /** Solo dallo schermo (relay): chi deve tirare adesso, `null` se nessuno. */
+  | { t: 'turn'; p: { activeSlot: SlotId | null } }
+  /** Solo dallo schermo (relay): fine partita, tutti tornano in lobby. */
+  | { t: 'end-game'; p: Record<string, never> }
   | { t: 'bye'; p: Record<string, never> };
 
 /** Messaggi verso il controller o lo schermo. */
@@ -49,7 +61,9 @@ export type ServerMessage =
   | { t: 'select-game'; p: { gameId: string } }
   | { t: 'start'; p: { gameId: string } }
   | { t: 'layout'; p: { gameId: string; layoutId: string; params?: Record<string, unknown> } }
-  | { t: 'turn'; p: { activeSlot: SlotId } }
+  | { t: 'turn'; p: { activeSlot: SlotId | null } }
+  /** Lancio di un telefono inoltrato allo schermo, con lo slot timbrato dall'host. */
+  | { t: 'throw'; p: ThrowParams & { slot?: SlotId } }
   | { t: 'pong'; p: { at: number } }
   | { t: 'error'; p: { code: ErrorCode } };
 
@@ -68,6 +82,8 @@ export function encode(msg: Message): string {
 
 type Obj = Record<string, unknown>;
 const isObj = (x: unknown): x is Obj => typeof x === 'object' && x !== null && !Array.isArray(x);
+const isNum = (x: unknown, min: number, max: number): x is number =>
+  typeof x === 'number' && Number.isFinite(x) && x >= min && x <= max;
 const isSlot = (x: unknown): x is SlotId => typeof x === 'string' && (SLOT_IDS as readonly string[]).includes(x);
 
 function isCapabilities(x: unknown): x is Capabilities {
@@ -99,7 +115,11 @@ function validPayload(t: string, p: unknown): boolean {
     case 'pong':
       return typeof p.at === 'number' && Number.isFinite(p.at);
     case 'bye':
+    case 'end-game':
       return true;
+    case 'throw':
+      return isNum(p.speed, 0, 20) && isNum(p.spin, -1, 1) && isNum(p.dir, -1, 1)
+        && (p.slot === undefined || isSlot(p.slot));
     case 'welcome':
       return isSlot(p.slot) && typeof p.sessionToken === 'string' && TOKEN.test(p.sessionToken);
     case 'lobby':
@@ -116,7 +136,7 @@ function validPayload(t: string, p: unknown): boolean {
         && typeof p.layoutId === 'string' && ID_REGEX.test(p.layoutId)
         && (p.params === undefined || isObj(p.params));
     case 'turn':
-      return isSlot(p.activeSlot);
+      return p.activeSlot === null || isSlot(p.activeSlot);
     case 'error':
       return typeof p.code === 'string'
         && ['ROOM_FULL', 'ROOM_NOT_FOUND', 'UNSUPPORTED_DEVICE', 'BAD_MESSAGE', 'VERSION_MISMATCH'].includes(p.code);

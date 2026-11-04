@@ -133,3 +133,87 @@ describe('host locale della stanza su BroadcastChannel', () => {
     await until(() => a.inbox.at(-1)?.t === 'lobby' && (a.inbox.at(-1) as any).p.phase === 'lobby');
   });
 });
+
+describe('lancio col gesto dal telefono del giocatore di turno', () => {
+  const ready = async (c: { t: ClientTransport; inbox: ServerMessage[] }) => {
+    c.t.send({ t: 'hello', p: { sessionToken: null, capabilities: caps } });
+    await until(() => c.inbox.some((m) => m.t === 'welcome'));
+    c.t.send({ t: 'profile', p: { color: '#9C6BFF', accessory: 'glasses' } });
+  };
+
+  test('solo il telefono di turno lancia; dopo il tiro il turno si chiude', async () => {
+    const roomCode = `G${String(++code).padStart(3, '0')}`;
+    const throws: [string, number][] = [];
+    const host = createRoomHost({
+      code: roomCode, transport: createLocalHost(roomCode), onLobby: () => {},
+      onThrow: (slot, p) => throws.push([slot, p.speed]),
+    });
+    cleanups.push(() => host.close());
+    const mk = () => {
+      const t = createLocalClient(roomCode);
+      const inbox: ServerMessage[] = [];
+      t.onMessage((m) => inbox.push(m));
+      cleanups.push(() => t.close());
+      return { t, inbox };
+    };
+    const a = mk();
+    const b = mk();
+    await ready(a);
+    await ready(b);
+    await until(() => host.players().filter((p) => p.state === 'ready').length === 2);
+    expect(host.startGame('bowling')).toBe(true);
+
+    host.setTurn('P1');
+    await until(() => b.inbox.some((m) => m.t === 'turn' && m.p.activeSlot === 'P1'));
+    b.t.send({ t: 'throw', p: { speed: 7, spin: 0, dir: 0 } }); // non è il suo turno
+    a.t.send({ t: 'throw', p: { speed: 8, spin: 0.2, dir: 0.01 } });
+    await until(() => throws.length > 0);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(throws).toEqual([['P1', 8]]);
+    expect(host.state().activeSlot).toBeNull();
+    a.t.send({ t: 'throw', p: { speed: 8, spin: 0, dir: 0 } }); // secondo tiro senza turno
+    await new Promise((r) => setTimeout(r, 20));
+    expect(throws).toHaveLength(1);
+  });
+
+  test('un telefono non può cambiare turno né chiudere la partita', async () => {
+    const roomCode = `H${String(++code).padStart(3, '0')}`;
+    const host = createRoomHost({ code: roomCode, transport: createLocalHost(roomCode), onLobby: () => {} });
+    cleanups.push(() => host.close());
+    const t = createLocalClient(roomCode);
+    const inbox: ServerMessage[] = [];
+    t.onMessage((m) => inbox.push(m));
+    cleanups.push(() => t.close());
+    await ready({ t, inbox });
+    await until(() => host.players()[0]?.state === 'ready');
+    host.startGame('bowling');
+    t.send({ t: 'turn', p: { activeSlot: 'P1' } });
+    t.send({ t: 'end-game', p: {} });
+    await new Promise((r) => setTimeout(r, 30));
+    expect(host.state().activeSlot ?? null).toBeNull();
+    expect(host.state().phase).toBe('playing');
+  });
+
+  test('chi entra a partita in corso riceve subito layout e turno', async () => {
+    const roomCode = `J${String(++code).padStart(3, '0')}`;
+    const host = createRoomHost({ code: roomCode, transport: createLocalHost(roomCode), onLobby: () => {} });
+    cleanups.push(() => host.close());
+    const mk = () => {
+      const t = createLocalClient(roomCode);
+      const inbox: ServerMessage[] = [];
+      t.onMessage((m) => inbox.push(m));
+      cleanups.push(() => t.close());
+      return { t, inbox };
+    };
+    const a = mk();
+    await ready(a);
+    await until(() => host.players()[0]?.state === 'ready');
+    host.startGame('bowling');
+    host.setTurn('P1');
+    const late = mk();
+    late.t.send({ t: 'hello', p: { sessionToken: null, capabilities: caps } });
+    await until(() => late.inbox.some((m) => m.t === 'turn'));
+    expect(late.inbox.find((m) => m.t === 'layout')).toMatchObject({ p: { gameId: 'bowling' } });
+    expect(late.inbox.find((m) => m.t === 'turn')).toEqual({ t: 'turn', p: { activeSlot: 'P1' } });
+  });
+});

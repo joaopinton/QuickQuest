@@ -38,6 +38,10 @@ export class Room extends DurableObject<Env> {
     }
   }
 
+  private toScreens(msg: ServerMessage): void {
+    this.sockets().filter((s) => s.a.role === 'screen').forEach((s) => this.send(s.ws, msg));
+  }
+
   private transport(): HostTransport {
     return {
       onMessage: (cb) => {
@@ -61,6 +65,9 @@ export class Room extends DurableObject<Env> {
       onLobby: () => {},
       initialState: stored,
       onState: (s) => { void this.ctx.storage.put(STATE_KEY, s); },
+      // il lancio del giocatore di turno va solo agli schermi, con lo slot timbrato dall'host
+      onThrow: (slot, params) => this.toScreens({ t: 'throw', p: { ...params, slot } }),
+      isScreen: (id) => this.sockets().some((s) => s.a.id === id && s.a.role === 'screen'),
     });
     return this.host;
   }

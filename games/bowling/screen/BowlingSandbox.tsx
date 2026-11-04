@@ -18,9 +18,17 @@ import './hud/hud.css';
 
 export type { BowlingPlayer } from './useBowlingGame';
 
+/** Parametri di un lancio fatto col gesto sul telefono. */
+export type GestureThrow = Pick<BowlingReleaseData, 'speed' | 'spin' | 'dir'>;
+export type ThrowSubscriber = (cb: (playerId: string, release: GestureThrow) => void) => () => void;
+
 export interface BowlingSandboxProps {
   readonly onEndGame?: () => void;
   readonly players?: readonly BowlingPlayer[];
+  /** Lanci in arrivo dai telefoni: si tira solo col gesto del giocatore di turno. */
+  readonly subscribeThrows?: ThrowSubscriber;
+  /** Chi può lanciare adesso (id del giocatore) o `null`: lo si dice ai telefoni. */
+  readonly onActivePlayerChange?: (playerId: string | null) => void;
 }
 
 const TOAST_MS = 1700; // quanto resta in vista l'esito prima che lo sweeper sistemi il rack
@@ -63,7 +71,7 @@ function scoreboardFor(game: GameState, players: readonly BowlingPlayer[], messa
   };
 }
 
-export function BowlingSandbox({ onEndGame, players: playersProp }: BowlingSandboxProps) {
+export function BowlingSandbox({ onEndGame, players: playersProp, subscribeThrows, onActivePlayerChange }: BowlingSandboxProps) {
   // Giocatori collegati ora (per la schermata iniziale) e formazione fissata a inizio partita
   const lobbyPlayers = playersProp && playersProp.length > 0 ? playersProp : DEFAULT_PLAYERS;
   const { game, roster: players, lastShot, start, record, reset } = useBowlingGame();
@@ -76,18 +84,10 @@ export function BowlingSandbox({ onEndGame, players: playersProp }: BowlingSandb
   const timersRef = useRef<number[]>([]);
   const finishThrowRef = useRef<(statuses: BowlingPinStatus[]) => void>(() => {});
 
-  // Parametri di lancio (regolabili via slider o drag del mouse)
-  const [startX, setStartX] = useState(0.0); // metri (-0.4 .. +0.4)
-  const [aimDeg, setAimDeg] = useState(0.0); // gradi (-4.0 .. +4.0)
-  const [speed, setSpeed] = useState(7.5); // m/s (~27 km/h)
-  const [spin, setSpin] = useState(0.25); // -1.0 .. +1.0 (hook)
-
   const [pinStatuses, setPinStatuses] = useState<BowlingPinStatus[]>(INITIAL_PINS);
   const [isBusy, setIsBusy] = useState(false); // palla in pista o rack in sistemazione
-  const [showParams, setShowParams] = useState(false);
   const [isFullBoardOpen, setFullBoardOpen] = useState(false);
   const [isFullBoardPinned, setFullBoardPinned] = useState(false);
-  const [dragStart, setDragStart] = useState<{ x: number; y: number; time: number } | null>(null);
   const [isReady, setIsReady] = useState(false); // fisica e scena 3D pronte
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -258,18 +258,12 @@ export function BowlingSandbox({ onEndGame, players: playersProp }: BowlingSandb
   const isOver = game !== null && isGameOver(game);
   const canThrow = isReady && game !== null && !isOver && !isBusy;
 
-  // Esecuzione lancio palla
-  const handleThrow = (customRelease?: Partial<BowlingReleaseData>) => {
+  // Esecuzione lancio palla: i parametri arrivano dal gesto sul telefono del giocatore di turno
+  const handleThrow = (release: GestureThrow) => {
     const phys = physicsRef.current;
     if (!phys || !canThrow) return;
 
-    const releaseData: BowlingReleaseData = {
-      startX: customRelease?.startX ?? startX,
-      dir: customRelease?.dir ?? (aimDeg * Math.PI) / 180,
-      speed: customRelease?.speed ?? speed,
-      spin: customRelease?.spin ?? spin,
-    };
-
+    const releaseData: BowlingReleaseData = { startX: 0, dir: release.dir, speed: release.speed, spin: release.spin };
     standingBeforeRef.current = phys.getPinStatuses().filter((p) => !p.knockedDown).length;
     phys.launchBall(releaseData);
     setIsBusy(true);
@@ -277,42 +271,31 @@ export function BowlingSandbox({ onEndGame, players: playersProp }: BowlingSandb
     throwStartRef.current = performance.now();
   };
 
-  // Drag interattivo sulla pista con il mouse / touch per tirare con un flick
-  const onPointerDown = (e: PointerEvent) => {
-    if (!canThrow) return;
-    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
-    setDragStart({ x: e.clientX, y: e.clientY, time: performance.now() });
-  };
-
-  const onPointerUp = (e: PointerEvent) => {
-    if (!dragStart || !canThrow) return;
-    const dx = e.clientX - dragStart.x;
-    const dy = e.clientY - dragStart.y;
-    const dt = Math.max(16, performance.now() - dragStart.time);
-
-    // Flick verso l'alto (dy negativo)
-    if (dy < -30) {
-      const flickSpeed = Math.min(10.5, Math.max(4.5, (-dy / dt) * 18.0));
-      const flickDir = Math.max(-0.07, Math.min(0.07, (dx / 300) * 0.08));
-      handleThrow({ startX, speed: flickSpeed, dir: flickDir, spin });
-    }
-    setDragStart(null);
-  };
-
   const turn = game ? turnInfo(game) : null;
   const current = turn ? playerAt(players, turn.playerIndex) : null;
   const showFullBoard = game !== null && !isOver && (isFullBoardOpen || isFullBoardPinned);
+  const activePlayerId = canThrow && current ? current.id : null;
+
+  // Lancio dal telefono: vale solo se arriva dal giocatore di turno e la pista è libera
+  const onGestureRef = useRef<(playerId: string, release: GestureThrow) => void>(() => {});
+  onGestureRef.current = (playerId, release) => {
+    if (playerId !== activePlayerId) return;
+    handleThrow(release);
+  };
+  useEffect(() => subscribeThrows?.((id, release) => onGestureRef.current(id, release)), [subscribeThrows]);
+
+  // I telefoni sanno chi può lanciare: solo quello abilita il tasto
+  const onActiveRef = useRef(onActivePlayerChange);
+  onActiveRef.current = onActivePlayerChange;
+  useEffect(() => {
+    onActiveRef.current?.(activePlayerId);
+  }, [activePlayerId]);
+  useEffect(() => () => onActiveRef.current?.(null), []);
 
   return (
     <div class="bowling-sandbox">
       {/* Canvas 3D */}
-      <div
-        ref={containerRef}
-        class="bowling-canvas-container"
-        onPointerDown={onPointerDown}
-        onPointerUp={onPointerUp}
-        onPointerCancel={() => setDragStart(null)}
-      />
+      <div ref={containerRef} class="bowling-canvas-container" />
 
       {/* Header bar */}
       <header class="bowling-hud-header">
@@ -395,76 +378,21 @@ export function BowlingSandbox({ onEndGame, players: playersProp }: BowlingSandb
       {/* Esito dell'ultimo tiro */}
       {lastShot && <ShotToast key={lastShot.seq} shot={lastShot} />}
 
-      {/* Pannello di lancio */}
-      {game && !isOver && (
-        <div class="bowling-controls-panel">
-          <button
-            type="button"
-            class="bowling-params-toggle"
-            aria-expanded={showParams}
-            aria-controls="bowling-params"
-            onClick={() => setShowParams((v) => !v)}
-          >
-            {showParams ? '▾ Nascondi parametri' : '▸ Parametri di lancio'}
-          </button>
-
-          <div id="bowling-params" class="bowling-sliders-grid" hidden={!showParams}>
-            <div class="bowling-control-item">
-              <label class="bowling-control-label" for="param-pos">
-                <span>Posizione Partenza</span>
-                <span>{(startX * 100).toFixed(0)} cm</span>
-              </label>
-              <input id="param-pos" class="bowling-slider" type="range" min="-0.4" max="0.4" step="0.02"
-                value={startX} disabled={!canThrow}
-                onInput={(e) => setStartX(parseFloat((e.target as HTMLInputElement).value))} />
-            </div>
-
-            <div class="bowling-control-item">
-              <label class="bowling-control-label" for="param-aim">
-                <span>Angolo di Mira</span>
-                <span>{aimDeg > 0 ? `+${aimDeg.toFixed(1)}°` : `${aimDeg.toFixed(1)}°`}</span>
-              </label>
-              <input id="param-aim" class="bowling-slider" type="range" min="-4.0" max="4.0" step="0.2"
-                value={aimDeg} disabled={!canThrow}
-                onInput={(e) => setAimDeg(parseFloat((e.target as HTMLInputElement).value))} />
-            </div>
-
-            <div class="bowling-control-item">
-              <label class="bowling-control-label" for="param-speed">
-                <span>Velocità Palla</span>
-                <span>{(speed * 3.6).toFixed(1)} km/h</span>
-              </label>
-              <input id="param-speed" class="bowling-slider" type="range" min="4.5" max="10.5" step="0.2"
-                value={speed} disabled={!canThrow}
-                onInput={(e) => setSpeed(parseFloat((e.target as HTMLInputElement).value))} />
-            </div>
-
-            <div class="bowling-control-item">
-              <label class="bowling-control-label" for="param-spin">
-                <span>Effetto Hook (Polso)</span>
-                <span>{spin > 0 ? `Curva Sx (+${spin.toFixed(2)})` : spin < 0 ? `Curva Dx (${spin.toFixed(2)})` : 'Dritto'}</span>
-              </label>
-              <input id="param-spin" class="bowling-slider" type="range" min="-1.0" max="1.0" step="0.1"
-                value={spin} disabled={!canThrow}
-                onInput={(e) => setSpin(parseFloat((e.target as HTMLInputElement).value))} />
-            </div>
-          </div>
-
-          <div class="bowling-buttons-row">
-            <button
-              type="button"
-              class="bowling-btn bowling-btn--primary"
-              style={current ? { '--player': current.color } : undefined}
-              disabled={!canThrow}
-              onClick={() => handleThrow()}
-            >
-              🎳 {isBusy ? 'Palla in pista...' : `Lancia, ${current?.name ?? ''}!`}
-            </button>
-          </div>
-
-          <p class="bowling-mouse-hint">
-            💡 Puoi anche trascinare e fare un "flick" verso l'alto sulla pista per lanciare al volo!
-          </p>
+      {/* Invito al lancio: si tira solo col gesto dal telefono del giocatore di turno */}
+      {game && !isOver && current && (
+        <div class="bowling-controls-panel bw-throw-prompt" style={{ '--player': current.color }} aria-live="polite">
+          {isBusy ? (
+            <p class="bw-throw-prompt__text">🎳 Palla in pista…</p>
+          ) : (
+            <>
+              <p class="bw-throw-prompt__text">
+                📱 <strong style={{ color: current.color }}>{current.name}</strong>, prendi il telefono e lancia!
+              </p>
+              <p class="bowling-mouse-hint">
+                Tieni premuto il tasto, porta il braccio indietro, swing in avanti e rilascia.
+              </p>
+            </>
+          )}
         </div>
       )}
 

@@ -155,6 +155,12 @@
     "actionButtonHold": "TIENI PREMUTO E LANCIA",
     "actionButtonRelease": "RILASCIA PER TIRARE!",
     "readySent": "Controller pronto",
+    "yourTurn": "Tocca a te! Tieni premuto, porta il braccio indietro e lancia in avanti",
+    "waitTurn": "Tocca a {slot}: aspetta il tuo turno",
+    "laneBusy": "Palla in pista…",
+    "noSwing": "Non ho sentito lo swing: tieni premuto e muovi il braccio come in un vero lancio",
+    "thrown": "Palla lanciata!",
+    "notYourTurn": "ASPETTA IL TUO TURNO",
     "backToLobby": "Torna in attesa"
   },
   "checks": {

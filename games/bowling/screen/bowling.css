@@ -379,3 +379,15 @@
   text-align: center;
   background: rgba(13, 9, 25, 0.92);
 }
+
+/* Invito al lancio dal telefono del giocatore di turno */
+.bw-throw-prompt {
+  border: 2px solid var(--player, rgba(255, 255, 255, 0.2));
+  text-align: center;
+}
+.bw-throw-prompt__text {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #fff;
+}

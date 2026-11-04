@@ -9,9 +9,11 @@ import {
   type LobbyPlayer,
   type RoomHost,
   type RoomPhase,
+  type SlotId,
+  type ThrowParams,
   type WsClientTransport,
 } from '@quickquest/protocol';
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import { usesRelay } from './controllerConnection';
 
 export interface ScreenRoom {
@@ -23,7 +25,13 @@ export interface ScreenRoom {
   selectGame(gameId: string): void;
   startGame(gameId?: string): boolean;
   returnToLobby(): void;
+  /** Chi può lanciare adesso dal proprio telefono (`null` = nessuno). */
+  setActiveSlot(slot: SlotId | null): void;
+  /** Lanci fatti col gesto dal telefono del giocatore di turno. */
+  onThrow(cb: ThrowListener): () => void;
 }
+
+export type ThrowListener = (slot: SlotId, params: ThrowParams) => void;
 
 export function joinUrlFor(code: string, origin: string = window.location.origin): string {
   return `${origin}/c/${code}`;
@@ -36,6 +44,8 @@ export function useScreenRoom(): ScreenRoom {
   const [selectedGame, setSelectedGame] = useState<string | null>(null);
   const hostRef = useRef<RoomHost | null>(null);
   const wsRef = useRef<WsClientTransport | null>(null);
+  const throwListeners = useRef(new Set<ThrowListener>());
+  const emitThrow: ThrowListener = (slot, params) => throwListeners.current.forEach((cb) => cb(slot, params));
 
   useEffect(() => {
     if (usesRelay) {
@@ -47,6 +57,8 @@ export function useScreenRoom(): ScreenRoom {
           setPlayers(m.p.players);
           if (m.p.phase) setPhase(m.p.phase);
           if (m.p.selectedGame !== undefined) setSelectedGame(m.p.selectedGame);
+        } else if (m.t === 'throw' && m.p.slot) {
+          emitThrow(m.p.slot, { speed: m.p.speed, spin: m.p.spin, dir: m.p.dir });
         }
       });
       return () => {
@@ -63,6 +75,7 @@ export function useScreenRoom(): ScreenRoom {
         if (ph) setPhase(ph);
         if (sg !== undefined) setSelectedGame(sg ?? null);
       },
+      onThrow: emitThrow,
     });
     hostRef.current = host;
     const timer = setInterval(() => host.tick(), HEARTBEAT_MS);
@@ -98,8 +111,22 @@ export function useScreenRoom(): ScreenRoom {
     setPhase('lobby');
     if (hostRef.current) {
       hostRef.current.returnToLobby();
+    } else if (wsRef.current) {
+      // senza questo il relay resterebbe "in partita": telefoni bloccati e schermo riportato in gioco
+      wsRef.current.send({ t: 'end-game', p: {} });
     }
   };
+
+  const setActiveSlot = (slot: SlotId | null) => {
+    if (hostRef.current) hostRef.current.setTurn(slot);
+    else wsRef.current?.send({ t: 'turn', p: { activeSlot: slot } });
+  };
+
+  // identità stabile: chi si iscrive non deve ri-iscriversi a ogni render
+  const onThrow = useCallback((cb: ThrowListener) => {
+    throwListeners.current.add(cb);
+    return () => { throwListeners.current.delete(cb); };
+  }, []);
 
   return {
     code,
@@ -110,5 +137,7 @@ export function useScreenRoom(): ScreenRoom {
     selectGame,
     startGame,
     returnToLobby,
+    setActiveSlot,
+    onThrow,
   };
 }
