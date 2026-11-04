@@ -10,9 +10,21 @@ describe('codec dei messaggi', () => {
       { t: 'hello', p: { sessionToken: 'abcDEF123_-x', capabilities: caps } },
       { t: 'profile', p: { color: '#EF4E5B', accessory: 'cap' } },
       { t: 'ping', p: { at: 12 } },
+      { t: 'ready', p: { layoutId: 'bowling-play' } },
+      { t: 'select-game', p: { gameId: 'bowling' } },
+      { t: 'start', p: { gameId: 'bowling' } },
       { t: 'bye', p: {} },
       { t: 'welcome', p: { slot: 'P2', sessionToken: 'abcDEF123_-x' } },
-      { t: 'lobby', p: { players: [{ slot: 'P1', state: 'ready', profile: { color: '#3C8CF0', accessory: 'none' } }] } },
+      {
+        t: 'lobby',
+        p: {
+          players: [{ slot: 'P1', state: 'ready', profile: { color: '#3C8CF0', accessory: 'none' } }],
+          phase: 'playing',
+          selectedGame: 'bowling',
+        },
+      },
+      { t: 'layout', p: { gameId: 'bowling', layoutId: 'aim', params: { difficulty: 'normal' } } },
+      { t: 'turn', p: { activeSlot: 'P1' } },
       { t: 'error', p: { code: 'ROOM_FULL' } },
     ];
     for (const m of msgs) expect(decode(encode(m))).toEqual({ ok: true, msg: m });
@@ -32,6 +44,9 @@ describe('codec dei messaggi', () => {
     ['capabilities incomplete', JSON.stringify({ v: 1, t: 'hello', p: { sessionToken: null, capabilities: { gyro: true } } })],
     ['slot inesistente', JSON.stringify({ v: 1, t: 'welcome', p: { slot: 'P9', sessionToken: 'abcdefgh' } })],
     ['troppi giocatori', JSON.stringify({ v: 1, t: 'lobby', p: { players: Array(5).fill({ slot: 'P1', state: 'ready', profile: null }) } })],
+    ['gameId non valido in select-game', JSON.stringify({ v: 1, t: 'select-game', p: { gameId: 'Bowling!!' } })],
+    ['layoutId mancante in layout', JSON.stringify({ v: 1, t: 'layout', p: { gameId: 'bowling' } })],
+    ['turn con slot non valido', JSON.stringify({ v: 1, t: 'turn', p: { activeSlot: 'P9' } })],
     ['messaggio enorme', 'x'.repeat(MAX_MESSAGE_BYTES + 1)],
   ])('rifiuta: %s', (_name, raw) => {
     expect(decode(raw)).toEqual({ ok: false, code: 'BAD_MESSAGE' });

@@ -1,6 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 import {
-  createRoomHost, createRoom, decode, encode, isValidRoomCode, lobbyPlayers, randomId,
+  createRoomHost, createRoom, decode, encode, isValidRoomCode, lobbyPlayers, randomId, rewritePoseSlot,
   type HostTransport, type RoomHost, type RoomState, type ServerMessage,
 } from '@quickquest/protocol';
 import type { Env } from './index';
@@ -17,7 +17,8 @@ const STATE_KEY = 'state';
 
 /**
  * Durable Object di una stanza (ADR-001). Riusa `createRoomHost`: il DO è l'host,
- * lo schermo è un osservatore che riceve la lobby, i telefoni parlano solo con il DO.
+ * lo schermo è un osservatore/controller che riceve la lobby e può avviare giochi,
+ * i telefoni parlano solo con il DO.
  * Con la WebSocket Hibernation API l'oggetto può essere scaricato dalla memoria:
  * lo stato della stanza sta nello storage SQLite, l'identità di ogni socket nell'attachment.
  */
@@ -90,16 +91,35 @@ export class Room extends DurableObject<Env> {
       this.send(server, { t: 'error', p: { code: 'ROOM_NOT_FOUND' } });
       server.close(1008, 'ROOM_NOT_FOUND');
     } else if (role === 'screen') {
-      this.send(server, { t: 'lobby', p: { players: lobbyPlayers(host.state()) } });
+      const s = host.state();
+      this.send(server, { t: 'lobby', p: { players: lobbyPlayers(s), phase: s.phase, selectedGame: s.selectedGame } });
     }
     return new Response(null, { status: 101, webSocket: client });
   }
 
   override async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): Promise<void> {
     const a = ws.deserializeAttachment() as Attachment;
-    if (a.role !== 'controller') return; // gli schermi sono solo osservatori
     const code = await this.codeFromStorage();
-    if (!code || !(await this.getHost(code))) return;
+    if (!code) return;
+    const host = await this.getHost(code);
+    if (!host) return;
+
+    if (typeof message !== 'string') {
+      // Frame binario (posa): ammesso solo dai controller (docs/03 § 3.3)
+      if (a.role !== 'controller') return;
+      const player = host.state().players.find((p) => p.connectionId === a.id);
+      if (!player) return;
+      const bytes = message instanceof Uint8Array ? message : new Uint8Array(message);
+      if (rewritePoseSlot(bytes, player.slot)) {
+        // Inoltro diretto verso gli schermi
+        this.sockets().filter((s) => s.a.role === 'screen').forEach((s) => {
+          try { s.ws.send(bytes); } catch {}
+        });
+      }
+      await this.touch();
+      return;
+    }
+
     this.listener?.(a.id, decode(message));
     await this.touch();
   }

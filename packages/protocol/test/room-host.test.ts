@@ -97,4 +97,39 @@ describe('host locale della stanza su BroadcastChannel', () => {
     await until(() => lobbies.at(-1)?.length === 0);
     expect(lobbies.at(-1)).toEqual([]);
   });
+
+  test('scelta del gioco e avvio partita inviano il messaggio layout al telefono', async () => {
+    const { host, client } = setup();
+    const a = client();
+    a.t.send({ t: 'hello', p: { sessionToken: null, capabilities: caps } });
+    await until(() => a.inbox.some((m) => m.t === 'welcome'));
+    a.t.send({ t: 'profile', p: { color: '#8E5BFF', accessory: 'cap' } });
+    await until(() => a.inbox.some((m) => m.t === 'lobby' && m.p.players[0]?.state === 'ready'));
+
+    // Selezione del gioco
+    host.selectGame('bowling');
+    await until(() => a.inbox.some((m) => m.t === 'lobby' && m.p.selectedGame === 'bowling'));
+    expect(host.state().selectedGame).toBe('bowling');
+
+    // Avvio della partita
+    const started = host.startGame();
+    expect(started).toBe(true);
+    expect(host.state().phase).toBe('playing');
+
+    // Il controller deve ricevere il messaggio layout
+    await until(() => a.inbox.some((m) => m.t === 'layout'));
+    const layoutMsg = a.inbox.find((m) => m.t === 'layout');
+    expect(layoutMsg).toEqual({
+      t: 'layout',
+      p: { gameId: 'bowling', layoutId: 'bowling-play' },
+    });
+
+    // Il controller invia ready
+    a.t.send({ t: 'ready', p: { layoutId: 'bowling-play' } });
+
+    // Ritorno alla lobby
+    host.returnToLobby();
+    expect(host.state().phase).toBe('lobby');
+    await until(() => a.inbox.at(-1)?.t === 'lobby' && (a.inbox.at(-1) as any).p.phase === 'lobby');
+  });
 });

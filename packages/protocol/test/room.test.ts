@@ -1,7 +1,17 @@
 import { describe, expect, test } from 'vitest';
 import type { Capabilities } from '../src/messages';
 import {
-  applyDisconnect, applyHello, applyLeave, applyProfile, applySeen, createRoom, expireStale, lobbyPlayers,
+  applyDisconnect,
+  applyHello,
+  applyLeave,
+  applyProfile,
+  applyReturnToLobby,
+  applySeen,
+  applySelectGame,
+  applyStart,
+  createRoom,
+  expireStale,
+  lobbyPlayers,
 } from '../src/room';
 
 const caps: Capabilities = { gyro: true, accel: true, hz: 60, platform: 'android' };
@@ -99,6 +109,33 @@ describe('reducer della stanza', () => {
     s = applySeen(s, 'b', 7000);
     s = expireStale(s, 7500, 6000);
     expect(lobbyPlayers(s).map((p) => p.state)).toEqual(['disconnected', 'connecting']);
+  });
+
+  test('scelta del gioco, avvio e ritorno alla lobby', () => {
+    let s = createRoom('K7RM');
+    expect(s.phase).toBe('lobby');
+    expect(s.selectedGame).toBeNull();
+
+    s = applySelectGame(s, 'bowling');
+    expect(s.selectedGame).toBe('bowling');
+
+    // Avvio senza giocatori pronti fallisce
+    const failNoPlayers = applyStart(s);
+    expect(failNoPlayers.ok).toBe(false);
+
+    // Con un giocatore pronto
+    s = hello(s, 'a').state;
+    s = applyProfile(s, 'a', { color: '#8E5BFF', accessory: 'cap' });
+
+    const startOk = applyStart(s);
+    expect(startOk.ok).toBe(true);
+    expect(startOk.state.phase).toBe('playing');
+    expect(startOk.state.selectedGame).toBe('bowling');
+
+    // Ritorno alla lobby
+    const returned = applyReturnToLobby(startOk.state);
+    expect(returned.phase).toBe('lobby');
+    expect(returned.selectedGame).toBe('bowling');
   });
 
   test('le funzioni non mutano lo stato originale', () => {

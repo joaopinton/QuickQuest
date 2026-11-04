@@ -95,7 +95,12 @@
     "devAddPhone": "Aggiungi un telefono di prova",
     "demoBadge": "Modalità locale: i telefoni si collegano da questo browser finché non c'è il server",
     "copy": "Copia il link",
-    "copied": "Link copiato!"
+    "copied": "Link copiato!",
+    "startGame": "Avvia {name}",
+    "selectedGame": "Gioco scelto: {name}",
+    "gameRunningTitle": "Partita in corso: {name}",
+    "gameRunningLead": "Guarda lo schermo! Muovi il controller per giocare.",
+    "endGame": "Torna alla lobby"
   },
   "code": {
     "title": "Inserisci il codice",
@@ -144,7 +149,13 @@
     "slotTitle": "Giocatore {slot}",
     "othersLabel": "In stanza",
     "colorName": "Colore {name}",
-    "probeWarn": "Sensori un po' lenti: si gioca, ma con meno precisione."
+    "probeWarn": "Sensori un po' lenti: si gioca, ma con meno precisione.",
+    "gameTitle": "Partita in corso: {name}",
+    "trackpadHint": "Trascina per mirare",
+    "actionButtonHold": "TIENI PREMUTO E LANCIA",
+    "actionButtonRelease": "RILASCIA PER TIRARE!",
+    "readySent": "Controller pronto",
+    "backToLobby": "Torna in attesa"
   },
   "checks": {
     "events": "Eventi dai sensori",

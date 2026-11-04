@@ -1,6 +1,6 @@
 import type { ClientTransport, ControllerMessage, ServerMessage } from '@quickquest/protocol';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { createControllerConnection, HOST_LOST_MS, JOIN_TIMEOUT_MS } from './controllerConnection';
+import { createControllerConnection, HOST_LOST_MS, JOIN_TIMEOUT_MS, type ControllerLayoutInfo } from './controllerConnection';
 
 const caps = { gyro: true, accel: true, hz: 60, platform: 'ios' as const };
 
@@ -70,6 +70,19 @@ describe('connessione del telefono', () => {
     expect(statuses).toContain('lost');
     f.deliver({ t: 'pong', p: { at: 1 } });
     expect(statuses.at(-1)).toBe('live');
+  });
+
+  test('ricezione messaggio layout e invio ready', () => {
+    const f = fakeTransport();
+    const c = createControllerConnection('K7RM', f.t);
+    const layouts: ControllerLayoutInfo[] = [];
+    c.onLayout((l) => layouts.push(l));
+
+    f.deliver({ t: 'layout', p: { gameId: 'bowling', layoutId: 'bowling-play' } });
+    expect(layouts).toEqual([{ gameId: 'bowling', layoutId: 'bowling-play' }]);
+
+    c.sendReady('bowling-play');
+    expect(f.sent).toContainEqual({ t: 'ready', p: { layoutId: 'bowling-play' } });
   });
 
   test('dopo close() join non invia nulla e risolve subito', async () => {

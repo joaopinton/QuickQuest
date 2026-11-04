@@ -148,3 +148,64 @@ body.is-controller { transition: background-color var(--dur-slow) var(--ease-out
 }
 .ctl-other span { color: var(--slot); }
 .ctl-other--disconnected { opacity: 0.5; }
+
+/* Controller di gioco (docs/08 § 2) */
+.ctl-game {
+  flex: 1; display: flex; flex-direction: column; gap: 20px;
+  touch-action: none;
+}
+.ctl-game__bar {
+  display: flex; justify-content: space-between; align-items: center; width: 100%;
+}
+.ctl-game__title {
+  font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; color: var(--ink-900);
+}
+.ctl-trackpad {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  box-shadow: var(--shadow-soft);
+  display: flex; flex-direction: column; gap: 12px;
+  touch-action: none;
+}
+.ctl-trackpad__label {
+  font-size: 0.9rem; font-weight: 800; text-align: center; color: var(--ink-600);
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.ctl-trackpad__groove {
+  height: 48px; position: relative; border-radius: var(--radius-pill);
+  background: var(--ink-100); display: flex; align-items: center; cursor: ew-resize;
+}
+.ctl-trackpad__center-line {
+  position: absolute; left: 50%; top: 6px; bottom: 6px; width: 2px;
+  background: var(--ink-300); transform: translateX(-50%);
+}
+.ctl-trackpad__dot {
+  position: absolute; width: 38px; height: 38px; border-radius: 50%;
+  background: var(--slot); box-shadow: 0 4px 8px rgb(0 0 0 / 0.15);
+  top: 5px; transform: translateX(-50%);
+  transition: transform 60ms linear;
+}
+.ctl-action-btn {
+  flex: 1; min-height: 220px;
+  border-radius: var(--radius-xl);
+  border: 0; cursor: pointer;
+  background: var(--slot);
+  box-shadow: 0 10px 0 color-mix(in oklab, var(--slot) 70%, var(--ink-900)), 0 14px 20px rgb(0 0 0 / 0.15);
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 700;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 24px; text-align: center; gap: 12px;
+  touch-action: none;
+  transition: transform var(--dur-fast) var(--ease-squish), box-shadow var(--dur-fast) var(--ease-squish);
+}
+.ctl-action-btn:active, .ctl-action-btn.is-pressed {
+  transform: translateY(8px);
+  box-shadow: 0 2px 0 color-mix(in oklab, var(--slot) 70%, var(--ink-900)), 0 4px 8px rgb(0 0 0 / 0.15);
+  background: color-mix(in oklab, var(--slot) 90%, #000);
+}
+.ctl-action-btn__icon {
+  font-size: 2.2rem;
+}

@@ -3,6 +3,14 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   plugins: [preact()],
+  resolve: {
+    alias: {
+      '@quickquest/protocol': new URL('./packages/protocol/src', import.meta.url).pathname,
+      '@quickquest/motion': new URL('./packages/motion/src', import.meta.url).pathname,
+      '@quickquest/ui': new URL('./packages/ui/src', import.meta.url).pathname,
+      '@quickquest/games': new URL('./games', import.meta.url).pathname,
+    },
+  },
   test: {
     include: ['packages/*/test/**/*.test.{ts,tsx}', 'games/test/**/*.test.ts', 'apps/web/src/**/*.test.{ts,tsx}'],
     environment: 'node',

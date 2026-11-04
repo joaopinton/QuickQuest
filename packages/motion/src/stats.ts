@@ -1,6 +1,6 @@
 // Statistiche minime (portate da spikes/s1-sensor-probe/src/math.js).
 
-export const G = 9.80665;
+export { G } from './math';
 
 export function mean(xs: readonly number[]): number {
   if (xs.length === 0) return Number.NaN;

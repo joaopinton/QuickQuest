@@ -18,10 +18,18 @@ export type LinkStatus =
   | { readonly mode: 'demo'; readonly slot: SlotId }
   | { readonly mode: 'lost'; readonly slot: SlotId };
 
+export interface ControllerLayoutInfo {
+  readonly gameId: string;
+  readonly layoutId: string;
+  readonly params?: Record<string, unknown>;
+}
+
 export interface ControllerConnection {
   join(capabilities: Capabilities): Promise<JoinResult>;
   sendProfile(profile: Profile): void;
+  sendReady(layoutId: string): void;
   onLobby(cb: (players: readonly LobbyPlayer[]) => void): () => void;
+  onLayout(cb: (layout: ControllerLayoutInfo) => void): () => void;
   /** Cambi di stato dopo il join: benvenuto in ritardo (demo → live) o schermo perso. */
   onStatus(cb: (s: LinkStatus) => void): () => void;
   leave(): void;
@@ -63,6 +71,7 @@ function defaultTransport(code: string): ClientTransport {
 
 export function createControllerConnection(code: string, transport: ClientTransport = defaultTransport(code)): ControllerConnection {
   const lobbyListeners = new Set<(players: readonly LobbyPlayer[]) => void>();
+  const layoutListeners = new Set<(layout: ControllerLayoutInfo) => void>();
   const statusListeners = new Set<(s: LinkStatus) => void>();
   let heartbeat: ReturnType<typeof setInterval> | null = null;
   let mode: 'live' | 'demo' | 'lost' | null = null;
@@ -121,6 +130,9 @@ export function createControllerConnection(code: string, transport: ClientTransp
       case 'welcome':
         handleWelcome(msg);
         break;
+      case 'layout':
+        layoutListeners.forEach((cb) => cb(msg.p));
+        break;
       case 'pong':
         lastPong = Date.now();
         if (mode === 'lost') setStatus({ mode: 'live', slot });
@@ -156,9 +168,16 @@ export function createControllerConnection(code: string, transport: ClientTransp
       lastProfile = profile;
       if (mode === 'live' || mode === 'lost') send({ t: 'profile', p: profile });
     },
+    sendReady(layoutId) {
+      send({ t: 'ready', p: { layoutId } });
+    },
     onLobby(cb) {
       lobbyListeners.add(cb);
       return () => lobbyListeners.delete(cb);
+    },
+    onLayout(cb) {
+      layoutListeners.add(cb);
+      return () => layoutListeners.delete(cb);
     },
     onStatus(cb) {
       statusListeners.add(cb);

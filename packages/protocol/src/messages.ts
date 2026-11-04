@@ -30,17 +30,26 @@ export interface LobbyPlayer {
 
 export type ErrorCode = 'ROOM_FULL' | 'ROOM_NOT_FOUND' | 'UNSUPPORTED_DEVICE' | 'BAD_MESSAGE' | 'VERSION_MISMATCH';
 
+export type RoomPhase = 'lobby' | 'starting' | 'playing';
+
 /** Messaggi dal controller. */
 export type ControllerMessage =
   | { t: 'hello'; p: { sessionToken: string | null; capabilities: Capabilities } }
   | { t: 'profile'; p: Profile }
   | { t: 'ping'; p: { at: number } }
+  | { t: 'ready'; p: { layoutId: string } }
+  | { t: 'select-game'; p: { gameId: string } }
+  | { t: 'start'; p: { gameId: string } }
   | { t: 'bye'; p: Record<string, never> };
 
 /** Messaggi verso il controller o lo schermo. */
 export type ServerMessage =
   | { t: 'welcome'; p: { slot: SlotId; sessionToken: string } }
-  | { t: 'lobby'; p: { players: readonly LobbyPlayer[] } }
+  | { t: 'lobby'; p: { players: readonly LobbyPlayer[]; phase?: RoomPhase; selectedGame?: string | null } }
+  | { t: 'select-game'; p: { gameId: string } }
+  | { t: 'start'; p: { gameId: string } }
+  | { t: 'layout'; p: { gameId: string; layoutId: string; params?: Record<string, unknown> } }
+  | { t: 'turn'; p: { activeSlot: SlotId } }
   | { t: 'pong'; p: { at: number } }
   | { t: 'error'; p: { code: ErrorCode } };
 
@@ -51,6 +60,7 @@ export const MAX_MESSAGE_BYTES = 2048;
 const HEX = /^#[0-9a-fA-F]{6}$/;
 const ACCESSORY = /^[a-z]{1,16}$/;
 const TOKEN = /^[A-Za-z0-9_-]{8,64}$/;
+const ID_REGEX = /^[a-z0-9_-]{1,32}$/;
 
 export function encode(msg: Message): string {
   return JSON.stringify({ v: PROTOCOL_VERSION, ...msg });
@@ -93,7 +103,20 @@ function validPayload(t: string, p: unknown): boolean {
     case 'welcome':
       return isSlot(p.slot) && typeof p.sessionToken === 'string' && TOKEN.test(p.sessionToken);
     case 'lobby':
-      return Array.isArray(p.players) && p.players.length <= 4 && p.players.every(isLobbyPlayer);
+      return Array.isArray(p.players) && p.players.length <= 4 && p.players.every(isLobbyPlayer)
+        && (p.phase === undefined || p.phase === 'lobby' || p.phase === 'starting' || p.phase === 'playing')
+        && (p.selectedGame === undefined || p.selectedGame === null || (typeof p.selectedGame === 'string' && ID_REGEX.test(p.selectedGame)));
+    case 'select-game':
+    case 'start':
+      return typeof p.gameId === 'string' && ID_REGEX.test(p.gameId);
+    case 'ready':
+      return typeof p.layoutId === 'string' && ID_REGEX.test(p.layoutId);
+    case 'layout':
+      return typeof p.gameId === 'string' && ID_REGEX.test(p.gameId)
+        && typeof p.layoutId === 'string' && ID_REGEX.test(p.layoutId)
+        && (p.params === undefined || isObj(p.params));
+    case 'turn':
+      return isSlot(p.activeSlot);
     case 'error':
       return typeof p.code === 'string'
         && ['ROOM_FULL', 'ROOM_NOT_FOUND', 'UNSUPPORTED_DEVICE', 'BAD_MESSAGE', 'VERSION_MISMATCH'].includes(p.code);

@@ -1,4 +1,4 @@
-// Flusso del telefono (docs/08 § 1.2): codice → benvenuto → sonda → Pupo → sicurezza → attesa.
+// Flusso del telefono (docs/08 § 1.2): codice → benvenuto → sonda → Pupo → sicurezza → attesa → gioco.
 import {
   collectMotion, detectPlatform, evaluateProbe, keepAwake, releaseWakeLock, requestMotionPermission, simulateHandheld,
   type ProbeResult, type RawSample,
@@ -8,7 +8,8 @@ import { pupoColor, t } from '@quickquest/ui';
 import { useLocation, useRoute } from 'preact-iso';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { createControllerConnection } from '../net/controllerConnection';
-import { loadChoice, saveChoice, hasSeenSafety, markSafetySeen } from './prefs';
+import { hasSeenSafety, loadChoice, markSafetySeen, saveChoice } from './prefs';
+import { GamePad } from './steps/GamePad';
 import { PickPupo, type PupoChoice } from './steps/PickPupo';
 import { Blocked, EnterCode, Incompatible, Probing, Safety, Welcome } from './steps/Screens';
 import { Waiting } from './steps/Waiting';
@@ -21,6 +22,7 @@ type Step =
   | { k: 'pick' }
   | { k: 'safety' }
   | { k: 'waiting' }
+  | { k: 'game'; gameId: string; layoutId: string }
   | { k: 'blocked'; message: string };
 
 const PERMISSION_ERRORS = {
@@ -57,9 +59,16 @@ function RoomFlow({ code }: { code: string }) {
   const isBusy = useRef(false);
   const isMounted = useRef(true);
 
+  /** Aggiorna lo stato solo se la schermata è ancora montata (l'utente può tornare indietro). */
+  const safeStep = (s: Step) => { if (isMounted.current) setStep(s); };
+
   useEffect(() => {
     isMounted.current = true;
     const offLobby = conn.onLobby(setPlayers);
+    const offLayout = conn.onLayout((layout) => {
+      conn.sendReady(layout.layoutId);
+      safeStep({ k: 'game', gameId: layout.gameId, layoutId: layout.layoutId });
+    });
     const offStatus = conn.onStatus((s) => {
       setSlot(s.slot);
       setDemo(s.mode === 'demo');
@@ -68,13 +77,11 @@ function RoomFlow({ code }: { code: string }) {
     return () => {
       isMounted.current = false;
       offLobby();
+      offLayout();
       offStatus();
       conn.close();
     };
   }, [conn]);
-
-  /** Aggiorna lo stato solo se la schermata è ancora montata (l'utente può tornare indietro). */
-  const safeStep = (s: Step) => { if (isMounted.current) setStep(s); };
 
   const connect = async () => {
     if (isBusy.current) return; // doppio tap su "Connetti" o "Riprova"
@@ -147,6 +154,19 @@ function RoomFlow({ code }: { code: string }) {
           isLost={isLost}
           players={players}
           onChangePupo={() => setStep({ k: 'pick' })}
+          onLeave={() => { conn.leave(); releaseWakeLock(); route('/'); }}
+        />
+      );
+    case 'game':
+      return (
+        <GamePad
+          slot={slot}
+          color={pupoColor(choice.colorId).hex}
+          accessory={choice.accessory}
+          gameId={step.gameId}
+          layoutId={step.layoutId}
+          isDemo={isDemo}
+          isLost={isLost}
           onLeave={() => { conn.leave(); releaseWakeLock(); route('/'); }}
         />
       );

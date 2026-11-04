@@ -1,11 +1,16 @@
 import { GAMES, type GameMeta } from '@quickquest/games';
 import { SLOT_IDS, type LobbyPlayer } from '@quickquest/protocol';
 import { Button, Logo, PlayerSlot, showToast, t, type Accessory, type SlotState } from '@quickquest/ui';
+import { lazy, Suspense } from 'preact/compat';
 import { useState } from 'preact/hooks';
 import { useScreenRoom } from '../../net/useScreenRoom';
 import { GameCard } from '../components/GameCard';
 import { QrCode } from '../components/QrCode';
 import './lobby.css';
+
+const BowlingSandbox = lazy(() =>
+  import('@quickquest/games/bowling/screen/BowlingSandbox').then((m) => m.BowlingSandbox),
+);
 
 function slotState(p: LobbyPlayer | undefined): SlotState {
   return p ? p.state : 'empty';
@@ -41,9 +46,13 @@ function JoinPanel({ code, joinUrl }: { code: string; joinUrl: string }) {
   );
 }
 
-function GamePicker({ onBack }: { onBack: () => void }) {
+function GamePicker({ onBack, onStartGame }: { onBack: () => void; onStartGame: (gameId: string) => void }) {
   const pick = (g: GameMeta) => {
-    showToast(g.status === 'soon' ? t('lobby.comingSoonToast', { name: g.name.toLowerCase() }) : t('lobby.laterToast', { name: g.name }));
+    if (g.id === 'bowling') {
+      onStartGame('bowling');
+    } else {
+      showToast(t('lobby.laterToast', { name: g.name }));
+    }
   };
   return (
     <section class="picker" aria-labelledby="picker-title">
@@ -58,11 +67,63 @@ function GamePicker({ onBack }: { onBack: () => void }) {
   );
 }
 
+function PlayingScreen({
+  players,
+  gameId,
+  onEndGame,
+}: {
+  players: readonly LobbyPlayer[];
+  gameId: string | null;
+  onEndGame: () => void;
+}) {
+  const name = gameId === 'bowling' ? 'Bowling' : (gameId ?? 'Bowling');
+  const bySlot = new Map(players.map((p) => [p.slot, p]));
+
+  return (
+    <main class="lobby__main" style={{ flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '32px' }}>
+      <section class="lobby__players" style={{ maxWidth: '800px', width: '100%', margin: '0 auto' }}>
+        <h1 class="lobby__title" style={{ fontSize: '3rem' }}>
+          🎳 {t('lobby.gameRunningTitle', { name })}
+        </h1>
+        <p class="lobby__count" style={{ fontSize: '1.25rem', marginTop: '8px' }}>
+          {t('lobby.gameRunningLead')}
+        </p>
+        <ul class="lobby__slots" style={{ justifyContent: 'center', margin: '32px 0' }}>
+          {SLOT_IDS.map((id) => {
+            const p = bySlot.get(id);
+            if (!p || p.state === 'disconnected') return null;
+            return (
+              <li key={id}>
+                <PlayerSlot
+                  slot={id}
+                  state={slotState(p)}
+                  pupoColor={p.profile?.color}
+                  accessory={(p.profile?.accessory ?? 'none') as Accessory}
+                />
+              </li>
+            );
+          })}
+        </ul>
+        <div class="lobby__actions" style={{ justifyContent: 'center' }}>
+          <Button variant="secondary" size="lg" onClick={onEndGame}>
+            {t('lobby.endGame')}
+          </Button>
+        </div>
+      </section>
+    </main>
+  );
+}
+
 export function Lobby() {
-  const { code, players, joinUrl } = useScreenRoom();
+  const { code, players, joinUrl, phase, selectedGame, startGame, returnToLobby } = useScreenRoom();
   const [isChoosing, setChoosing] = useState(false);
   const active = players.filter((p) => p.state !== 'disconnected').length;
   const bySlot = new Map(players.map((p) => [p.slot, p]));
+
+  const handleStartGame = (gameId: string) => {
+    startGame(gameId);
+    setChoosing(false);
+  };
 
   return (
     <div class="lobby">
@@ -78,8 +139,25 @@ export function Lobby() {
         <p class="lobby__badge">{t('lobby.demoBadge')}</p>
       </header>
 
-      {isChoosing ? (
-        <GamePicker onBack={() => setChoosing(false)} />
+      {phase === 'playing' ? (
+        selectedGame === 'bowling' ? (
+          <Suspense
+            fallback={
+              <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '1.5rem', background: '#161224' }}>
+                🎳 Caricamento pista da bowling...
+              </div>
+            }
+          >
+            <BowlingSandbox
+              onEndGame={returnToLobby}
+              playerName={players.find((p) => p.state !== 'disconnected')?.slot ?? 'Pupo 1'}
+            />
+          </Suspense>
+        ) : (
+          <PlayingScreen players={players} gameId={selectedGame} onEndGame={returnToLobby} />
+        )
+      ) : isChoosing ? (
+        <GamePicker onBack={() => setChoosing(false)} onStartGame={handleStartGame} />
       ) : (
         <main class="lobby__main">
           <JoinPanel code={code} joinUrl={joinUrl} />

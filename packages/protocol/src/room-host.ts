@@ -1,8 +1,19 @@
 // Host della stanza: collega un HostTransport al reducer. Oggi gira nella scheda dello schermo.
 
-import type { LobbyPlayer, ServerMessage } from './messages';
+import type { LobbyPlayer, RoomPhase, ServerMessage } from './messages';
 import {
-  applyDisconnect, applyHello, applyLeave, applyProfile, applySeen, createRoom, expireStale, lobbyPlayers, type RoomState,
+  applyDisconnect,
+  applyHello,
+  applyLeave,
+  applyProfile,
+  applyReturnToLobby,
+  applySeen,
+  applySelectGame,
+  applyStart,
+  createRoom,
+  expireStale,
+  lobbyPlayers,
+  type RoomState,
 } from './room';
 import { randomId, type HostTransport } from './transport';
 
@@ -12,7 +23,7 @@ export const STALE_MS = 6000;
 export interface RoomHostOptions {
   readonly code: string;
   readonly transport: HostTransport;
-  readonly onLobby: (players: readonly LobbyPlayer[]) => void;
+  readonly onLobby: (players: readonly LobbyPlayer[], phase?: RoomPhase, selectedGame?: string | null) => void;
   readonly now?: () => number;
   readonly makeToken?: () => string;
   readonly staleMs?: number;
@@ -30,6 +41,9 @@ export interface RoomHost {
   disconnect(connectionId: string): void;
   players(): readonly LobbyPlayer[];
   state(): RoomState;
+  selectGame(gameId: string): void;
+  startGame(gameId?: string): boolean;
+  returnToLobby(): void;
   close(): void;
 }
 
@@ -37,14 +51,44 @@ export function createRoomHost(opts: RoomHostOptions): RoomHost {
   const { code, transport, onLobby, now = Date.now, makeToken = randomId, staleMs = STALE_MS, initialState, onState } = opts;
   let state: RoomState = initialState ?? createRoom(code);
 
+  const makeLobbyMsg = (s: RoomState): ServerMessage => ({
+    t: 'lobby',
+    p: {
+      players: lobbyPlayers(s),
+      phase: s.phase,
+      selectedGame: s.selectedGame,
+    },
+  });
+
   const publish = (next: RoomState) => {
     if (next === state) return;
     state = next;
     onState?.(state);
     const players = lobbyPlayers(state);
-    onLobby(players);
-    const msg: ServerMessage = { t: 'lobby', p: { players } };
-    transport.broadcast(msg);
+    onLobby(players, state.phase, state.selectedGame);
+    transport.broadcast(makeLobbyMsg(state));
+  };
+
+  const selectGame = (gameId: string) => {
+    publish(applySelectGame(state, gameId));
+  };
+
+  const startGame = (gameId?: string): boolean => {
+    const chosen = gameId ?? state.selectedGame ?? 'bowling';
+    const r = applyStart(state, chosen);
+    if (!r.ok) return false;
+    publish(r.state);
+    // Invia layout del gioco selezionato a tutti i controller
+    const layoutMsg: ServerMessage = {
+      t: 'layout',
+      p: { gameId: chosen, layoutId: `${chosen}-play` },
+    };
+    transport.broadcast(layoutMsg);
+    return true;
+  };
+
+  const returnToLobby = () => {
+    publish(applyReturnToLobby(state));
   };
 
   const unsubscribe = transport.onMessage((from, result) => {
@@ -60,11 +104,20 @@ export function createRoomHost(opts: RoomHostOptions): RoomHost {
         const changed = r.state !== state;
         publish(r.state);
         // se la stanza non è cambiata nessuno ha ricevuto la lobby: la si manda a chi ha chiesto
-        if (!changed) transport.sendTo(from, { t: 'lobby', p: { players: lobbyPlayers(state) } });
+        if (!changed) transport.sendTo(from, makeLobbyMsg(state));
         break;
       }
       case 'profile':
         publish(applyProfile(state, from, msg.p));
+        break;
+      case 'select-game':
+        selectGame(msg.p.gameId);
+        break;
+      case 'start':
+        startGame(msg.p.gameId);
+        break;
+      case 'ready':
+        // Notifica di layout pronto dal controller
         break;
       case 'ping': {
         const wasOffline = state.players.some((p) => p.connectionId === from && !p.connected);
@@ -93,6 +146,9 @@ export function createRoomHost(opts: RoomHostOptions): RoomHost {
     disconnect: (id) => publish(applyDisconnect(state, id)),
     players: () => lobbyPlayers(state),
     state: () => state,
+    selectGame,
+    startGame,
+    returnToLobby,
     close: () => {
       unsubscribe();
       transport.close();

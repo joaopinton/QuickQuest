@@ -1,7 +1,7 @@
 // Stato della stanza come reducer puro. Lo usa oggi l'host locale (schermo) e domani il
 // Durable Object "Room" (ADR-001): stessa logica, trasporto diverso.
 
-import type { Capabilities, LobbyPlayer, Profile, ServerMessage, SlotId } from './messages';
+import type { Capabilities, LobbyPlayer, Profile, RoomPhase, ServerMessage, SlotId } from './messages';
 import { SLOT_IDS } from './messages';
 
 export interface RoomPlayer {
@@ -15,6 +15,8 @@ export interface RoomPlayer {
 
 export interface RoomState {
   readonly code: string;
+  readonly phase: RoomPhase;
+  readonly selectedGame: string | null;
   readonly players: readonly RoomPlayer[];
 }
 
@@ -31,10 +33,10 @@ export interface Reduction {
   readonly reply: ServerMessage;
 }
 
-const freeze = (players: RoomPlayer[]): readonly RoomPlayer[] => Object.freeze(players);
+const freeze = <T>(items: T[]): readonly T[] => Object.freeze(items);
 
 export function createRoom(code: string): RoomState {
-  return { code, players: freeze([]) };
+  return { code, phase: 'lobby', selectedGame: null, players: freeze([]) };
 }
 
 function updatePlayer(state: RoomState, match: (p: RoomPlayer) => boolean, patch: Partial<RoomPlayer>): RoomState {
@@ -97,6 +99,39 @@ export function expireStale(state: RoomState, now: number, timeoutMs: number): R
   if (!state.players.some(stale)) return state;
   // connectionId resta: se il telefono torna a battere, il ping lo rimette online.
   return { ...state, players: freeze(state.players.map((p) => (stale(p) ? { ...p, connected: false } : p))) };
+}
+
+/** Scelta del gioco dalla lobby. */
+export function applySelectGame(state: RoomState, gameId: string): RoomState {
+  return { ...state, selectedGame: gameId };
+}
+
+/** Avvio della partita: richiede almeno un giocatore pronto. */
+export function applyStart(state: RoomState, gameId?: string): { state: RoomState; ok: boolean; error?: string } {
+  const targetGame = gameId ?? state.selectedGame;
+  if (!targetGame) {
+    return { state, ok: false, error: 'NO_GAME_SELECTED' };
+  }
+  const readyPlayers = state.players.filter((p) => p.connected && p.profile !== null);
+  if (readyPlayers.length === 0) {
+    return { state, ok: false, error: 'NO_READY_PLAYERS' };
+  }
+  return {
+    state: {
+      ...state,
+      phase: 'playing',
+      selectedGame: targetGame,
+    },
+    ok: true,
+  };
+}
+
+/** Ritorno alla lobby a fine partita o interruzione. */
+export function applyReturnToLobby(state: RoomState): RoomState {
+  return {
+    ...state,
+    phase: 'lobby',
+  };
 }
 
 /** Vista della lobby da mandare allo schermo e ai controller. */
