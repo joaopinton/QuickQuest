@@ -2,7 +2,7 @@
 
 import type { LobbyPlayer, ServerMessage } from './messages';
 import {
-  applyHello, applyLeave, applyProfile, applySeen, createRoom, expireStale, lobbyPlayers, type RoomState,
+  applyDisconnect, applyHello, applyLeave, applyProfile, applySeen, createRoom, expireStale, lobbyPlayers, type RoomState,
 } from './room';
 import { randomId, type HostTransport } from './transport';
 
@@ -16,23 +16,31 @@ export interface RoomHostOptions {
   readonly now?: () => number;
   readonly makeToken?: () => string;
   readonly staleMs?: number;
+  /** Stato da cui ripartire (Durable Object risvegliato dall'ibernazione). */
+  readonly initialState?: RoomState;
+  /** Chiamato a ogni cambio di stato che va persistito. */
+  readonly onState?: (state: RoomState) => void;
 }
 
 export interface RoomHost {
   readonly code: string;
   /** Da chiamare periodicamente: segna disconnessi i telefoni silenziosi. */
   tick(): void;
+  /** Connessione chiusa senza `bye`: lo slot resta riservato per il rientro. */
+  disconnect(connectionId: string): void;
   players(): readonly LobbyPlayer[];
+  state(): RoomState;
   close(): void;
 }
 
 export function createRoomHost(opts: RoomHostOptions): RoomHost {
-  const { code, transport, onLobby, now = Date.now, makeToken = randomId, staleMs = STALE_MS } = opts;
-  let state: RoomState = createRoom(code);
+  const { code, transport, onLobby, now = Date.now, makeToken = randomId, staleMs = STALE_MS, initialState, onState } = opts;
+  let state: RoomState = initialState ?? createRoom(code);
 
   const publish = (next: RoomState) => {
     if (next === state) return;
     state = next;
+    onState?.(state);
     const players = lobbyPlayers(state);
     onLobby(players);
     const msg: ServerMessage = { t: 'lobby', p: { players } };
@@ -63,7 +71,10 @@ export function createRoomHost(opts: RoomHostOptions): RoomHost {
         const next = applySeen(state, from, now());
         // il battito aggiorna solo lastSeen: si ripubblica la lobby solo se qualcuno torna online
         if (wasOffline) publish(next);
-        else state = next;
+        else if (next !== state) {
+          state = next;
+          onState?.(state);
+        }
         transport.sendTo(from, { t: 'pong', p: { at: msg.p.at } });
         break;
       }
@@ -79,7 +90,9 @@ export function createRoomHost(opts: RoomHostOptions): RoomHost {
   return {
     code,
     tick: () => publish(expireStale(state, now(), staleMs)),
+    disconnect: (id) => publish(applyDisconnect(state, id)),
     players: () => lobbyPlayers(state),
+    state: () => state,
     close: () => {
       unsubscribe();
       transport.close();

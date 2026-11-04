@@ -6,11 +6,13 @@
   "scripts": {
     "dev": "pnpm --filter @quickquest/web dev",
     "build": "pnpm --filter @quickquest/web build",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit && pnpm --filter @quickquest/relay typecheck",
     "test": "vitest run",
     "coverage": "vitest run --coverage",
     "e2e": "playwright test",
-    "size": "pnpm build && size-limit"
+    "size": "pnpm build && size-limit",
+    "cf:deploy": "pnpm build && pnpm --filter @quickquest/relay run ship",
+    "relay:dev": "pnpm build && pnpm --filter @quickquest/relay dev"
   },
   "size-limit": [
     {
@@ -51,6 +53,7 @@
     }
   ],
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261104.1",
     "@playwright/test": "^1.64.1",
     "@preact/preset-vite": "^2.10.6",
     "@size-limit/file": "^14.3.0",
@@ -61,6 +64,7 @@
     "typescript": "^7.0.2",
     "vite": "^8.3.5",
     "vite-plugin-mkcert": "^2.1.0",
-    "vitest": "^5.1.0"
+    "vitest": "^5.1.0",
+    "wrangler": "^4.157.0"
   }
 }

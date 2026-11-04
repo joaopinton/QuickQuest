@@ -1,8 +1,8 @@
 // Connessione del telefono alla stanza. Senza risposta dall'host entro 1,5 s si passa in demo:
 // succede con un telefono vero finché il relay Cloudflare non esiste (il trasporto è locale).
 import {
-  createLocalClient, HEARTBEAT_MS, type Capabilities, type ClientTransport, type ErrorCode, type LobbyPlayer,
-  type Profile, type ServerMessage, type SlotId,
+  createLocalClient, createWsClient, HEARTBEAT_MS, relayUrl, type Capabilities, type ClientTransport, type ErrorCode, type LobbyPlayer,
+  type Profile, type ServerMessage, type WsClientTransport, type SlotId,
 } from '@quickquest/protocol';
 
 export const JOIN_TIMEOUT_MS = 1500;
@@ -50,9 +50,12 @@ function writeToken(code: string, token: string | null): void {
 /** Trasporto che non porta da nessuna parte: per i browser senza BroadcastChannel (iOS < 15.4). */
 const nullTransport: ClientTransport = { id: 'none', send: () => {}, onMessage: () => () => {}, close: () => {} };
 
+/** In produzione (o con VITE_RELAY=1) il telefono parla con il relay Cloudflare. */
+export const usesRelay = import.meta.env.PROD || import.meta.env.VITE_RELAY === '1';
+
 function defaultTransport(code: string): ClientTransport {
   try {
-    return createLocalClient(code);
+    return usesRelay ? createWsClient(relayUrl(code, 'controller')) : createLocalClient(code);
   } catch {
     return nullTransport;
   }
@@ -103,6 +106,12 @@ export function createControllerConnection(code: string, transport: ClientTransp
     if (lastProfile) send({ t: 'profile', p: lastProfile });
   };
 
+  // dopo una riconnessione della socket il relay non ricorda più la connessione: nuovo hello
+  let lastCapabilities: Capabilities | null = null;
+  (transport as Partial<WsClientTransport>).onOpen?.((isReconnect) => {
+    if (isReconnect && lastCapabilities) send({ t: 'hello', p: { sessionToken: readToken(code), capabilities: lastCapabilities } });
+  });
+
   transport.onMessage((msg: ServerMessage) => {
     if (isClosed) return;
     switch (msg.t) {
@@ -139,6 +148,7 @@ export function createControllerConnection(code: string, transport: ClientTransp
           resolve(r);
         }
         pendingJoin = finish;
+        lastCapabilities = capabilities;
         send({ t: 'hello', p: { sessionToken: readToken(code), capabilities } });
       });
     },

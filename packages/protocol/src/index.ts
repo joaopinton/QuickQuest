@@ -3,3 +3,4 @@ export * from './messages';
 export * from './room';
 export * from './transport';
 export * from './room-host';
+export * from './ws-transport';

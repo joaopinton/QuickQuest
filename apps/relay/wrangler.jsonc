@@ -1,0 +1,17 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "quickquest",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-04",
+  // Sito statico + relay nello stesso Worker e sullo stesso dominio: niente CORS.
+  "assets": {
+    "directory": "../web/dist",
+    "not_found_handling": "single-page-application",
+    // Solo i WebSocket passano dal Worker; il resto è servito dagli asset (gratis).
+    "run_worker_first": ["/ws/*"]
+  },
+  "durable_objects": { "bindings": [{ "name": "ROOM", "class_name": "Room" }] },
+  // Il piano free ammette solo Durable Object con backend SQLite.
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }],
+  "observability": { "enabled": true }
+}

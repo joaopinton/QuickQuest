@@ -1,8 +1,9 @@
 // Lo schermo crea la stanza e fa da host finché non esiste il relay Cloudflare.
 import {
-  createLocalHost, createRoomHost, generateRoomCode, HEARTBEAT_MS, type LobbyPlayer,
+  createLocalHost, createRoomHost, createWsClient, generateRoomCode, HEARTBEAT_MS, relayUrl, type LobbyPlayer,
 } from '@quickquest/protocol';
 import { useEffect, useState } from 'preact/hooks';
+import { usesRelay } from './controllerConnection';
 
 export interface ScreenRoom {
   readonly code: string;
@@ -19,6 +20,12 @@ export function useScreenRoom(): ScreenRoom {
   const [players, setPlayers] = useState<readonly LobbyPlayer[]>([]);
 
   useEffect(() => {
+    if (usesRelay) {
+      // il Durable Object è l'host: lo schermo apre la stanza e riceve la lobby
+      const link = createWsClient(relayUrl(code, 'screen'));
+      const off = link.onMessage((m) => { if (m.t === 'lobby') setPlayers(m.p.players); });
+      return () => { off(); link.close(); };
+    }
     const host = createRoomHost({ code, transport: createLocalHost(code), onLobby: setPlayers });
     const timer = setInterval(() => host.tick(), HEARTBEAT_MS);
     return () => {
