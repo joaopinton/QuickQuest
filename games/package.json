@@ -1,0 +1,6 @@
+{
+  "name": "@quickquest/games",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./registry.ts" }
+}

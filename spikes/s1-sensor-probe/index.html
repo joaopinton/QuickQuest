@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#8E5BFF">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>S1 · Sonda sensori</title>
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="src/main.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="brand-dot" aria-hidden="true"></span>Sonda sensori <small>spike S1</small></div>
+    <div class="hz" id="hz" aria-live="polite">— Hz</div>
+  </header>
+
+  <!-- Avvio -->
+  <main id="screen-start" class="screen">
+    <section class="card hero">
+      <h1>Misuriamo i sensori del tuo telefono</h1>
+      <p>Questa pagina legge accelerometro e giroscopio, controlla che bastino per giocare e registra degli swing da bowling per tarare il gioco.</p>
+      <p class="safety"><strong>Tieni il telefono ben saldo.</strong> Non lanciarlo. Se hai un laccetto, usalo, e lascia spazio intorno a te.</p>
+      <label class="field">
+        <span>Nome del dispositivo (finisce nel nome del file)</span>
+        <input id="device-name" type="text" maxlength="40" autocomplete="off" placeholder="es. iPhone 13 di Matteo">
+      </label>
+      <p id="secure-warning" class="banner banner-fail" hidden>Questa pagina non è in HTTPS: i browser non danno accesso ai sensori. Aprila dall'indirizzo https.</p>
+      <p id="start-error" class="banner banner-fail" hidden></p>
+      <button id="btn-start" class="btn btn-primary btn-xl" type="button">Avvia la sonda</button>
+    </section>
+  </main>
+
+  <!-- Sonda in corso -->
+  <main id="screen-probe" class="screen" hidden>
+    <section class="card center">
+      <h2>Muovi un po' il telefono</h2>
+      <p>Tienilo in mano e ruotalo piano per un secondo e mezzo.</p>
+      <div class="wobble" aria-hidden="true">📱</div>
+      <div class="progress"><div id="probe-bar" class="progress-bar"></div></div>
+    </section>
+  </main>
+
+  <!-- Area principale -->
+  <main id="screen-main" class="screen" hidden>
+    <section class="live card" aria-label="Grafici in tempo reale">
+      <div class="live-head">
+        <span>ω (rad/s)</span>
+        <span class="legend"><i class="lx"></i>x <i class="ly"></i>y <i class="lz"></i>z</span>
+      </div>
+      <canvas id="chart-gyro" height="110"></canvas>
+      <div class="live-head"><span>|a| con gravità (m/s²)</span></div>
+      <canvas id="chart-acc" height="70"></canvas>
+    </section>
+
+    <nav class="tabs" role="tablist" aria-label="Sezioni">
+      <button role="tab" class="tab" data-tab="probe" aria-selected="true">Sonda</button>
+      <button role="tab" class="tab" data-tab="axes" aria-selected="false">Assi</button>
+      <button role="tab" class="tab" data-tab="swing" aria-selected="false">Swing</button>
+      <button role="tab" class="tab" data-tab="return" aria-selected="false">Ritorno</button>
+      <button role="tab" class="tab" data-tab="session" aria-selected="false">Sessione</button>
+    </nav>
+
+    <!-- Sonda -->
+    <section class="panel card" data-panel="probe" role="tabpanel">
+      <h2 id="probe-verdict">Esito della sonda</h2>
+      <ul id="probe-checks" class="checks"></ul>
+      <button id="btn-reprobe" class="btn" type="button">Ripeti la sonda</button>
+    </section>
+
+    <!-- Assi -->
+    <section class="panel card" data-panel="axes" role="tabpanel" hidden>
+      <h2>Test degli assi</h2>
+      <p>Serve a capire come questo browser orienta assi, segni e unità. Tre pose ferme e una "danza lenta".</p>
+      <ol id="axes-steps" class="steps"></ol>
+      <div id="axes-instruction" class="instruction" aria-live="polite"></div>
+      <div class="progress"><div id="axes-bar" class="progress-bar"></div></div>
+      <button id="btn-axes" class="btn btn-primary" type="button">Inizia il test assi</button>
+      <div id="axes-result" class="result" hidden></div>
+    </section>
+
+    <!-- Swing -->
+    <section class="panel card" data-panel="swing" role="tabpanel" hidden>
+      <h2>Registra uno swing</h2>
+      <p class="hint">Presa: telefono in verticale nel palmo, schermo verso l'alto, pollice sul tasto. <strong>Tieni premuto</strong>, fai lo swing dal basso come per tirare una palla da bowling, <strong>alza il pollice</strong> per rilasciare.</p>
+      <div id="labels" class="chips" role="radiogroup" aria-label="Tipo di tiro"></div>
+      <label class="field">
+        <span>Nota (facoltativa)</span>
+        <input id="swing-note" type="text" maxlength="80" autocomplete="off" placeholder="es. Marco, mano sinistra">
+      </label>
+      <button id="btn-hold" class="hold" type="button" aria-describedby="hold-state">
+        <span class="hold-face">TIENI PREMUTO</span>
+      </button>
+      <div id="hold-state" class="hold-state" aria-live="polite">Pronto</div>
+      <div id="swing-result" class="result" hidden></div>
+      <div id="swing-counts" class="counts"></div>
+    </section>
+
+    <!-- Ritorno -->
+    <section class="panel card" data-panel="return" role="tabpanel" hidden>
+      <h2>Giro e ritorno</h2>
+      <p>Misura quanto "deriva" l'orientamento. Appoggia il telefono sul tavolo, allineato a un bordo o a un segno.</p>
+      <ol class="steps static-steps">
+        <li>Premi <strong>Avvia</strong> e aspetta 2 secondi senza toccarlo.</li>
+        <li>Sollevalo e muovilo liberamente per circa 10 secondi.</li>
+        <li>Rimettilo <strong>esattamente</strong> dov'era e aspetta 3 secondi.</li>
+        <li>Premi <strong>Stop</strong>.</li>
+      </ol>
+      <button id="btn-return" class="btn btn-primary" type="button">Avvia</button>
+      <div id="return-result" class="result" hidden></div>
+    </section>
+
+    <!-- Sessione -->
+    <section class="panel card" data-panel="session" role="tabpanel" hidden>
+      <h2 id="session-verdict">Sessione</h2>
+      <ul id="criteria" class="checks"></ul>
+      <h3>Tracce</h3>
+      <div class="table-wrap"><table id="traces" class="traces">
+        <thead><tr><th>#</th><th>Tipo</th><th>Picco ω_s</th><th>v stimata</th><th>Polso</th><th>Valido</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+      <p id="storage-warning" class="banner banner-warn" hidden>Il browser non riesce più a salvare la sessione: scaricala adesso per non perdere le tracce.</p>
+      <div class="row">
+        <button id="btn-download" class="btn btn-primary" type="button">Scarica JSON</button>
+        <button id="btn-share" class="btn" type="button" hidden>Condividi</button>
+      </div>
+      <button id="btn-reset" class="btn btn-danger" type="button">Nuova sessione</button>
+    </section>
+  </main>
+</body>
+</html>

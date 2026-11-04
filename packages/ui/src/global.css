@@ -1,0 +1,65 @@
+/* Base comune a schermo e controller. I font si importano dall'app (fontsource). */
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  color-scheme: light;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  font-family: var(--font-body);
+  font-size: var(--text-body);
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--ink-900);
+  background: var(--cream-100);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.015em;
+  margin: 0;
+  text-wrap: balance;
+}
+
+p { margin: 0; text-wrap: pretty; }
+a { color: inherit; }
+img, svg { display: block; max-width: 100%; }
+button, input { font: inherit; color: inherit; }
+
+:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: var(--radius-sm); }
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+[hidden] { display: none !important; }
+
+/* Transizioni di pagina (View Transitions API): "iris" circolare, dissolvenza come fallback. */
+::view-transition-old(root) { animation: qq-iris-out var(--dur-slow) var(--ease-out) both; }
+::view-transition-new(root) { animation: qq-iris-in var(--dur-slow) var(--ease-out) both; }
+@keyframes qq-iris-out { to { opacity: 0.4; } }
+@keyframes qq-iris-in {
+  from { clip-path: circle(0% at var(--iris-x, 50%) var(--iris-y, 50%)); }
+  to { clip-path: circle(150% at var(--iris-x, 50%) var(--iris-y, 50%)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
+}

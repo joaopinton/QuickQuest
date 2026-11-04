@@ -1,0 +1,168 @@
+// Connessione del telefono alla stanza. Senza risposta dall'host entro 1,5 s si passa in demo:
+// succede con un telefono vero finché il relay Cloudflare non esiste (il trasporto è locale).
+import {
+  createLocalClient, HEARTBEAT_MS, type Capabilities, type ClientTransport, type ErrorCode, type LobbyPlayer,
+  type Profile, type ServerMessage, type SlotId,
+} from '@quickquest/protocol';
+
+export const JOIN_TIMEOUT_MS = 1500;
+/** Dopo 3 battiti senza pong lo schermo si considera perso. */
+export const HOST_LOST_MS = HEARTBEAT_MS * 3;
+
+export type JoinResult =
+  | { readonly ok: true; readonly mode: 'live' | 'demo'; readonly slot: SlotId }
+  | { readonly ok: false; readonly code: ErrorCode };
+
+export type LinkStatus =
+  | { readonly mode: 'live'; readonly slot: SlotId }
+  | { readonly mode: 'demo'; readonly slot: SlotId }
+  | { readonly mode: 'lost'; readonly slot: SlotId };
+
+export interface ControllerConnection {
+  join(capabilities: Capabilities): Promise<JoinResult>;
+  sendProfile(profile: Profile): void;
+  onLobby(cb: (players: readonly LobbyPlayer[]) => void): () => void;
+  /** Cambi di stato dopo il join: benvenuto in ritardo (demo → live) o schermo perso. */
+  onStatus(cb: (s: LinkStatus) => void): () => void;
+  leave(): void;
+  close(): void;
+}
+
+const tokenKey = (code: string) => `qq:token:${code}`;
+
+function readToken(code: string): string | null {
+  try {
+    return sessionStorage.getItem(tokenKey(code));
+  } catch {
+    return null;
+  }
+}
+
+function writeToken(code: string, token: string | null): void {
+  try {
+    if (token) sessionStorage.setItem(tokenKey(code), token);
+    else sessionStorage.removeItem(tokenKey(code));
+  } catch {
+    // storage non disponibile (navigazione privata): il rientro automatico non funzionerà
+  }
+}
+
+/** Trasporto che non porta da nessuna parte: per i browser senza BroadcastChannel (iOS < 15.4). */
+const nullTransport: ClientTransport = { id: 'none', send: () => {}, onMessage: () => () => {}, close: () => {} };
+
+function defaultTransport(code: string): ClientTransport {
+  try {
+    return createLocalClient(code);
+  } catch {
+    return nullTransport;
+  }
+}
+
+export function createControllerConnection(code: string, transport: ClientTransport = defaultTransport(code)): ControllerConnection {
+  const lobbyListeners = new Set<(players: readonly LobbyPlayer[]) => void>();
+  const statusListeners = new Set<(s: LinkStatus) => void>();
+  let heartbeat: ReturnType<typeof setInterval> | null = null;
+  let mode: 'live' | 'demo' | 'lost' | null = null;
+  let slot: SlotId = 'P1';
+  let lastProfile: Profile | null = null;
+  let lastPong = Date.now();
+  let isClosed = false;
+  let pendingJoin: ((r: JoinResult) => void) | null = null;
+
+  const send = (msg: Parameters<ClientTransport['send']>[0]) => {
+    if (isClosed) return;
+    try {
+      transport.send(msg);
+    } catch {
+      // canale chiuso dal browser: il battito se ne accorgerà
+    }
+  };
+  const setStatus = (next: LinkStatus) => {
+    mode = next.mode;
+    slot = next.slot;
+    statusListeners.forEach((cb) => cb(next));
+  };
+
+  const startHeartbeat = () => {
+    lastPong = Date.now();
+    heartbeat ??= setInterval(() => {
+      send({ t: 'ping', p: { at: Date.now() } });
+      if (mode === 'live' && Date.now() - lastPong > HOST_LOST_MS) setStatus({ mode: 'lost', slot });
+    }, HEARTBEAT_MS);
+  };
+
+  const handleWelcome = (msg: Extract<ServerMessage, { t: 'welcome' }>) => {
+    writeToken(code, msg.p.sessionToken);
+    startHeartbeat();
+    if (pendingJoin) {
+      pendingJoin({ ok: true, mode: 'live', slot: msg.p.slot });
+      return;
+    }
+    // benvenuto arrivato dopo il timeout (schermo lento): si passa da demo a live
+    setStatus({ mode: 'live', slot: msg.p.slot });
+    if (lastProfile) send({ t: 'profile', p: lastProfile });
+  };
+
+  transport.onMessage((msg: ServerMessage) => {
+    if (isClosed) return;
+    switch (msg.t) {
+      case 'lobby':
+        lobbyListeners.forEach((cb) => cb(msg.p.players));
+        break;
+      case 'welcome':
+        handleWelcome(msg);
+        break;
+      case 'pong':
+        lastPong = Date.now();
+        if (mode === 'lost') setStatus({ mode: 'live', slot });
+        break;
+      case 'error':
+        pendingJoin?.({ ok: false, code: msg.p.code });
+        break;
+      default:
+        break;
+    }
+  });
+
+  return {
+    join(capabilities) {
+      if (isClosed) return Promise.resolve({ ok: false, code: 'ROOM_NOT_FOUND' } as const);
+      return new Promise<JoinResult>((resolve) => {
+        const timer = setTimeout(() => finish({ ok: true, mode: 'demo', slot: 'P1' }), JOIN_TIMEOUT_MS);
+        function finish(r: JoinResult) {
+          clearTimeout(timer);
+          pendingJoin = null;
+          if (r.ok) {
+            mode = r.mode;
+            slot = r.slot;
+          }
+          resolve(r);
+        }
+        pendingJoin = finish;
+        send({ t: 'hello', p: { sessionToken: readToken(code), capabilities } });
+      });
+    },
+    sendProfile(profile) {
+      lastProfile = profile;
+      if (mode === 'live' || mode === 'lost') send({ t: 'profile', p: profile });
+    },
+    onLobby(cb) {
+      lobbyListeners.add(cb);
+      return () => lobbyListeners.delete(cb);
+    },
+    onStatus(cb) {
+      statusListeners.add(cb);
+      return () => statusListeners.delete(cb);
+    },
+    leave() {
+      if (mode === 'live') send({ t: 'bye', p: {} });
+      writeToken(code, null);
+    },
+    close() {
+      isClosed = true;
+      pendingJoin?.({ ok: false, code: 'ROOM_NOT_FOUND' });
+      if (heartbeat) clearInterval(heartbeat);
+      transport.close();
+    },
+  };
+}

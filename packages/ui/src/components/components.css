@@ -1,0 +1,179 @@
+/* ---------- Logo ---------- */
+.qq-logo {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--ink-900);
+  line-height: 1;
+  display: inline-block;
+  white-space: nowrap;
+}
+.qq-logo--sm { font-size: 1.6rem; }
+.qq-logo--md { font-size: 2.1rem; }
+.qq-logo--lg { font-size: clamp(3rem, 2rem + 4vw, 6rem); }
+.qq-logo__i { position: relative; display: inline-block; }
+.qq-logo__dot {
+  position: absolute; left: 50%; top: 0.02em;
+  width: 0.24em; height: 0.24em; margin-left: -0.12em;
+  border-radius: 50%; background: var(--accent-400);
+  box-shadow: 0 0.04em 0 var(--accent-600);
+  animation: qq-dot-bounce 900ms var(--ease-out) 300ms both;
+}
+.qq-logo__q { position: relative; display: inline-block; }
+.qq-logo__q::after {
+  content: ""; position: absolute; left: 0.32em; bottom: -0.1em;
+  width: 0.5em; height: 0.12em; border-radius: var(--radius-pill);
+  background: linear-gradient(90deg, var(--primary-500), transparent);
+  opacity: 0.7;
+}
+@keyframes qq-dot-bounce {
+  0% { transform: translateY(-1.2em) scale(0.8); opacity: 0; }
+  45% { transform: translateY(0) scale(1.25, 0.75); opacity: 1; }
+  65% { transform: translateY(-0.28em) scale(0.95, 1.05); }
+  85% { transform: translateY(0) scale(1.08, 0.92); }
+  100% { transform: translateY(0) scale(1); }
+}
+
+/* ---------- Bottoni ---------- */
+.qq-btn {
+  --btn-bg: var(--primary-500);
+  --btn-fg: #fff;
+  --btn-edge: var(--primary-700);
+  position: relative;
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-3);
+  min-height: 52px;
+  padding: 0 var(--space-8);
+  border: 0; border-radius: var(--radius-pill);
+  background: var(--btn-bg); color: var(--btn-fg);
+  font-family: var(--font-body); font-weight: 800; font-size: 1.05rem;
+  text-decoration: none; cursor: pointer;
+  box-shadow: 0 6px 0 var(--btn-edge), var(--shadow-soft);
+  transform: translateY(0);
+  transition: transform var(--dur-fast) var(--ease-squish), box-shadow var(--dur-fast) var(--ease-out), background-color var(--dur-fast);
+  -webkit-user-select: none; user-select: none;
+}
+.qq-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 0 var(--btn-edge), var(--shadow-lift); }
+.qq-btn:active { transform: translateY(6px); box-shadow: 0 0 0 var(--btn-edge), var(--shadow-press); transition-duration: var(--dur-instant); }
+.qq-btn:focus-visible { box-shadow: 0 6px 0 var(--btn-edge), var(--focus-ring); border-radius: var(--radius-pill); }
+.qq-btn:disabled, .qq-btn[aria-disabled="true"] {
+  --btn-bg: var(--ink-100); --btn-fg: var(--ink-300); --btn-edge: transparent;
+  cursor: not-allowed; transform: none; box-shadow: none;
+}
+.qq-btn--secondary { --btn-bg: var(--surface); --btn-fg: var(--ink-900); --btn-edge: var(--ink-300); }
+.qq-btn--accent { --btn-bg: var(--accent-400); --btn-fg: var(--ink-900); --btn-edge: var(--accent-600); }
+.qq-btn--ghost {
+  --btn-bg: transparent; --btn-fg: var(--ink-900); --btn-edge: transparent;
+  box-shadow: none; padding: 0 var(--space-4);
+}
+.qq-btn--ghost:hover { box-shadow: none; background: rgb(var(--shadow-tint) / 0.06); }
+.qq-btn--lg { min-height: 64px; font-size: 1.2rem; padding: 0 var(--space-12); }
+.qq-btn--xl { min-height: 80px; font-size: 1.45rem; padding: 0 var(--space-16); }
+.qq-btn--block { display: flex; width: 100%; }
+.qq-btn__icon { display: inline-flex; font-size: 1.2em; }
+
+/* ---------- Toast ---------- */
+.qq-toasts {
+  position: fixed; inset: var(--space-6) 0 auto; z-index: 100;
+  display: grid; justify-items: center; gap: var(--space-2); pointer-events: none;
+}
+.qq-toast {
+  padding: var(--space-3) var(--space-6);
+  border-radius: var(--radius-pill);
+  background: var(--ink-900); color: #fff; font-weight: 800;
+  box-shadow: var(--shadow-lift);
+  animation: qq-toast-in var(--dur-base) var(--ease-spring) both, qq-toast-out var(--dur-base) var(--ease-out) 2700ms forwards;
+}
+.qq-toast--success { background: var(--success-500); }
+.qq-toast--danger { background: var(--danger-500); }
+@keyframes qq-toast-in { from { transform: translateY(-24px) scale(0.9); opacity: 0; } }
+@keyframes qq-toast-out { to { transform: translateY(-16px); opacity: 0; } }
+
+/* ---------- Codice stanza ---------- */
+.qq-code { display: flex; gap: var(--space-3); justify-content: center; }
+.qq-code__cell {
+  width: 64px; height: 80px;
+  border: 3px solid var(--ink-100); border-radius: var(--radius-md);
+  background: var(--surface);
+  text-align: center; text-transform: uppercase;
+  font-family: var(--font-display); font-weight: 700; font-size: 2.4rem; color: var(--ink-900);
+  box-shadow: inset 0 -4px 0 var(--ink-100);
+  transition: border-color var(--dur-fast), transform var(--dur-fast) var(--ease-squish);
+  caret-color: var(--primary-500);
+}
+.qq-code--lg .qq-code__cell { width: clamp(60px, 18vw, 84px); height: clamp(76px, 22vw, 104px); font-size: clamp(2.2rem, 8vw, 3rem); }
+.qq-code__cell:focus { outline: none; border-color: var(--primary-500); transform: translateY(-3px); box-shadow: inset 0 -4px 0 rgb(47 125 246 / 0.2), var(--focus-ring); border-radius: var(--radius-md); }
+.qq-code--error .qq-code__cell { border-color: var(--danger-500); animation: qq-shake 360ms var(--ease-out); }
+@keyframes qq-shake { 25% { transform: translateX(-6px); } 50% { transform: translateX(5px); } 75% { transform: translateX(-3px); } }
+
+/* ---------- Slot giocatore ---------- */
+.qq-slot { display: grid; gap: var(--space-3); justify-items: center; }
+.qq-slot__stage {
+  position: relative;
+  width: clamp(120px, 12vw, 200px); aspect-ratio: 1;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  background: color-mix(in oklab, var(--slot) 12%, var(--surface));
+  box-shadow: inset 0 -8px 0 color-mix(in oklab, var(--slot) 18%, var(--surface)), var(--shadow-soft);
+  transition: transform var(--dur-base) var(--ease-spring);
+}
+.qq-slot--empty .qq-slot__stage { background: transparent; box-shadow: none; }
+.qq-slot--empty .qq-slot__stage::before {
+  content: ""; position: absolute; inset: 0; border-radius: 50%;
+  border: 4px dashed color-mix(in oklab, var(--slot) 55%, var(--surface));
+  animation: qq-spin 18s linear infinite;
+}
+.qq-slot--ready .qq-slot__stage { animation: qq-pop var(--dur-slow) var(--ease-spring); }
+.qq-slot--disconnected .qq-slot__stage { animation: qq-pulse-red 1.6s ease-in-out infinite; }
+.qq-slot__ghost { font-size: clamp(2.5rem, 4vw, 4rem); color: color-mix(in oklab, var(--slot) 45%, var(--surface)); }
+.qq-slot__tag {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-1) var(--space-4) var(--space-1) var(--space-2);
+  border-radius: var(--radius-pill); background: var(--surface); box-shadow: var(--shadow-soft);
+  font-weight: 800; font-size: var(--text-small);
+}
+.qq-slot__symbol {
+  display: grid; place-items: center; width: 1.8em; height: 1.8em; border-radius: 50%;
+  background: var(--slot); color: #fff; font-size: 0.85em;
+}
+.qq-slot__state { color: var(--ink-600); font-weight: 700; }
+.qq-slot--ready .qq-slot__state { color: var(--ink-900); }
+@keyframes qq-spin { to { transform: rotate(1turn); } }
+@keyframes qq-pop { 0% { transform: scale(0.85); } 60% { transform: scale(1.06); } }
+@keyframes qq-pulse-red {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(240 80 90 / 0.45), var(--shadow-soft); }
+  50% { box-shadow: 0 0 0 14px rgb(240 80 90 / 0), var(--shadow-soft); }
+}
+
+.qq-dots { display: inline-flex; gap: 8px; }
+.qq-dots i {
+  width: 14px; height: 14px; border-radius: 50%; background: var(--slot, var(--primary-500));
+  animation: qq-dot 900ms var(--ease-out) infinite;
+}
+.qq-dots i:nth-child(2) { animation-delay: 150ms; }
+.qq-dots i:nth-child(3) { animation-delay: 300ms; }
+@keyframes qq-dot { 0%, 100% { transform: translateY(0); opacity: 0.5; } 40% { transform: translateY(-10px); opacity: 1; } }
+
+/* ---------- Dialog ---------- */
+.qq-dialog {
+  border: 0; padding: 0; background: transparent; max-width: min(640px, 92vw); width: 100%;
+  overflow: visible;
+}
+.qq-dialog::backdrop { background: rgb(30 42 74 / 0.45); backdrop-filter: blur(4px); animation: qq-fade var(--dur-base) var(--ease-out); }
+.qq-dialog[open] .qq-dialog__panel { animation: qq-panel-in var(--dur-slow) var(--ease-spring); }
+.qq-dialog__panel {
+  position: relative;
+  background: var(--surface); border-radius: var(--radius-xl);
+  padding: var(--space-12) var(--space-8) var(--space-8);
+  box-shadow: 0 10px 0 var(--dialog-accent, var(--primary-500)), var(--shadow-lift);
+}
+.qq-dialog__close {
+  position: absolute; top: var(--space-4); right: var(--space-4);
+  width: 48px; height: 48px; border-radius: 50%; border: 0; cursor: pointer;
+  background: var(--surface-alt); font-size: 1.8rem; line-height: 1; color: var(--ink-600);
+  transition: transform var(--dur-fast) var(--ease-squish);
+}
+.qq-dialog__close:hover { transform: rotate(90deg); }
+@keyframes qq-panel-in { from { transform: translateY(24px) scale(0.92); opacity: 0; } }
+@keyframes qq-fade { from { opacity: 0; } }
+
+.qq-game-icon { height: auto; overflow: visible; }

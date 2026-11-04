@@ -1,0 +1,18 @@
+{
+  "name": "@quickquest/spike-s1-sensor-probe",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Spike S1: sonda sensori (accelerometro + giroscopio) e registrazione tracce di swing",
+  "type": "module",
+  "scripts": {
+    "serve": "node serve.mjs",
+    "test": "node --test test/*.test.mjs",
+    "analyze": "node analyze.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "ahrs": "^1.3.3"
+  }
+}

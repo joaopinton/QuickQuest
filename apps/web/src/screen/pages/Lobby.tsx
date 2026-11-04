@@ -1,0 +1,119 @@
+import { GAMES, type GameMeta } from '@quickquest/games';
+import { SLOT_IDS, type LobbyPlayer } from '@quickquest/protocol';
+import { Button, Logo, PlayerSlot, showToast, t, type Accessory, type SlotState } from '@quickquest/ui';
+import { useState } from 'preact/hooks';
+import { useScreenRoom } from '../../net/useScreenRoom';
+import { GameCard } from '../components/GameCard';
+import { QrCode } from '../components/QrCode';
+import './lobby.css';
+
+function slotState(p: LobbyPlayer | undefined): SlotState {
+  return p ? p.state : 'empty';
+}
+
+function CodeTiles({ code }: { code: string }) {
+  return (
+    <p class="code-tiles" data-code={code}>
+      <span class="visually-hidden">{`${t('lobby.codeLabel')}: ${code.split('').join(' ')}`}</span>
+      {code.split('').map((ch, i) => <span key={i} class="code-tiles__tile" aria-hidden="true" style={{ animationDelay: `${i * 80}ms` }}>{ch}</span>)}
+    </p>
+  );
+}
+
+function JoinPanel({ code, joinUrl }: { code: string; joinUrl: string }) {
+  const host = window.location.host;
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(joinUrl);
+      showToast(t('lobby.copied'), 'success');
+    } catch {
+      showToast(joinUrl); // appunti non disponibili: almeno si mostra il link
+    }
+  };
+  return (
+    <section class="join-panel" aria-labelledby="join-title">
+      <h2 id="join-title" class="join-panel__title">{t('lobby.scan')}</h2>
+      <div class="join-panel__qr"><QrCode value={joinUrl} label={`QR: ${joinUrl}`} /></div>
+      <p class="join-panel__or">{t('lobby.orGo')} <strong>{host}/c</strong> {t('lobby.andType')}</p>
+      <CodeTiles code={code} />
+      <Button variant="ghost" onClick={copy}>{t('lobby.copy')}</Button>
+    </section>
+  );
+}
+
+function GamePicker({ onBack }: { onBack: () => void }) {
+  const pick = (g: GameMeta) => {
+    showToast(g.status === 'soon' ? t('lobby.comingSoonToast', { name: g.name.toLowerCase() }) : t('lobby.laterToast', { name: g.name }));
+  };
+  return (
+    <section class="picker" aria-labelledby="picker-title">
+      <div class="picker__head">
+        <h1 id="picker-title" class="lobby__title">{t('lobby.chooseTitle')}</h1>
+        <Button variant="secondary" onClick={onBack}>← {t('lobby.back')}</Button>
+      </div>
+      <div class="bento">
+        {GAMES.map((g, i) => <GameCard key={g.id} game={g} isFeatured={i === 0} onOpen={pick} />)}
+      </div>
+    </section>
+  );
+}
+
+export function Lobby() {
+  const { code, players, joinUrl } = useScreenRoom();
+  const [isChoosing, setChoosing] = useState(false);
+  const active = players.filter((p) => p.state !== 'disconnected').length;
+  const bySlot = new Map(players.map((p) => [p.slot, p]));
+
+  return (
+    <div class="lobby">
+      <div class="lobby__backdrop" aria-hidden="true">
+        <svg viewBox="0 0 1600 300" preserveAspectRatio="none">
+          <path d="M0 140 C260 60 520 120 800 110 C1080 100 1300 40 1600 90 V300 H0 Z" fill="#B7E58E" />
+          <path d="M0 200 C300 150 600 210 900 190 C1200 170 1400 150 1600 180 V300 H0 Z" fill="#7ED957" />
+          <path d="M0 250 C400 220 800 260 1200 240 C1400 232 1500 236 1600 240 V300 H0 Z" fill="#3FAE4A" />
+        </svg>
+      </div>
+      <header class="lobby__bar">
+        <a href="/" aria-label={t('nav.home')}><Logo size="md" /></a>
+        <p class="lobby__badge">{t('lobby.demoBadge')}</p>
+      </header>
+
+      {isChoosing ? (
+        <GamePicker onBack={() => setChoosing(false)} />
+      ) : (
+        <main class="lobby__main">
+          <JoinPanel code={code} joinUrl={joinUrl} />
+          <section class="lobby__players" aria-labelledby="lobby-title">
+            <h1 id="lobby-title" class="lobby__title">{t('lobby.title')}</h1>
+            <p class="lobby__count" aria-live="polite">
+              {active === 0 ? t('lobby.noPlayers') : t('lobby.playersCount', { n: active })}
+            </p>
+            <ul class="lobby__slots">
+              {SLOT_IDS.map((id) => {
+                const p = bySlot.get(id);
+                return (
+                  <li key={id}>
+                    <PlayerSlot
+                      slot={id}
+                      state={slotState(p)}
+                      pupoColor={p?.profile?.color}
+                      accessory={(p?.profile?.accessory ?? 'none') as Accessory}
+                    />
+                  </li>
+                );
+              })}
+            </ul>
+            <div class="lobby__actions">
+              <Button size="xl" disabled={active === 0} onClick={() => setChoosing(true)}>{t('lobby.chooseGame')}</Button>
+              {import.meta.env.DEV && (
+                <Button variant="ghost" onClick={() => window.open(`/c/${code}?sim`, '_blank', 'noopener')}>
+                  + {t('lobby.devAddPhone')}
+                </Button>
+              )}
+            </div>
+          </section>
+        </main>
+      )}
+    </div>
+  );
+}

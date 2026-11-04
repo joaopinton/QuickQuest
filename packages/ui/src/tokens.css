@@ -1,0 +1,92 @@
+/* Design token di quickquest: stile "Soft Toy" (docs/07 § 4, docs/08 § 4). */
+:root {
+  /* Mondo */
+  --sky-100: #dff3ff;
+  --sky-300: #8fd3ff;
+  --sky-500: #4db3f5;
+  --grass-400: #7ed957;
+  --grass-600: #3fae4a;
+  --cream-100: #fff6e5;
+  --cream-300: #fbe3b9;
+  --wood-500: #d89a5b;
+  --wood-700: #a8682f;
+  --sand-300: #f2d59b;
+  --shadow-tint: 59 63 140; /* #3B3F8C come canali RGB, per le ombre colorate */
+
+  /* UI */
+  --surface: #ffffff;
+  --surface-alt: #f1f6ff;
+  --ink-900: #1e2a4a;
+  --ink-600: #4a5878;
+  --ink-300: #a9b4cc;
+  --ink-100: #e6ebf5;
+  --primary-500: #2f7df6;
+  --primary-600: #2368dc;
+  --primary-700: #1a56c4;
+  --accent-400: #ffd23f;
+  --accent-600: #e0a800;
+  --success-500: #2fbf71;
+  --danger-500: #f0505a;
+
+  /* Giocatori */
+  --p1: #ef4e5b;
+  --p2: #3c8cf0;
+  --p3: #f7c531;
+  --p4: #34c27a;
+
+  /* Accenti dei giochi */
+  --game-bowling: #8e5bff;
+  --game-bocce: #e07a4f;
+  --game-free-throw: #ff8a2b;
+  --game-golf: #3fae4a;
+  --game-barber: #2ec4b6;
+  --game-fencing: #e8455a;
+
+  /* Tipografia */
+  --font-display: "Fredoka Variable", "Fredoka", ui-rounded, system-ui, sans-serif;
+  --font-body: "Nunito Variable", "Nunito", ui-rounded, system-ui, sans-serif;
+  --text-display: clamp(2.75rem, 1.6rem + 4.6vw, 7.5rem);
+  --text-h1: clamp(2.25rem, 1.5rem + 3vw, 4.5rem);
+  --text-h2: clamp(1.75rem, 1.25rem + 2vw, 3.25rem);
+  --text-h3: clamp(1.3rem, 1.05rem + 1vw, 2.25rem);
+  --text-body: clamp(1.05rem, 0.95rem + 0.4vw, 1.5rem);
+  --text-small: clamp(0.92rem, 0.86rem + 0.25vw, 1.15rem);
+
+  /* Raggi: volutamente non uniformi */
+  --radius-sm: 10px;
+  --radius-md: 18px;
+  --radius-lg: 28px;
+  --radius-xl: 44px;
+  --radius-pill: 999px;
+
+  /* Spaziature (scala 4) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-24: 96px;
+  --space-section: clamp(4rem, 2.5rem + 6vw, 9rem);
+
+  /* Ombre colorate, mai grigie */
+  --shadow-soft: 0 6px 20px rgb(var(--shadow-tint) / 0.16);
+  --shadow-lift: 0 14px 36px rgb(var(--shadow-tint) / 0.24);
+  --shadow-press: 0 2px 6px rgb(var(--shadow-tint) / 0.18);
+  --edge-3d: 0 6px 0 var(--primary-700);
+  --edge-3d-soft: 0 6px 0 var(--ink-300);
+
+  /* Motion */
+  --dur-instant: 90ms;
+  --dur-fast: 160ms;
+  --dur-base: 260ms;
+  --dur-slow: 420ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: linear(0, 0.36 12%, 0.82 26%, 1.04 38%, 1.08 46%, 1.03 58%, 0.99 72%, 1);
+  --ease-squish: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --page-max: 1280px;
+  --focus-ring: 0 0 0 4px var(--surface), 0 0 0 8px var(--accent-400);
+}
