@@ -127,7 +127,7 @@ body.is-controller { background-image: none; }
   --px: 0; --py: 0;
   position: relative; aspect-ratio: 1 / 0.92; width: 100%;
   border-radius: 46% 54% 40% 60% / 44% 40% 60% 56%;
-  overflow: hidden; isolation: isolate;
+  overflow: hidden; isolation: isolate; container-type: inline-size; /* le nuvole viaggiano in cqw */
   box-shadow: 0 30px 60px -30px rgb(var(--shadow-tint) / 0.5);
 }
 .scene__sky { position: absolute; inset: 0; background: linear-gradient(180deg, var(--sky-300) 0%, var(--sky-100) 70%); }
@@ -147,12 +147,16 @@ body.is-controller { background-image: none; }
 .scene__cloud {
   position: absolute; height: 9%; border-radius: var(--radius-pill); background: #fff;
   box-shadow: 0 8px 0 rgb(var(--shadow-tint) / 0.06);
-  animation: drift 26s linear infinite;
+  left: 0; /* parte dal bordo sinistro: lo spostamento orizzontale è tutto nel transform */
+  will-change: transform;
+  animation: drift var(--drift-time, 50s) linear var(--drift-delay, 0s) infinite;
 }
 .scene__cloud::before { content: ""; position: absolute; left: 22%; bottom: 40%; width: 46%; height: 140%; border-radius: 50%; background: #fff; }
-.scene__cloud--a { top: 18%; left: 8%; width: 26%; }
-.scene__cloud--b { top: 32%; left: 52%; width: 18%; animation-duration: 34s; animation-delay: -12s; opacity: 0.9; }
-@keyframes drift { from { transform: translateX(-30%); } to { transform: translateX(260%); } }
+.scene__cloud--a { top: 18%; width: 26%; --drift-time: 52s; --drift-delay: -20s; }
+.scene__cloud--b { top: 32%; width: 18%; --drift-time: 70s; --drift-delay: -48s; opacity: 0.9; }
+/* Da completamente fuori a sinistra (-100% = larghezza della nuvola) a completamente fuori a destra
+   (100cqw = larghezza della scena): il respawn avviene sempre fuori vista, senza salti. */
+@keyframes drift { from { transform: translate3d(-100%, 0, 0); } to { transform: translate3d(100cqw, 0, 0); } }
 .scene__hills { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 72%; }
 .scene__pins { position: absolute; right: 9%; bottom: 31%; width: 15%; }
 .scene__cast { position: absolute; inset: 0; }
@@ -448,5 +452,6 @@ button.game-card { cursor: pointer; }
 
 @media (prefers-reduced-motion: reduce) {
   .scene__layer { transform: none; }
+  .scene__cloud { animation: none; transform: translate3d(40cqw, 0, 0); }
   .hero__title-hl::after { transform: rotate(-1.2deg) scaleX(1); }
 }
