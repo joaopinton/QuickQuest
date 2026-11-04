@@ -16,6 +16,8 @@ export const OIL_LENGTH = 12.0; // primi 12 metri oliati (μ 0.04)
 export const BALL_RADIUS = 0.108; // 21.6 cm diametro
 export const BALL_MASS = 6.4; // 14 lb in kg
 export const HEADPIN_Z = LANE_LENGTH; // Birillo 1 a z = 18.29 m
+const HOOK_ACCEL_N = 3.0; // forza laterale (N) a spin = 1 nel back-end asciutto
+const PIN_SETTLE_SPEED = 0.15; // m/s sotto cui un birillo è considerato fermo
 
 export interface PhysicsWorldState {
   readonly world: RAPIER.World;
@@ -26,6 +28,7 @@ export interface PhysicsWorldState {
   resetPins(): void;
   getPinStatuses(): BowlingPinStatus[];
   isBallActive(): boolean;
+  arePinsSettled(): boolean;
   dispose(): void;
 }
 
@@ -62,6 +65,28 @@ export async function createBowlingPhysicsWorld(): Promise<PhysicsWorldState> {
     .setTranslation(LANE_WIDTH / 2 + gutterWidth / 2, -0.09, 10.0)
     .setFriction(0.05);
   world.createCollider(gutterRightDesc);
+
+  // Pareti laterali oltre le canaline: impediscono alla palla di uscire di lato dopo la canalina
+  for (const side of [-1, 1]) {
+    const wallDesc = RAPIER.ColliderDesc.cuboid(0.05, 0.3, 11.0)
+      .setTranslation(side * (LANE_WIDTH / 2 + gutterWidth + 0.05), 0.2, 11.0)
+      .setFriction(0.1);
+    world.createCollider(wallDesc);
+  }
+
+  // Pozzetto: fondo e parete posteriore, così i birilli abbattuti si fermano invece di cadere all'infinito
+  world.createCollider(
+    RAPIER.ColliderDesc.cuboid(1.0, 0.05, 1.5).setTranslation(0, -0.35, 21.5).setFriction(0.6),
+  );
+  world.createCollider(
+    RAPIER.ColliderDesc.cuboid(1.0, 0.6, 0.05).setTranslation(0, 0.2, 22.95).setRestitution(0.2),
+  );
+  world.createCollider(
+    RAPIER.ColliderDesc.cuboid(0.05, 0.6, 1.5).setTranslation(-1.0, 0.2, 21.5),
+  );
+  world.createCollider(
+    RAPIER.ColliderDesc.cuboid(0.05, 0.6, 1.5).setTranslation(1.0, 0.2, 21.5),
+  );
 
   // 2. Creazione della Palla (6.4 kg, CCD attivo)
   const ballBodyDesc = RAPIER.RigidBodyDesc.dynamic()
@@ -118,6 +143,14 @@ export async function createBowlingPhysicsWorld(): Promise<PhysicsWorldState> {
       .setRestitution(0.45);
     world.createCollider(bellyDesc, body);
 
+    // Segmento collo (evita che i birilli si compenetrino sopra la pancia)
+    const neckDesc = RAPIER.ColliderDesc.cylinder(0.065, 0.026)
+      .setTranslation(0, -PIN_HEIGHT / 2 + 0.255, 0)
+      .setDensity(density * 0.7)
+      .setFriction(0.25)
+      .setRestitution(0.45);
+    world.createCollider(neckDesc, body);
+
     // Segmento testa
     const headDesc = RAPIER.ColliderDesc.ball(headRadius)
       .setTranslation(0, PIN_HEIGHT / 2 - headRadius, 0)
@@ -165,6 +198,9 @@ export async function createBowlingPhysicsWorld(): Promise<PhysicsWorldState> {
       // Sottopassi (4 substeps a 240 Hz) per collisioni stabili tra birilli veloci (docs/games/bowling.md § 4)
       const substeps = 4;
       const subDt = dt / substeps;
+      // Il passo di Rapier va impostato esplicitamente: di default è 1/60 s per ogni world.step(),
+      // quindi senza questa riga la simulazione girerebbe 4x più veloce del tempo reale.
+      world.timestep = subDt;
 
       for (let s = 0; s < substeps; s++) {
         // Fisica dell'hook: nel back-end asciutto (z > 12m), l'attrito laterale converte lo spin in curva
@@ -172,17 +208,23 @@ export async function createBowlingPhysicsWorld(): Promise<PhysicsWorldState> {
           const ballPos = ballBody.translation();
           if (ballPos.z > OIL_LENGTH && ballPos.z < HEADPIN_Z + 1.0) {
             // Curva progressiva verso sinistra (-X) per hook sinistro (spin > 0)
-            const hookForce = -activeSpin * 5.0;
+            const hookForce = -activeSpin * HOOK_ACCEL_N;
             ballBody.applyImpulse({ x: hookForce * subDt, y: 0, z: 0 }, true);
           }
         }
         world.step();
+      }
+
+      // Palla entrata nel pozzetto: la disattivo, così non disturba i birilli che si stanno assestando
+      if (isThrown && ballBody.isEnabled() && ballBody.translation().z > HEADPIN_Z + 1.2) {
+        ballBody.setEnabled(false);
       }
     },
 
     launchBall(data: BowlingReleaseData) {
       isThrown = true;
       activeSpin = data.spin;
+      ballBody.setEnabled(true);
 
       const startX = Math.max(-0.45, Math.min(0.45, data.startX));
       ballBody.setTranslation({ x: startX, y: BALL_RADIUS + 0.01, z: 0.1 }, true);
@@ -204,6 +246,7 @@ export async function createBowlingPhysicsWorld(): Promise<PhysicsWorldState> {
     resetPins() {
       isThrown = false;
       activeSpin = 0;
+      ballBody.setEnabled(true);
       ballBody.setTranslation({ x: 0, y: BALL_RADIUS, z: -1.0 }, true);
       ballBody.setLinvel({ x: 0, y: 0, z: 0 }, true);
       ballBody.setAngvel({ x: 0, y: 0, z: 0 }, true);
@@ -241,9 +284,18 @@ export async function createBowlingPhysicsWorld(): Promise<PhysicsWorldState> {
     },
 
     isBallActive(): boolean {
-      if (!isThrown) return false;
+      if (!isThrown || !ballBody.isEnabled()) return false;
       const pos = ballBody.translation();
       return pos.z < HEADPIN_Z + 2.5 && pos.y > -0.5;
+    },
+
+    arePinsSettled(): boolean {
+      return pinBodies.every((body) => {
+        if (body.isSleeping()) return true;
+        const v = body.linvel();
+        const w = body.angvel();
+        return Math.hypot(v.x, v.y, v.z) < PIN_SETTLE_SPEED && Math.hypot(w.x, w.y, w.z) < 0.6;
+      });
     },
 
     dispose() {

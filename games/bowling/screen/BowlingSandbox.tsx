@@ -20,6 +20,7 @@ export function BowlingSandbox({
   const containerRef = useRef<HTMLDivElement>(null);
   const physicsRef = useRef<PhysicsWorldState | null>(null);
   const sceneRef = useRef<BowlingScene | null>(null);
+  const throwStartRef = useRef<number | null>(null); // timestamp del tiro in corso
 
   // Parametri di lancio (regolabili via slider o drag del mouse)
   const [startX, setStartX] = useState(0.0); // metri (-0.4 .. +0.4)
@@ -39,7 +40,23 @@ export function BowlingSandbox({
   const [isRolling, setIsRolling] = useState(false);
   const [callout, setCallout] = useState<string>('Pronto al tiro');
   const [isStrike, setIsStrike] = useState(false);
+  const [showParams, setShowParams] = useState(false);
   const [dragStart, setDragStart] = useState<{ x: number; y: number; time: number } | null>(null);
+
+  // Chiude il tiro: aggiorna HUD e messaggio in base ai birilli abbattuti
+  const finishThrow = (finalStatuses: BowlingPinStatus[]) => {
+    setPinStatuses(finalStatuses);
+    const knocked = finalStatuses.filter((p) => p.knockedDown).length;
+    if (knocked === 10) {
+      setCallout('💥 STRIKE! 10/10!');
+      setIsStrike(true);
+    } else if (knocked === 0) {
+      setCallout('Canalina! 0 birilli');
+    } else {
+      setCallout(`${knocked} Birill${knocked === 1 ? 'o' : 'i'}!`);
+    }
+    setIsRolling(false);
+  };
 
   // Inizializzazione fisica Rapier3D e scena Three.js
   useEffect(() => {
@@ -63,7 +80,6 @@ export function BowlingSandbox({
       sceneRef.current = sc;
 
       let lastTime = performance.now();
-      let rollTimeout: ReturnType<typeof setTimeout> | null = null;
 
       const loop = (now: number) => {
         const dt = Math.min((now - lastTime) / 1000, 0.1);
@@ -74,7 +90,20 @@ export function BowlingSandbox({
 
         if (phys.isBallActive()) {
           const statuses = phys.getPinStatuses();
-          setPinStatuses(statuses);
+          // Aggiorna lo stato solo se cambia l'insieme dei birilli a terra (evita re-render a 60 Hz)
+          setPinStatuses((prev) =>
+            prev.every((p, i) => p.knockedDown === statuses[i]?.knockedDown) ? prev : statuses,
+          );
+        }
+
+        // Fine tiro: palla uscita e birilli fermi (timeout di sicurezza 12 s)
+        const startedAt = throwStartRef.current;
+        if (startedAt !== null) {
+          const elapsed = now - startedAt;
+          if ((!phys.isBallActive() && phys.arePinsSettled() && elapsed > 800) || elapsed > 12000) {
+            throwStartRef.current = null;
+            finishThrow(phys.getPinStatuses());
+          }
         }
 
         animFrame = requestAnimationFrame(loop);
@@ -95,7 +124,6 @@ export function BowlingSandbox({
 
       return () => {
         ro.disconnect();
-        if (rollTimeout) clearTimeout(rollTimeout);
       };
     };
 
@@ -133,23 +161,8 @@ export function BowlingSandbox({
     setCallout('In corsa...');
     setIsStrike(false);
 
-    // Monitoraggio fine tiro dopo 4.5 secondi
-    setTimeout(() => {
-      if (!physicsRef.current) return;
-      const finalStatuses = physicsRef.current.getPinStatuses();
-      setPinStatuses(finalStatuses);
-      const knocked = finalStatuses.filter((p) => p.knockedDown).length;
-
-      if (knocked === 10) {
-        setCallout('💥 STRIKE! 10/10!');
-        setIsStrike(true);
-      } else if (knocked === 0) {
-        setCallout('Canalina! 0 birilli');
-      } else {
-        setCallout(`${knocked} Birill${knocked === 1 ? 'o' : 'i'}!`);
-      }
-      setIsRolling(false);
-    }, 4500);
+    // La fine del tiro è rilevata nel loop di simulazione (palla uscita + birilli fermi)
+    throwStartRef.current = performance.now();
   };
 
   // Reset del rack dei birilli e riposizionamento telecamera
@@ -158,6 +171,7 @@ export function BowlingSandbox({
     const sc = sceneRef.current;
     if (!phys || !sc) return;
 
+    throwStartRef.current = null;
     phys.resetPins();
     sc.resetCamera();
     setPinStatuses(phys.getPinStatuses());
@@ -215,6 +229,7 @@ export function BowlingSandbox({
         class="bowling-canvas-container"
         onPointerDown={onPointerDown}
         onPointerUp={onPointerUp}
+        onPointerCancel={() => setDragStart(null)}
       />
 
       {/* Header bar */}
@@ -255,14 +270,24 @@ export function BowlingSandbox({
             })}
           </div>
         ))}
-        <div class={`bowling-score-callout ${isStrike ? 'is-strike' : ''}`}>
+        <div class={`bowling-score-callout ${isStrike ? 'is-strike' : ''}`} role="status" aria-live="polite">
           {callout} ({knockedCount}/10)
         </div>
       </div>
 
       {/* Pannello Controlli / Parametri di Lancio Sandbox */}
       <div class="bowling-controls-panel">
-        <div class="bowling-sliders-grid">
+        <button
+          type="button"
+          class="bowling-params-toggle"
+          aria-expanded={showParams}
+          aria-controls="bowling-params"
+          onClick={() => setShowParams((v) => !v)}
+        >
+          {showParams ? '▾ Nascondi parametri' : '▸ Parametri di lancio'}
+        </button>
+
+        <div id="bowling-params" class="bowling-sliders-grid" hidden={!showParams}>
           {/* Posizione X */}
           <div class="bowling-control-item">
             <label class="bowling-control-label" for="param-pos">

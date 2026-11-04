@@ -99,7 +99,11 @@ importers:
 
   games: {}
 
-  packages/motion: {}
+  packages/motion:
+    dependencies:
+      '@quickquest/protocol':
+        specifier: workspace:*
+        version: link:../protocol
 
   packages/protocol: {}
 

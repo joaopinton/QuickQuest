@@ -62,6 +62,7 @@ function createLaneTexture(): THREE.CanvasTexture {
   ctx.fillRect(0, 0, canvas.width, 8);
 
   const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace; // senza questo i colori risultano spenti
   texture.wrapS = THREE.ClampToEdgeWrapping;
   texture.wrapT = THREE.ClampToEdgeWrapping;
   return texture;
@@ -75,7 +76,7 @@ export function createBowlingScene(
   scene.background = new THREE.Color('#161224'); // Sala bowling serale (docs/games/bowling.md § 2)
 
   const camera = new THREE.PerspectiveCamera(
-    48,
+    40,
     container.clientWidth / container.clientHeight,
     0.1,
     60,
@@ -91,7 +92,7 @@ export function createBowlingScene(
   container.appendChild(renderer.domElement);
 
   // ---------- Luci ----------
-  const ambientLight = new THREE.AmbientLight('#ffe0b2', 0.85); // ambra calda accogliente
+  const ambientLight = new THREE.AmbientLight('#ffe0b2', 1.3); // ambra calda accogliente
   scene.add(ambientLight);
 
   const mainLight = new THREE.DirectionalLight('#ffffff', 1.6);
@@ -207,8 +208,8 @@ export function createBowlingScene(
   ballMesh.add(hole3);
 
   // Regia della telecamera (dietro il pupo -> segui palla -> pin cam, docs/games/bowling.md § 6)
-  const initialCamPos = new THREE.Vector3(0, 1.45, -2.4);
-  const initialCamTarget = new THREE.Vector3(0, 0.25, HEADPIN_Z);
+  const initialCamPos = new THREE.Vector3(0, 1.15, -1.9);
+  const initialCamTarget = new THREE.Vector3(0, 0.2, HEADPIN_Z - 3);
   camera.position.copy(initialCamPos);
   camera.lookAt(initialCamTarget);
 

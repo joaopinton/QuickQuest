@@ -139,4 +139,15 @@ describe('Bowling Physics & Geometry (USBC Specs)', () => {
       phys.dispose();
     }
   });
+  test('la simulazione corre in tempo reale (regressione timestep Rapier)', async () => {
+    const phys = await createBowlingPhysicsWorld();
+    try {
+      phys.launchBall({ startX: 0, dir: 0, speed: 7.0, spin: 0 });
+      for (let i = 0; i < 60; i++) phys.step(1 / 60); // 1 secondo simulato
+      // A 7 m/s la palla dopo 1 s deve essere intorno a z ≈ 7 m, non oltre i birilli
+      expect(phys.ballBody.translation().z).toBeLessThan(9);
+    } finally {
+      phys.dispose();
+    }
+  });
 });
