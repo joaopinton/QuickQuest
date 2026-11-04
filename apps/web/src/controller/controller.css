@@ -220,3 +220,13 @@ body.is-controller { transition: background-color var(--dur-slow) var(--ease-out
   font-weight: 800; text-align: center; color: var(--ink-700);
 }
 .ctl-turn--mine { background: var(--slot); color: #fff; }
+.ctl-meter {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px;
+  padding: 12px 16px; border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow-soft);
+}
+.ctl-meter__label { font-weight: 800; font-size: 0.85rem; color: var(--ink-600); text-transform: uppercase; }
+.ctl-meter__track { height: 14px; border-radius: var(--radius-pill); background: var(--ink-100); overflow: hidden; }
+.ctl-meter__fill {
+  display: block; height: 100%; background: var(--slot); transform-origin: left center; transform: scaleX(0);
+}
+.ctl-meter__value { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--ink-700); min-width: 6.5ch; text-align: right; }

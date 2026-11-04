@@ -389,7 +389,7 @@ export function BowlingSandbox({ onEndGame, players: playersProp, subscribeThrow
                 📱 <strong style={{ color: current.color }}>{current.name}</strong>, prendi il telefono e lancia!
               </p>
               <p class="bowling-mouse-hint">
-                Tieni premuto il tasto, porta il braccio indietro, swing in avanti e rilascia.
+                Tieni premuto il tasto, porta il braccio indietro e fai lo swing verso dove vuoi tirare, poi rilascia.
               </p>
             </>
           )}

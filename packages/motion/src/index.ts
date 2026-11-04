@@ -10,3 +10,5 @@ export * from './calibration';
 export * from './bowling';
 export * from './streamer';
 export * from './synth';
+export * from './swing';
+export * from './tracker';

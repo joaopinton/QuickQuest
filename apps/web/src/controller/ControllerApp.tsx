@@ -1,7 +1,7 @@
 // Flusso del telefono (docs/08 § 1.2): codice → benvenuto → sonda → Pupo → sicurezza → attesa → gioco.
 import {
-  collectMotion, detectPlatform, evaluateProbe, keepAwake, releaseWakeLock, requestMotionPermission, simulateHandheld,
-  type ProbeResult, type RawSample,
+  collectMotion, createMotionTracker, detectPlatform, evaluateProbe, keepAwake, releaseWakeLock, requestMotionPermission, simulateHandheld,
+  type ProbeResult, type RawSample, type SwingProfile,
 } from '@quickquest/motion';
 import { isValidRoomCode, type LobbyPlayer, type SlotId } from '@quickquest/protocol';
 import { pupoColor, t } from '@quickquest/ui';
@@ -9,11 +9,15 @@ import { useLocation, useRoute } from 'preact-iso';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { createControllerConnection } from '../net/controllerConnection';
 import { hasSeenSafety, loadChoice, markSafetySeen, saveChoice } from './prefs';
+import { Calibrate } from './steps/Calibrate';
 import { GamePad } from './steps/GamePad';
 import { PickPupo, type PupoChoice } from './steps/PickPupo';
 import { Blocked, EnterCode, Incompatible, Probing, Safety, Welcome } from './steps/Screens';
 import { Waiting } from './steps/Waiting';
 import './controller.css';
+
+type WaitStep = { k: 'waiting' };
+type GameStep = { k: 'game'; gameId: string; layoutId: string };
 
 type Step =
   | { k: 'welcome'; error: string | null }
@@ -21,8 +25,10 @@ type Step =
   | { k: 'fail'; result: ProbeResult }
   | { k: 'pick' }
   | { k: 'safety' }
-  | { k: 'waiting' }
-  | { k: 'game'; gameId: string; layoutId: string }
+  /** Prova sensori e tiri di prova; `then` è dove andare dopo (attesa o partita). */
+  | { k: 'calibrate'; then: GameStep | WaitStep }
+  | WaitStep
+  | GameStep
   | { k: 'blocked'; message: string };
 
 const PERMISSION_ERRORS = {
@@ -56,6 +62,10 @@ function RoomFlow({ code }: { code: string }) {
   const [players, setPlayers] = useState<readonly LobbyPlayer[]>([]);
   const [isLost, setLost] = useState(false);
   const [activeSlot, setActiveSlot] = useState<SlotId | null>(null);
+  const [profile, setProfile] = useState<SwingProfile | null>(null);
+  // un solo tracker per tutta la sessione: l'orientamento stimato resta coerente con la taratura
+  const tracker = useMemo(() => createMotionTracker(), []);
+  useEffect(() => () => tracker.stop(), [tracker]);
   const simVariant = import.meta.env.DEV ? query.sim : undefined;
   const isBusy = useRef(false);
   const isMounted = useRef(true);
@@ -69,14 +79,20 @@ function RoomFlow({ code }: { code: string }) {
       setPlayers(p);
       // lo schermo ha chiuso la partita: il telefono torna in attesa invece di restare sul pad
       if (phase === 'lobby' && isMounted.current) {
-        setStep((s) => (s.k === 'game' ? { k: 'waiting' } : s));
+        setStep((s) => {
+          if (s.k === 'game') return { k: 'waiting' };
+          if (s.k === 'calibrate' && s.then.k === 'game') return { ...s, then: { k: 'waiting' } };
+          return s;
+        });
         setActiveSlot(null);
       }
     });
     const offTurn = conn.onTurn(setActiveSlot);
     const offLayout = conn.onLayout((layout) => {
       conn.sendReady(layout.layoutId);
-      safeStep({ k: 'game', gameId: layout.gameId, layoutId: layout.layoutId });
+      const game: GameStep = { k: 'game', gameId: layout.gameId, layoutId: layout.layoutId };
+      // durante la taratura non si interrompe: si entra in partita appena finita
+      if (isMounted.current) setStep((s) => (s.k === 'calibrate' ? { ...s, then: game } : game));
     });
     const offStatus = conn.onStatus((s) => {
       setSlot(s.slot);
@@ -111,6 +127,7 @@ function RoomFlow({ code }: { code: string }) {
         return;
       }
       void keepAwake();
+      tracker.start();
     }
     safeStep({ k: 'probing', progress: 0 });
     const onProgress = (progress: number) => safeStep({ k: 'probing', progress });
@@ -138,7 +155,8 @@ function RoomFlow({ code }: { code: string }) {
     setChoice(c);
     saveChoice(c);
     conn.sendProfile({ color: pupoColor(c.colorId).hex, accessory: c.accessory });
-    setStep(hasSeenSafety() ? { k: 'waiting' } : { k: 'safety' });
+    const afterPick: Step = profile || simVariant !== undefined ? { k: 'waiting' } : { k: 'calibrate', then: { k: 'waiting' } };
+    setStep(hasSeenSafety() ? afterPick : { k: 'safety' });
   };
 
   switch (step.k) {
@@ -151,7 +169,16 @@ function RoomFlow({ code }: { code: string }) {
     case 'pick':
       return <PickPupo slot={slot} initial={choice} onConfirm={confirmPupo} />;
     case 'safety':
-      return <Safety onOk={() => { markSafetySeen(); setStep({ k: 'waiting' }); }} />;
+      return <Safety onOk={() => { markSafetySeen(); setStep({ k: 'calibrate', then: { k: 'waiting' } }); }} />;
+    case 'calibrate':
+      return (
+        <Calibrate
+          tracker={tracker}
+          color={pupoColor(choice.colorId).hex}
+          isSimulated={simVariant !== undefined}
+          onDone={(p) => { setProfile(p); setStep(step.then); }}
+        />
+      );
     case 'blocked':
       return <Blocked message={step.message} />;
     case 'waiting':
@@ -178,8 +205,11 @@ function RoomFlow({ code }: { code: string }) {
           isDemo={isDemo}
           isLost={isLost}
           activeSlot={activeSlot}
+          tracker={tracker}
+          profile={profile}
           isSimulated={simVariant !== undefined}
           onThrow={(params) => conn.sendThrow(params)}
+          onRecalibrate={() => setStep({ k: 'calibrate', then: step })}
           onLeave={() => { conn.leave(); releaseWakeLock(); route('/'); }}
         />
       );
