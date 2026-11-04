@@ -11,7 +11,7 @@ export function NotFound() {
         </div>
         <h1 class="page-hero__title">{t('notFound.title')}</h1>
         <p class="page-hero__lead">{t('notFound.lead')}</p>
-        <Button href="/" size="lg">{t('notFound.cta')}</Button>
+        <Button href="/" size="xl" class="not-found__cta">{t('notFound.cta')}</Button>
       </section>
     </Page>
   );

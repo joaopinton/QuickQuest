@@ -93,7 +93,7 @@ export function Incompatible({ result, onRetry }: { result: ProbeResult; onRetry
         ))}
       </ul>
       <div class="ctl-actions">
-        <Button size="lg" variant="secondary" isBlock onClick={onRetry}>{t('controller.failRetry')}</Button>
+        <Button size="xl" variant="secondary" isBlock onClick={onRetry}>{t('controller.failRetry')}</Button>
         <p class="ctl-hint">{t('controller.failHelp')}</p>
       </div>
     </section>
@@ -119,7 +119,7 @@ export function Blocked({ message }: { message: string }) {
     <section class="ctl-screen ctl-screen--center">
       <Pupo color="#FF9A3C" mood="lost" motion="breathe" size={150} />
       <h1 class="ctl-title">{message}</h1>
-      <div class="ctl-actions"><Button href="/c" size="lg" variant="secondary" isBlock>{t('code.title')}</Button></div>
+      <div class="ctl-actions"><Button href="/c" size="xl" variant="secondary" isBlock>{t('code.title')}</Button></div>
     </section>
   );
 }

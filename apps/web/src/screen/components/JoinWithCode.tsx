@@ -37,7 +37,7 @@ export function JoinWithCode({ autoFocus = false }: { autoFocus?: boolean }) {
         autoFocus={autoFocus}
       />
       {hasError && <p class="join-code__error" role="alert">{t('code.invalid')}</p>}
-      <Button type="submit" size="lg" isBlock disabled={code.length < 4}>{t('code.submit')}</Button>
+      <Button type="submit" size="xl" isBlock disabled={code.length < 4}>{t('code.submit')}</Button>
     </form>
   );
 }

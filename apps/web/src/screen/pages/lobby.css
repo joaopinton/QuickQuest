@@ -63,3 +63,10 @@
   .lobby__slots li:nth-child(n) { margin-top: 0; }
   .join-panel { transform: none; }
 }
+
+@media (max-width: 720px) {
+  .lobby__actions { flex-direction: column; width: 100%; }
+  .lobby__actions .qq-btn { width: 100%; justify-content: center; }
+  .picker__head { flex-direction: column; align-items: stretch; }
+  .picker__head .qq-btn { width: 100%; justify-content: center; }
+}

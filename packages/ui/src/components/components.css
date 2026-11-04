@@ -65,7 +65,7 @@
   --btn-bg: transparent; --btn-fg: var(--ink-900); --btn-edge: transparent;
   box-shadow: none; padding: 0 var(--space-4);
 }
-.qq-btn--ghost:hover { box-shadow: none; background: rgb(var(--shadow-tint) / 0.06); }
+.qq-btn--ghost:hover, .qq-btn--ghost:active { box-shadow: none; background: rgb(var(--shadow-tint) / 0.08); }
 .qq-btn--lg { min-height: 64px; font-size: 1.2rem; padding: 0 var(--space-12); }
 .qq-btn--xl { min-height: 80px; font-size: 1.45rem; padding: 0 var(--space-16); }
 .qq-btn--block { display: flex; width: 100%; }

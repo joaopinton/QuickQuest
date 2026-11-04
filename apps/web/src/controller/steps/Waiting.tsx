@@ -47,9 +47,9 @@ export function Waiting({ slot, color, accessory, isDemo, isLost, players, onCha
           ))}
         </ul>
       )}
-      <div class="ctl-actions ctl-actions--row">
-        <Button variant="secondary" onClick={onChangePupo}>{t('controller.changePupo')}</Button>
-        <Button variant="ghost" onClick={onLeave}>{t('controller.leave')}</Button>
+      <div class="ctl-actions">
+        <Button size="xl" variant="secondary" isBlock onClick={onChangePupo}>{t('controller.changePupo')}</Button>
+        <Button size="lg" variant="ghost" isBlock onClick={onLeave}>{t('controller.leave')}</Button>
       </div>
     </section>
   );
