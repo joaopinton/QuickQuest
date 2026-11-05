@@ -36,7 +36,7 @@ function formatToPar(n: number): string {
   return n > 0 ? `+${n}` : `${n}`;
 }
 
-export function Screen({ players, subscribeEvents, setActiveSlot, sendCue, onEndGame }: ScreenGameProps) {
+export function Screen({ players, subscribeEvents, setActiveSlot, sendCue, onEndGame, isPaused }: ScreenGameProps) {
   // la formazione si fissa all'inizio: chi entra dopo guarda
   const [roster] = useState(() => players);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -46,6 +46,8 @@ export function Screen({ players, subscribeEvents, setActiveSlot, sendCue, onEnd
   const [toast, setToast] = useState<Toast | null>(null);
   const io = useRef({ setActiveSlot, sendCue });
   io.current = { setActiveSlot, sendCue };
+  const pausedRef = useRef(isPaused);
+  pausedRef.current = isPaused;
 
   /** Applica un passo delle regole: stato, feedback ai telefoni, toast. */
   const commit = (step: Step) => {
@@ -80,6 +82,11 @@ export function Screen({ players, subscribeEvents, setActiveSlot, sendCue, onEnd
     const frame = (now: number) => {
       const dt = Math.min(MAX_FRAME_S, (now - last) / 1000);
       last = now;
+      // in pausa palle e camera restano ferme: si salta il passo e si ridisegna l'ultimo fotogramma
+      if (pausedRef.current) {
+        raf = requestAnimationFrame(frame);
+        return;
+      }
       const s = stateRef.current;
       if (s) {
         commit(stepGolf(s, dt));

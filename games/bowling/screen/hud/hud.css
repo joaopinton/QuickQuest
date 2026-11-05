@@ -268,7 +268,8 @@
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  filter: drop-shadow(0 0 18px rgba(255, 95, 210, 0.55));
+  /* niente filter sul testo ritagliato: in Chrome e Safari sbava e taglia le lettere */
+  text-shadow: none;
 }
 
 .bw-toast--spare .bw-toast__headline {
@@ -772,6 +773,8 @@
 
 .bw-strike__word {
   display: flex;
+  /* l'ombra va sul contenitore: sul testo ritagliato (background-clip) il filter crea artefatti */
+  filter: drop-shadow(0 6px 0 rgba(20, 13, 38, 0.85)) drop-shadow(0 0 24px rgba(255, 95, 210, 0.7));
   justify-content: center;
   font-size: clamp(4rem, 2rem + 9vw, 10rem);
   font-weight: 900;
@@ -783,11 +786,13 @@
 
 .bw-strike__letter {
   display: inline-block;
+  /* margine per il corsivo: senza, background-clip taglia il bordo destro di ogni lettera */
+  padding: 0.04em 0.08em 0.1em;
+  margin: 0 -0.04em;
   background: linear-gradient(180deg, #fff 8%, var(--bw-yellow) 40%, var(--bw-pink) 75%, var(--player));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  filter: drop-shadow(0 6px 0 rgba(20, 13, 38, 0.85)) drop-shadow(0 0 24px rgba(255, 95, 210, 0.7));
   animation:
     bw-strike-letter 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) calc(0.05s + var(--i) * 0.055s) both,
     bw-strike-bob 1.4s ease-in-out calc(0.7s + var(--i) * 0.08s) infinite alternate;

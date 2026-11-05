@@ -261,4 +261,40 @@ describe('lancio col gesto dal telefono del giocatore di turno', () => {
     expect(late.inbox.find((m) => m.t === 'layout')).toMatchObject({ p: { gameId: 'bowling' } });
     expect(late.inbox.find((m) => m.t === 'turn')).toEqual({ t: 'turn', p: { activeSlot: 'P1' } });
   });
+
+  test('kick: solo lo schermo toglie un giocatore, il telefono riceve KICKED e lo slot si libera', async () => {
+    const roomCode = `K${String(++code).padStart(3, '0')}`;
+    const host = createRoomHost({
+      code: roomCode, transport: createLocalHost(roomCode), onLobby: () => {},
+      isScreen: () => false, // qui lo schermo chiama host.kick direttamente
+    });
+    cleanups.push(() => host.close());
+    const mk = () => {
+      const t = createLocalClient(roomCode);
+      const inbox: ServerMessage[] = [];
+      t.onMessage((m) => inbox.push(m));
+      cleanups.push(() => t.close());
+      return { t, inbox };
+    };
+    const a = mk();
+    const b = mk();
+    await ready(a);
+    await ready(b);
+    await until(() => host.players().filter((p) => p.state === 'ready').length === 2);
+
+    // un telefono non può togliere un altro
+    b.t.send({ t: 'kick', p: { slot: 'P1' } });
+    await new Promise((r) => setTimeout(r, 30));
+    expect(host.players().map((p) => p.slot)).toEqual(['P1', 'P2']);
+
+    host.setTurn('P2');
+    host.kick('P2');
+    await until(() => b.inbox.some((m) => m.t === 'error'));
+    expect(b.inbox.find((m) => m.t === 'error')).toEqual({ t: 'error', p: { code: 'KICKED' } });
+    expect(host.players().map((p) => p.slot)).toEqual(['P1']);
+    expect(host.state().activeSlot).toBeNull(); // era il suo turno: non resta appeso
+    expect(a.inbox.some((m) => m.t === 'error')).toBe(false);
+    host.kick('P3'); // slot vuoto: nulla
+    expect(host.players()).toHaveLength(1);
+  });
 });

@@ -106,6 +106,10 @@ function RoomFlow({ code }: { code: string }) {
       // durante la taratura non si interrompe: si entra in partita appena finita
       if (isMounted.current) setStep((s) => (s.k === 'calibrate' ? { ...s, then: game } : game));
     });
+    const offKicked = conn.onKicked(() => {
+      releaseWakeLock();
+      if (isMounted.current) setStep({ k: 'blocked', message: t('controller.kicked') });
+    });
     const offStatus = conn.onStatus((s) => {
       setSlot(s.slot);
       setDemo(s.mode === 'demo');
@@ -118,6 +122,7 @@ function RoomFlow({ code }: { code: string }) {
       offStatus();
       offTurn();
       offCue();
+      offKicked();
       conn.close();
     };
   }, [conn, haptics]);

@@ -1,0 +1,92 @@
+/* Palco del gioco: tutta la finestra, sopra la lobby. A schermo intero resta solo il gioco. */
+.game-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  overflow: hidden;
+  background: #161224;
+}
+
+.game-stage__loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font: 700 1.5rem/1 var(--font-display);
+  color: var(--ink-900);
+  background: #bfe6ff;
+}
+
+/* ---------- Menù di pausa ---------- */
+.pause {
+  position: absolute;
+  inset: 0;
+  z-index: 1100;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(14, 9, 28, 0.62);
+  backdrop-filter: blur(10px) saturate(0.8);
+  animation: pause-fade 180ms ease-out both;
+}
+
+.pause__card {
+  width: min(440px, 100%);
+  padding: 28px 32px 30px;
+  text-align: center;
+  border-radius: 28px;
+  background: var(--surface, #fff);
+  color: var(--ink-900, #1d1530);
+  box-shadow: 0 10px 0 rgba(0, 0, 0, 0.18), 0 30px 70px rgba(0, 0, 0, 0.45);
+  animation: pause-pop 260ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.pause__card p,
+.pause__card h2 {
+  margin: 0;
+}
+
+.pause__game {
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-600, #5b5070);
+}
+
+.pause__title {
+  font: 800 clamp(2.4rem, 1.8rem + 2vw, 3.2rem)/1 var(--font-display, inherit);
+  margin: 4px 0 8px !important;
+}
+
+.pause__lead {
+  font-size: 0.95rem;
+  color: var(--ink-600, #5b5070);
+}
+
+.pause__actions {
+  display: grid;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.pause__actions .qq-btn,
+.pause__primary .qq-btn {
+  width: 100%;
+  justify-content: center;
+}
+
+@keyframes pause-fade {
+  from { opacity: 0; }
+}
+
+@keyframes pause-pop {
+  from { opacity: 0; transform: translateY(16px) scale(0.94); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pause,
+  .pause__card {
+    animation: none;
+  }
+}

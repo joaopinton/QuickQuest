@@ -1,9 +1,14 @@
-/* Pulsante schermo intero: in basso a destra, sopra ogni scena di gioco, discreto finché non serve */
-.fs-toggle {
+/* Dock dello schermo condiviso: in basso a destra, sopra ogni scena (pausa, schermo intero) */
+.screen-dock {
   position: fixed;
   right: max(16px, env(safe-area-inset-right));
   bottom: max(16px, env(safe-area-inset-bottom));
   z-index: 1000;
+  display: flex;
+  gap: 10px;
+}
+
+.dock-btn {
   display: grid;
   place-items: center;
   width: 52px;
@@ -20,7 +25,7 @@
   transition: opacity 160ms ease, transform 160ms cubic-bezier(0.34, 1.56, 0.64, 1), background 160ms ease;
 }
 
-.fs-toggle svg {
+.dock-btn svg {
   width: 26px;
   height: 26px;
   fill: none;
@@ -30,35 +35,41 @@
   stroke-linejoin: round;
 }
 
-.fs-toggle:hover,
-.fs-toggle:focus-visible {
+.dock-btn:hover,
+.dock-btn:focus-visible {
   opacity: 1;
   background: rgba(20, 13, 38, 0.85);
   transform: scale(1.08);
 }
 
-.fs-toggle:focus-visible {
+.dock-btn:focus-visible {
   outline: 3px solid #ffd84d;
   outline-offset: 3px;
 }
 
-.fs-toggle:active {
+.dock-btn:active {
   transform: scale(0.94);
 }
 
-/* a schermo intero si fa più piccolo: non deve distrarre dal gioco */
-.fs-toggle.is-on {
-  opacity: 0.35;
+/* a schermo intero si fanno più discreti: non devono distrarre dal gioco */
+.dock-btn.is-on,
+.screen-dock--game .dock-btn {
+  opacity: 0.4;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .fs-toggle {
+  .dock-btn {
     transition: opacity 160ms ease;
   }
 
-  .fs-toggle:hover,
-  .fs-toggle:focus-visible,
-  .fs-toggle:active {
+  .dock-btn:hover,
+  .dock-btn:focus-visible,
+  .dock-btn:active {
     transform: none;
   }
+}
+
+.screen-dock--game .dock-btn:hover,
+.screen-dock--game .dock-btn:focus-visible {
+  opacity: 1;
 }

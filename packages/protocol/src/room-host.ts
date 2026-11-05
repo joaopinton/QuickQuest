@@ -4,6 +4,7 @@ import type { Cue, GameEvent, LobbyPlayer, RoomPhase, ServerMessage, SlotId } fr
 import {
   applyDisconnect,
   applyHello,
+  applyKick,
   applyLeave,
   applyProfile,
   applyReturnToLobby,
@@ -34,7 +35,6 @@ export interface RoomHostOptions {
   readonly initialState?: RoomState;
   /** Chiamato a ogni cambio di stato che va persistito. */
   readonly onState?: (state: RoomState) => void;
-  /** Lancio valido del giocatore di turno: va consegnato allo schermo. */
   /** Evento di gioco di un giocatore ammesso: va consegnato allo schermo. */
   readonly onGameEvent?: (slot: SlotId, gameId: string, e: GameEvent) => void;
   /**
@@ -59,6 +59,8 @@ export interface RoomHost {
   setTurn(activeSlot: SlotId | null): void;
   /** Lo schermo chiede un feedback a un telefono (`slot`) o a tutti (`null`). */
   sendCue(slot: SlotId | null, cue: Cue): void;
+  /** Lo schermo toglie un giocatore: il suo telefono riceve KICKED e lo slot si libera. */
+  kick(slot: SlotId): void;
   close(): void;
 }
 
@@ -121,6 +123,12 @@ export function createRoomHost(opts: RoomHostOptions): RoomHost {
     for (const id of connectionsFor(state, slot)) transport.sendTo(id, msg);
   };
 
+  const kick = (slot: SlotId) => {
+    const r = applyKick(state, slot);
+    if (r.connectionId) transport.sendTo(r.connectionId, { t: 'error', p: { code: 'KICKED' } });
+    publish(r.state);
+  };
+
   const unsubscribe = transport.onMessage((from, result) => {
     if (!result.ok) {
       transport.sendTo(from, { t: 'error', p: { code: result.code } });
@@ -157,6 +165,9 @@ export function createRoomHost(opts: RoomHostOptions): RoomHost {
         break;
       case 'end-game':
         if (isScreen(from)) returnToLobby();
+        break;
+      case 'kick':
+        if (isScreen(from)) kick(msg.p.slot);
         break;
       case 'profile':
         publish(applyProfile(state, from, msg.p));
@@ -202,6 +213,7 @@ export function createRoomHost(opts: RoomHostOptions): RoomHost {
     returnToLobby,
     setTurn,
     sendCue,
+    kick,
     close: () => {
       unsubscribe();
       transport.close();

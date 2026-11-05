@@ -3,9 +3,8 @@
 .bowling-sandbox {
   position: relative;
   width: 100%;
-  height: calc(100vh - 96px); /* sotto la barra della lobby */
-  height: calc(100dvh - 96px);
-  min-height: 520px;
+  height: 100%; /* il palco del gioco occupa già tutta la finestra */
+  min-height: 100%;
   overflow: hidden;
   background: #161224;
   color: #ffffff;

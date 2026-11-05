@@ -83,7 +83,7 @@ function GamesShowcase() {
         <a class="link-arrow" href="/giochi">{t('home.gamesMore')}</a>
       </div>
       <div class="bento">
-        {GAMES.map((g, i) => <GameCard key={g.id} game={g} isFeatured={i === 0} />)}
+        {GAMES.map((g) => <GameCard key={g.id} game={g} />)}
       </div>
     </section>
   );

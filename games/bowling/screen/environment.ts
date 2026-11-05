@@ -155,6 +155,22 @@ function neonTube(points: THREE.Vector3[], color: string, thickness: number, smo
   return new THREE.Mesh(geo, mat);
 }
 
+const BOARD_FONT = 'system-ui, sans-serif';
+
+/**
+ * Scrive `text` rimpicciolendo il corpo finché ci sta in `maxWidth`: niente testo che esce dal
+ * tabellone o finisce sotto il totale (nomi lunghi, "10 birilli" con il totale a tre cifre).
+ */
+function fitText(ctx: CanvasRenderingContext2D, text: string, weight: number, size: number, x: number, y: number, maxWidth: number): void {
+  let px = size;
+  ctx.font = `${weight} ${px}px ${BOARD_FONT}`;
+  while (px > 18 && ctx.measureText(text).width > maxWidth) {
+    px -= 4;
+    ctx.font = `${weight} ${px}px ${BOARD_FONT}`;
+  }
+  ctx.fillText(text, x, y);
+}
+
 function drawScoreboard(ctx: CanvasRenderingContext2D, info: ScoreboardInfo): void {
   const W = 1024;
   const H = 512;
@@ -174,28 +190,28 @@ function drawScoreboard(ctx: CanvasRenderingContext2D, info: ScoreboardInfo): vo
   ctx.beginPath();
   ctx.arc(110, 110, 50, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = '#ffffff';
-  ctx.font = '800 72px system-ui, sans-serif';
   ctx.textBaseline = 'middle';
-  ctx.fillText(info.playerName, 190, 112);
 
-  ctx.fillStyle = 'rgba(255,255,255,0.75)';
-  ctx.font = '700 48px system-ui, sans-serif';
-  ctx.fillText(`Frame ${info.frame}/${info.frameCount} · Tiro ${info.roll}`, 70, 230);
-
-  // Totale
+  // Totale: prima, così il nome sa quanto spazio gli resta
   ctx.textAlign = 'right';
   ctx.fillStyle = NEON.yellow;
-  ctx.font = '900 190px system-ui, sans-serif';
-  ctx.fillText(String(info.total), W - 60, 200);
+  ctx.font = `900 190px ${BOARD_FONT}`;
+  const total = String(info.total);
+  const totalLeft = W - 60 - ctx.measureText(total).width;
+  ctx.fillText(total, W - 60, 140);
   ctx.textAlign = 'left';
+
+  ctx.fillStyle = '#ffffff';
+  fitText(ctx, info.playerName, 800, 72, 190, 112, Math.max(120, totalLeft - 190 - 30));
+
+  ctx.fillStyle = 'rgba(255,255,255,0.75)';
+  fitText(ctx, `Frame ${info.frame}/${info.frameCount} · Tiro ${info.roll}`, 700, 48, 70, 250, W - 140);
 
   // Messaggio dell'ultimo tiro
   if (info.message) {
     ctx.fillStyle = NEON.pink;
-    ctx.font = '900 110px system-ui, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(info.message, W / 2, 390);
+    fitText(ctx, info.message, 900, 110, W / 2, 390, W - 120);
     ctx.textAlign = 'left';
   }
 }
@@ -375,6 +391,8 @@ export function createBowlingEnvironment(
   const boardCtx = boardCanvas.getContext('2d');
   const boardTex = own(new THREE.CanvasTexture(boardCanvas));
   boardTex.colorSpace = THREE.SRGBColorSpace;
+  // visto dal basso e di sbieco: senza anisotropia il testo sfarfalla (Three la limita a quella della GPU)
+  boardTex.anisotropy = 8;
   const board = new THREE.Mesh(
     own(new THREE.PlaneGeometry(2.0, 1.0)),
     own(new THREE.MeshBasicMaterial({ map: boardTex, toneMapped: false })),

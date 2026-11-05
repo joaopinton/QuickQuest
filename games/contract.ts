@@ -22,6 +22,11 @@ export interface ScreenGameProps {
   readonly setActiveSlot: (slot: SlotId | null) => void;
   readonly sendCue: (slot: SlotId | null, cue: Cue) => void;
   readonly onEndGame: () => void;
+  /**
+   * Partita in pausa (menù aperto o scheda nascosta): il gioco congela simulazione e timer.
+   * Mentre è in pausa la shell non inoltra eventi dei telefoni e tiene chiuso il turno.
+   */
+  readonly isPaused: boolean;
 }
 
 /** Feedback sul telefono: dentro un gesto dell'utente vibra anche su iPhone. */

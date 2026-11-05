@@ -28,7 +28,7 @@ export interface LobbyPlayer {
   readonly profile: Profile | null;
 }
 
-export type ErrorCode = 'ROOM_FULL' | 'ROOM_NOT_FOUND' | 'UNSUPPORTED_DEVICE' | 'BAD_MESSAGE' | 'VERSION_MISMATCH';
+export type ErrorCode = 'ROOM_FULL' | 'ROOM_NOT_FOUND' | 'UNSUPPORTED_DEVICE' | 'BAD_MESSAGE' | 'VERSION_MISMATCH' | 'KICKED';
 
 export type RoomPhase = 'lobby' | 'starting' | 'playing';
 
@@ -65,6 +65,8 @@ export type ControllerMessage =
   | { t: 'turn'; p: { activeSlot: SlotId | null } }
   /** Solo dallo schermo (relay): fine partita, tutti tornano in lobby. */
   | { t: 'end-game'; p: Record<string, never> }
+  /** Solo dallo schermo (relay): toglie un giocatore dalla stanza. */
+  | { t: 'kick'; p: { slot: SlotId } }
   | { t: 'bye'; p: Record<string, never> };
 
 /** Messaggi verso il controller o lo schermo. */
@@ -75,7 +77,6 @@ export type ServerMessage =
   | { t: 'start'; p: { gameId: string } }
   | { t: 'layout'; p: { gameId: string; layoutId: string; params?: Record<string, unknown> } }
   | { t: 'turn'; p: { activeSlot: SlotId | null } }
-  /** Lancio di un telefono inoltrato allo schermo, con lo slot timbrato dall'host. */
   /** Evento di gioco inoltrato allo schermo, con lo slot timbrato dall'host. */
   | { t: 'game-event'; p: { gameId: string; e: GameEvent; slot?: SlotId } }
   /** Feedback dallo schermo, consegnato al telefono. */
@@ -172,9 +173,11 @@ function validPayload(t: string, p: unknown): boolean {
         && (p.params === undefined || isObj(p.params));
     case 'turn':
       return p.activeSlot === null || isSlot(p.activeSlot);
+    case 'kick':
+      return isSlot(p.slot);
     case 'error':
       return typeof p.code === 'string'
-        && ['ROOM_FULL', 'ROOM_NOT_FOUND', 'UNSUPPORTED_DEVICE', 'BAD_MESSAGE', 'VERSION_MISMATCH'].includes(p.code);
+        && ['ROOM_FULL', 'ROOM_NOT_FOUND', 'UNSUPPORTED_DEVICE', 'BAD_MESSAGE', 'VERSION_MISMATCH', 'KICKED'].includes(p.code);
     default:
       return false;
   }

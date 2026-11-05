@@ -1,13 +1,13 @@
-import { GAMES, type GameMeta } from '@quickquest/games';
-import type { ScreenGameProps, ScreenPlayer } from '@quickquest/games/contract';
+import { findGame, GAMES, type GameMeta } from '@quickquest/games';
+import type { ScreenPlayer } from '@quickquest/games/contract';
 import { isPlayable, loadersFor } from '@quickquest/games/loaders';
-import { SLOT_IDS, type LobbyPlayer } from '@quickquest/protocol';
+import { SLOT_IDS, type LobbyPlayer, type SlotId } from '@quickquest/protocol';
 import { Button, Logo, PlayerSlot, showToast, slotStyle, t, type Accessory, type SlotState } from '@quickquest/ui';
-import type { ComponentType } from 'preact';
-import { lazy, Suspense } from 'preact/compat';
-import { useMemo, useState } from 'preact/hooks';
+import { useLocation } from 'preact-iso';
+import { useEffect, useState } from 'preact/hooks';
 import { useScreenRoom } from '../../net/useScreenRoom';
 import { FullscreenToggle } from '../components/FullscreenToggle';
+import { GameStage } from '../components/GameStage';
 import { GameCard } from '../components/GameCard';
 import { QrCode } from '../components/QrCode';
 import './lobby.css';
@@ -28,22 +28,36 @@ function screenPlayers(players: readonly LobbyPlayer[]): ScreenPlayer[] {
     });
 }
 
-/** Scena di un gioco sul contratto modulo, caricata solo quando serve. */
-function ModuleGame({ gameId, ...props }: ScreenGameProps & { gameId: string }) {
-  const Game = useMemo<ComponentType<ScreenGameProps> | null>(() => {
-    const loaders = loadersFor(gameId);
-    return loaders ? lazy(() => loaders.screen().then((m) => m.Screen)) : null;
-  }, [gameId]);
-  if (!Game) return null;
-  return (
-    <Suspense fallback={<div class="lobby__loading">{t('lobby.loadingGame')}</div>}>
-      <Game {...props} />
-    </Suspense>
-  );
-}
-
 function slotState(p: LobbyPlayer | undefined): SlotState {
   return p ? p.state : 'empty';
+}
+
+const KICK_CONFIRM_MS = 3000;
+
+/** Togli un giocatore: primo tocco chiede conferma, il secondo (entro 3 s) lo toglie. */
+function KickButton({ slot, onKick }: { slot: SlotId; onKick: (slot: SlotId) => void }) {
+  const [isArmed, setArmed] = useState(false);
+  useEffect(() => {
+    if (!isArmed) return;
+    const id = setTimeout(() => setArmed(false), KICK_CONFIRM_MS);
+    return () => clearTimeout(id);
+  }, [isArmed]);
+  const name = `Pupo ${slot.slice(1)}`;
+  return (
+    <button
+      type="button"
+      class={`lobby__kick ${isArmed ? 'is-armed' : ''}`}
+      aria-label={t('lobby.kickLabel', { name })}
+      onClick={() => {
+        if (!isArmed) { setArmed(true); return; }
+        setArmed(false);
+        onKick(slot);
+        showToast(t('lobby.kickToast', { name }));
+      }}
+    >
+      {isArmed ? t('lobby.kickConfirm') : `✕ ${t('lobby.kick')}`}
+    </button>
+  );
 }
 
 function CodeTiles({ code }: { code: string }) {
@@ -91,7 +105,7 @@ function GamePicker({ onBack, onStartGame }: { onBack: () => void; onStartGame: 
         <Button variant="secondary" onClick={onBack}>← {t('lobby.back')}</Button>
       </div>
       <div class="bento">
-        {GAMES.map((g, i) => <GameCard key={g.id} game={g} isFeatured={i === 0} onOpen={pick} />)}
+        {GAMES.map((g) => <GameCard key={g.id} game={g} isPlayable={isPlayable(g.id)} onOpen={pick} />)}
       </div>
     </section>
   );
@@ -145,7 +159,9 @@ function PlayingScreen({
 }
 
 export function Lobby() {
-  const { code, players, joinUrl, phase, selectedGame, startGame, returnToLobby, setActiveSlot, onGameEvent, sendCue } = useScreenRoom();
+  const { code, players, joinUrl, phase, selectedGame, startGame, returnToLobby, setActiveSlot, onGameEvent, sendCue, kick } = useScreenRoom();
+  const { route } = useLocation();
+  const isPlaying = phase === 'playing';
   const [isChoosing, setChoosing] = useState(false);
   const active = players.filter((p) => p.state !== 'disconnected').length;
   const bySlot = new Map(players.map((p) => [p.slot, p]));
@@ -157,29 +173,33 @@ export function Lobby() {
 
   return (
     <div class="lobby">
-      <div class="lobby__backdrop" aria-hidden="true">
+      {!isPlaying && <div class="lobby__backdrop" aria-hidden="true">
         <svg viewBox="0 0 1600 300" preserveAspectRatio="none">
           <path d="M0 140 C260 60 520 120 800 110 C1080 100 1300 40 1600 90 V300 H0 Z" fill="#B7E58E" />
           <path d="M0 200 C300 150 600 210 900 190 C1200 170 1400 150 1600 180 V300 H0 Z" fill="#7ED957" />
           <path d="M0 250 C400 220 800 260 1200 240 C1400 232 1500 236 1600 240 V300 H0 Z" fill="#3FAE4A" />
         </svg>
-      </div>
-      <header class="lobby__bar">
-        <a href="/" aria-label={t('nav.home')}><Logo size="md" /></a>
-        <p class="lobby__badge">{t('lobby.demoBadge')}</p>
-      </header>
-      {/* schermo intero per lobby e per ogni gioco: sta sopra qualsiasi scena */}
-      <FullscreenToggle />
+      </div>}
+      {!isPlaying && (
+        <header class="lobby__bar">
+          <a href="/" aria-label={t('nav.home')}><Logo size="md" /></a>
+          <p class="lobby__badge">{t('lobby.demoBadge')}</p>
+        </header>
+      )}
+      {/* in partita il dock lo mette il palco del gioco, insieme alla pausa */}
+      {!isPlaying && <div class="screen-dock"><FullscreenToggle /></div>}
 
-      {phase === 'playing' ? (
+      {isPlaying ? (
         loadersFor(selectedGame) ? (
-          <ModuleGame
+          <GameStage
             gameId={selectedGame!}
+            gameName={findGame(selectedGame!)?.name ?? selectedGame!}
             players={screenPlayers(players)}
             subscribeEvents={onGameEvent}
             setActiveSlot={setActiveSlot}
             sendCue={sendCue}
             onEndGame={returnToLobby}
+            onLeaveRoom={() => { returnToLobby(); route('/'); }}
           />
         ) : (
           <PlayingScreen players={players} gameId={selectedGame} onEndGame={returnToLobby} />
@@ -205,6 +225,7 @@ export function Lobby() {
                       pupoColor={p?.profile?.color}
                       accessory={(p?.profile?.accessory ?? 'none') as Accessory}
                     />
+                    {p && <KickButton slot={id} onKick={kick} />}
                   </li>
                 );
               })}

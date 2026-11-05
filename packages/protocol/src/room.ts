@@ -95,6 +95,15 @@ export function applyLeave(state: RoomState, connectionId: string): RoomState {
   return { ...state, players: freeze(state.players.filter((p) => p.connectionId !== connectionId)) };
 }
 
+/** Lo schermo toglie un giocatore: lo slot si libera e il suo token non vale più. */
+export function applyKick(state: RoomState, slot: SlotId): { state: RoomState; connectionId: string | null } {
+  const player = state.players.find((p) => p.slot === slot);
+  if (!player) return { state, connectionId: null };
+  const players = freeze(state.players.filter((p) => p.slot !== slot));
+  const activeSlot = state.activeSlot === slot ? null : state.activeSlot;
+  return { state: { ...state, players, activeSlot }, connectionId: player.connectionId };
+}
+
 /** Segna disconnessi i giocatori che non si fanno sentire da più di `timeoutMs`. */
 export function expireStale(state: RoomState, now: number, timeoutMs: number): RoomState {
   const stale = (p: RoomPlayer) => p.connected && now - p.lastSeen > timeoutMs;

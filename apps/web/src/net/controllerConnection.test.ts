@@ -58,6 +58,25 @@ describe('connessione del telefono', () => {
     await expect(p).resolves.toEqual({ ok: false, code: 'ROOM_FULL' });
   });
 
+  test('tolto dallo schermo: avvisa, dimentica il token e non manda più nulla', async () => {
+    const removeItem = vi.fn();
+    vi.stubGlobal('sessionStorage', { getItem: () => null, setItem: () => {}, removeItem });
+    const f = fakeTransport();
+    const c = createControllerConnection('K7RM', f.t);
+    const kicked = vi.fn();
+    c.onKicked(kicked);
+    const p = c.join(caps);
+    f.deliver({ t: 'welcome', p: { slot: 'P2', sessionToken: 'abcdefgh12' } });
+    await p;
+    f.deliver({ t: 'error', p: { code: 'KICKED' } });
+    expect(kicked).toHaveBeenCalledTimes(1);
+    expect(removeItem).toHaveBeenCalled();
+    const before = f.sent.length;
+    vi.advanceTimersByTime(5000); // niente battito
+    c.sendGameEvent('bowling', { kind: 'throw', data: {} });
+    expect(f.sent).toHaveLength(before);
+  });
+
   test('senza pong lo schermo risulta perso; un pong lo riporta live', async () => {
     const f = fakeTransport();
     const c = createControllerConnection('K7RM', f.t);

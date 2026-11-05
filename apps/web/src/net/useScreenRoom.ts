@@ -32,6 +32,8 @@ export interface ScreenRoom {
   onGameEvent(cb: GameEventListener): () => void;
   /** Feedback per un telefono (`slot`) o per tutti (`null`). */
   sendCue(slot: SlotId | null, cue: Cue): void;
+  /** Toglie un giocatore dalla stanza (il suo telefono lo sa e non rientra da solo). */
+  kick(slot: SlotId): void;
 }
 
 export type GameEventListener = (slot: SlotId, e: GameEvent) => void;
@@ -137,6 +139,11 @@ export function useScreenRoom(): ScreenRoom {
     else wsRef.current?.send({ t: 'cue', p: { ...cue, slot } });
   }, []);
 
+  const kick = useCallback((slot: SlotId) => {
+    if (hostRef.current) hostRef.current.kick(slot);
+    else wsRef.current?.send({ t: 'kick', p: { slot } });
+  }, []);
+
   return {
     code,
     players,
@@ -149,5 +156,6 @@ export function useScreenRoom(): ScreenRoom {
     setActiveSlot,
     onGameEvent,
     sendCue,
+    kick,
   };
 }

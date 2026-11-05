@@ -6,7 +6,7 @@ import type { ScreenGameProps } from '../../contract';
 import { parseThrowEvent } from '../shared/events';
 import { BowlingSandbox, type ThrowSubscriber } from './BowlingSandbox';
 
-export function Screen({ players, subscribeEvents, setActiveSlot, sendCue, onEndGame }: ScreenGameProps) {
+export function Screen({ players, subscribeEvents, setActiveSlot, sendCue, onEndGame, isPaused }: ScreenGameProps) {
   const subscribeThrows = useCallback<ThrowSubscriber>(
     (cb) =>
       subscribeEvents((slot, e) => {
@@ -34,6 +34,7 @@ export function Screen({ players, subscribeEvents, setActiveSlot, sendCue, onEnd
       onActivePlayerChange={onActivePlayerChange}
       onShot={onShot}
       onEndGame={onEndGame}
+      isPaused={isPaused}
     />
   );
 }

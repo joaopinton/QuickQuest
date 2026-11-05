@@ -41,6 +41,8 @@ export interface ControllerConnection {
   onLayout(cb: (layout: ControllerLayoutInfo) => void): () => void;
   /** Cambi di stato dopo il join: benvenuto in ritardo (demo → live) o schermo perso. */
   onStatus(cb: (s: LinkStatus) => void): () => void;
+  /** Lo schermo ci ha tolto dalla stanza: la connessione è già chiusa e il token dimenticato. */
+  onKicked(cb: () => void): () => void;
   leave(): void;
   close(): void;
 }
@@ -85,6 +87,7 @@ export function createControllerConnection(code: string, transport: ClientTransp
   const cueListeners = new Set<(cue: Cue) => void>();
   const layoutListeners = new Set<(layout: ControllerLayoutInfo) => void>();
   const statusListeners = new Set<(s: LinkStatus) => void>();
+  const kickedListeners = new Set<() => void>();
   let heartbeat: ReturnType<typeof setInterval> | null = null;
   let mode: 'live' | 'demo' | 'lost' | null = null;
   let slot: SlotId = 'P1';
@@ -157,12 +160,26 @@ export function createControllerConnection(code: string, transport: ClientTransp
         if (mode === 'lost') setStatus({ mode: 'live', slot });
         break;
       case 'error':
+        if (msg.p.code === 'KICKED') {
+          // niente rientro automatico: senza token un nuovo hello sarebbe un giocatore nuovo
+          writeToken(code, null);
+          kickedListeners.forEach((cb) => cb());
+          shutdown();
+          break;
+        }
         pendingJoin?.({ ok: false, code: msg.p.code });
         break;
       default:
         break;
     }
   });
+
+  function shutdown() {
+    isClosed = true;
+    pendingJoin?.({ ok: false, code: 'ROOM_NOT_FOUND' });
+    if (heartbeat) clearInterval(heartbeat);
+    transport.close();
+  }
 
   return {
     join(capabilities) {
@@ -217,15 +234,16 @@ export function createControllerConnection(code: string, transport: ClientTransp
       statusListeners.add(cb);
       return () => statusListeners.delete(cb);
     },
+    onKicked(cb) {
+      kickedListeners.add(cb);
+      return () => kickedListeners.delete(cb);
+    },
     leave() {
       if (mode === 'live') send({ t: 'bye', p: {} });
       writeToken(code, null);
     },
     close() {
-      isClosed = true;
-      pendingJoin?.({ ok: false, code: 'ROOM_NOT_FOUND' });
-      if (heartbeat) clearInterval(heartbeat);
-      transport.close();
+      shutdown();
     },
   };
 }

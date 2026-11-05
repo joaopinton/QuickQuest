@@ -102,7 +102,7 @@ export function Pad({
   let statusBadge = <span class="ctl-demo">📶 {t('controller.readySent')}</span>;
   if (isLost) {
     statusBadge = (
-      <span class="ctl-demo" style={{ background: 'var(--danger-100)', color: 'var(--danger-700)' }}>
+      <span class="ctl-demo" style={{ background: 'color-mix(in oklab, var(--danger-500) 14%, #fff)', color: 'color-mix(in oklab, var(--danger-500) 70%, var(--ink-900))' }}>
         {t('controller.reconnecting')}
       </span>
     );

@@ -1,13 +1,25 @@
-// Pulsante per lo schermo intero, uguale per tutti i giochi: lo mette la lobby sopra la scena.
-// Anche il tasto F. Dove il browser non lo permette (iPhone) il pulsante non c'è.
+// Schermo intero per lo schermo condiviso: hook riusabile (pulsante, menù di pausa) e pulsante con
+// la scorciatoia F. Dove il browser non lo permette (iPhone) il pulsante non c'è.
 import { t } from '@quickquest/ui';
 import { useEffect, useState } from 'preact/hooks';
 import {
   isFullscreen, isFullscreenShortcut, isFullscreenSupported, onFullscreenChange, toggleFullscreen, type FullscreenDoc,
 } from '../fullscreen';
-import './fullscreen-toggle.css';
+import './screen-dock.css';
 
 const doc = document as unknown as FullscreenDoc;
+
+export interface FullscreenControl {
+  readonly isSupported: boolean;
+  readonly isOn: boolean;
+  toggle(): void;
+}
+
+export function useFullscreen(): FullscreenControl {
+  const [isOn, setOn] = useState(() => isFullscreen(doc));
+  useEffect(() => onFullscreenChange(doc, () => setOn(isFullscreen(doc))), []);
+  return { isSupported: isFullscreenSupported(doc), isOn, toggle: () => void toggleFullscreen(doc) };
+}
 
 function ExpandIcon() {
   return (
@@ -25,11 +37,9 @@ function CollapseIcon() {
   );
 }
 
+/** Pulsante tondo per il dock in basso a destra; ascolta anche il tasto F. Montarne uno solo. */
 export function FullscreenToggle() {
-  const [isOn, setOn] = useState(() => isFullscreen(doc));
-  const isSupported = isFullscreenSupported(doc);
-
-  useEffect(() => onFullscreenChange(doc, () => setOn(isFullscreen(doc))), []);
+  const { isSupported, isOn, toggle } = useFullscreen();
 
   useEffect(() => {
     if (!isSupported) return;
@@ -47,11 +57,11 @@ export function FullscreenToggle() {
   return (
     <button
       type="button"
-      class={`fs-toggle ${isOn ? 'is-on' : ''}`}
+      class={`dock-btn ${isOn ? 'is-on' : ''}`}
       aria-label={label}
       aria-pressed={isOn}
       title={label}
-      onClick={() => void toggleFullscreen(doc)}
+      onClick={toggle}
     >
       {isOn ? <CollapseIcon /> : <ExpandIcon />}
     </button>

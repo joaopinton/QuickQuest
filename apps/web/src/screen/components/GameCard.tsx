@@ -1,11 +1,12 @@
 // Card di un gioco: metà superiore nell'accento del gioco, metà inferiore bianca (docs/08 § 4).
 import type { GameMeta } from '@quickquest/games';
-import { GameIcon, Pupo, t } from '@quickquest/ui';
+import { GameIcon, t } from '@quickquest/ui';
 import type { JSX } from 'preact';
 
 export interface GameCardProps {
   game: GameMeta;
-  isFeatured?: boolean;
+  /** Nella lobby: si può avviare adesso. */
+  isPlayable?: boolean;
   onOpen?: (game: GameMeta) => void;
   isSelected?: boolean;
 }
@@ -15,19 +16,16 @@ export function playersLabel(g: GameMeta): string {
   return g.players.max === 1 ? t('games.playersOne') : t('games.playersExact', { n: g.players.max });
 }
 
-export function GameCard({ game, isFeatured = false, onOpen, isSelected = false }: GameCardProps) {
+export function GameCard({ game, isPlayable = false, onOpen, isSelected = false }: GameCardProps) {
   const style = { '--accent': game.accent } as JSX.CSSProperties;
-  const status = game.status === 'soon' ? t('games.statusSoon') : t('games.statusLater');
+  let status = game.status === 'soon' ? t('games.statusSoon') : t('games.statusLater');
+  if (isPlayable) status = t('games.statusPlay');
+  const badge = isPlayable ? 'play' : game.status;
   const body = (
     <>
       <div class="game-card__art" data-game={game.id}>
-        <span class={`game-card__badge game-card__badge--${game.status}`}>{status}</span>
-        <span class="game-card__icon"><GameIcon id={game.id} size={isFeatured ? '42%' : '54%'} /></span>
-        {isFeatured && game.id === 'bowling' && (
-          <span class="game-card__mascot" aria-hidden="true">
-            <Pupo color="#FFD23F" accessory="band" ball mood="happy" motion="breathe" size="100%" />
-          </span>
-        )}
+        <span class={`game-card__badge game-card__badge--${badge}`}>{status}</span>
+        <span class="game-card__icon"><GameIcon id={game.id} size="54%" /></span>
       </div>
       <div class="game-card__body">
         <h3 class="game-card__name">{game.name}</h3>
@@ -40,7 +38,7 @@ export function GameCard({ game, isFeatured = false, onOpen, isSelected = false 
       </div>
     </>
   );
-  const cls = `game-card ${isFeatured ? 'game-card--featured' : ''} ${isSelected ? 'is-selected' : ''}`;
+  const cls = `game-card ${isSelected ? 'is-selected' : ''}`;
   if (!onOpen) return <article class={cls} style={style}>{body}</article>;
   return (
     <button type="button" class={cls} style={style} onClick={() => onOpen(game)} aria-label={t('games.openDetails', { name: game.name })}>

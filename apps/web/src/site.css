@@ -212,7 +212,6 @@ button.game-card { cursor: pointer; }
 .game-card:hover, .game-card:focus-visible { transform: translateY(-6px) rotate(-2deg); box-shadow: 0 12px 0 color-mix(in oklab, var(--accent) 70%, var(--ink-900)), var(--shadow-lift); }
 .game-card:nth-child(even):hover { transform: translateY(-6px) rotate(2deg); }
 .game-card:focus-visible { outline: 4px solid var(--accent-400); outline-offset: 4px; border-radius: var(--radius-lg); }
-.game-card--featured { grid-column: span 2; grid-row: span 2; }
 .game-card__art {
   position: relative; display: grid; place-items: center; aspect-ratio: 16 / 10; overflow: hidden; isolation: isolate;
   /* faretto morbido dall'alto */
@@ -221,7 +220,6 @@ button.game-card { cursor: pointer; }
 .game-card__art::before { content: ""; position: absolute; inset: auto 0 0; height: 38%; z-index: -1; }
 .game-card__icon { display: grid; place-items: center; width: 100%; transition: transform var(--dur-slow) var(--ease-spring); filter: drop-shadow(0 8px 0 rgb(var(--shadow-tint) / 0.22)); }
 .game-card:hover .game-card__icon, .game-card:focus-visible .game-card__icon { transform: translateY(-6px) scale(1.06); }
-.game-card__mascot { position: absolute; left: 9%; bottom: 8%; width: 22%; max-width: 170px; }
 /* Ogni gioco ha il suo "pavimento": pista, sabbia, parquet, prato, piastrelle, pedana (docs/07 § 4). */
 [data-game="bowling"]::before {
   height: 46%;
@@ -256,17 +254,16 @@ button.game-card { cursor: pointer; }
   height: 24%; bottom: 12%;
   background: linear-gradient(#4A5878, #4A5878) 0 50% / 100% 70% no-repeat, linear-gradient(90deg, transparent 0 calc(50% - 2px), #fff calc(50% - 2px) calc(50% + 2px), transparent 0);
 }
-.game-card--featured .game-card__art { aspect-ratio: auto; flex: 1; min-height: 260px; }
 .game-card__badge {
   position: absolute; top: var(--space-4); left: var(--space-4);
   padding: var(--space-1) var(--space-3); border-radius: var(--radius-pill);
   font-weight: 800; font-size: 0.85rem; background: rgb(255 255 255 / 0.9); color: var(--ink-900);
 }
+.game-card__badge--play { background: var(--grass-400); box-shadow: 0 3px 0 var(--grass-600); }
 .game-card__badge--soon { background: var(--accent-400); box-shadow: 0 3px 0 var(--accent-600); animation: wiggle 2.8s ease-in-out infinite; }
 @keyframes wiggle { 0%, 80%, 100% { transform: rotate(0); } 85% { transform: rotate(-6deg); } 90% { transform: rotate(5deg); } 95% { transform: rotate(-2deg); } }
 .game-card__body { padding: var(--space-4) var(--space-6) var(--space-6); display: grid; gap: var(--space-1); }
 .game-card__name { font-size: 1.5rem; }
-.game-card--featured .game-card__name { font-size: var(--text-h3); }
 .game-card__tagline { color: var(--ink-600); font-size: var(--text-small); }
 .game-card__meta { display: flex; gap: var(--space-2); color: var(--ink-600); font-size: 0.9rem; font-weight: 800; margin-top: var(--space-2); }
 
@@ -413,7 +410,6 @@ button.game-card { cursor: pointer; }
 /* ---------- responsive ---------- */
 @media (max-width: 1000px) {
   .bento { grid-template-columns: repeat(2, 1fr); }
-  .game-card--featured { grid-row: auto; }
   .steps__list, .tips { grid-template-columns: 1fr; }
   .step--2, .step--3 { margin-top: var(--space-6); }
   .gesture__card, .big-step { grid-template-columns: 1fr; }
@@ -430,7 +426,6 @@ button.game-card { cursor: pointer; }
   .confetti { display: none; }
   .site-nav__link { display: none; }
   .site-footer__pupi { left: 1rem; }
-  .game-card__mascot { width: 26%; }
   .site-nav__cta { display: none; }
   .hero { grid-template-columns: 1fr; min-height: 0; padding-top: 0; }
   .hero__art { order: -1; margin-inline: -1rem; }
@@ -443,7 +438,6 @@ button.game-card { cursor: pointer; }
   .hero__phone-title { font-size: 1.6rem; }
   .hero__phone-card p { color: var(--ink-600); font-size: var(--text-small); }
   .bento { grid-template-columns: 1fr; }
-  .game-card--featured { grid-column: auto; }
   .requirement__card { grid-template-columns: 1fr; padding: var(--space-8); gap: var(--space-6); justify-items: center; text-align: center; }
   .gesture__card { padding: var(--space-8); }
   .cta-band__inner { padding: var(--space-8); flex-direction: column; text-align: center; gap: var(--space-6); }

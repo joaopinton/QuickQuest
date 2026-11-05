@@ -40,7 +40,7 @@ export function Games() {
       </section>
       <section class="section">
         <div class="bento bento--catalog">
-          {GAMES.map((g, i) => <GameCard key={g.id} game={g} isFeatured={i === 0} onOpen={setOpen} />)}
+          {GAMES.map((g) => <GameCard key={g.id} game={g} onOpen={setOpen} />)}
         </div>
       </section>
       <Dialog isOpen={open !== null} onClose={() => setOpen(null)} title={open?.name ?? ''} accent={open?.accent}>

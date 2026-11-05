@@ -31,6 +31,8 @@ export interface BowlingSandboxProps {
   readonly onActivePlayerChange?: (playerId: string | null) => void;
   /** Esito del tiro appena chiuso, per il telefono di chi ha tirato. */
   readonly onShot?: (playerId: string, text: string, isGood: boolean) => void;
+  /** Pausa: fisica, scena e tempo del tiro si fermano. */
+  readonly isPaused?: boolean;
 }
 
 const TOAST_MS = 1700; // quanto resta in vista l'esito prima che lo sweeper sistemi il rack
@@ -74,7 +76,7 @@ function scoreboardFor(game: GameState, players: readonly BowlingPlayer[], messa
   };
 }
 
-export function BowlingSandbox({ onEndGame, players: playersProp, subscribeThrows, onActivePlayerChange, onShot }: BowlingSandboxProps) {
+export function BowlingSandbox({ onEndGame, players: playersProp, subscribeThrows, onActivePlayerChange, onShot, isPaused = false }: BowlingSandboxProps) {
   // Giocatori collegati ora (per la schermata iniziale) e formazione fissata a inizio partita
   const lobbyPlayers = playersProp && playersProp.length > 0 ? playersProp : DEFAULT_PLAYERS;
   const { game, roster: players, lastShot, start, record, reset } = useBowlingGame();
@@ -89,6 +91,8 @@ export function BowlingSandbox({ onEndGame, players: playersProp, subscribeThrow
   const onShotRef = useRef(onShot);
   const strikeFxPlayedRef = useRef(false); // effetto 3D già partito per il tiro in corso
   const shooterColorRef = useRef('#8E5BFF');
+  const pausedRef = useRef(isPaused);
+  pausedRef.current = isPaused;
   onShotRef.current = onShot;
 
   const [pinStatuses, setPinStatuses] = useState<BowlingPinStatus[]>(INITIAL_PINS);
@@ -190,7 +194,19 @@ export function BowlingSandbox({ onEndGame, players: playersProp, subscribeThrow
       sc.setScoreboard({ playerName: 'Benvenuti!', color: '#8E5BFF', frame: 1, frameCount: 10, roll: 1, total: 0 });
 
       let lastTime = performance.now();
+      let pausedSince: number | null = null;
       const loop = (now: number) => {
+        // In pausa nulla avanza; alla ripresa il tiro in corso non conta il tempo passato fermo
+        if (pausedRef.current) {
+          pausedSince ??= now;
+          lastTime = now;
+          animFrame = requestAnimationFrame(loop);
+          return;
+        }
+        if (pausedSince !== null) {
+          if (throwStartRef.current !== null) throwStartRef.current += now - pausedSince;
+          pausedSince = null;
+        }
         const dt = Math.min((now - lastTime) / 1000, 0.1);
         lastTime = now;
 

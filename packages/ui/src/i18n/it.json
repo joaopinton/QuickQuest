@@ -66,6 +66,7 @@
     "lead": "Ogni gioco ha un gesto vero e una fisica vera. Arrivano uno alla volta, a partire dal bowling.",
     "statusSoon": "Presto!",
     "statusLater": "In arrivo",
+    "statusPlay": "Si gioca!",
     "players": "{min}–{max} giocatori",
     "playersOne": "1 giocatore",
     "minutes": "circa {n} min",
@@ -103,7 +104,23 @@
     "gameRunningLead": "Guarda lo schermo! Muovi il controller per giocare.",
     "endGame": "Torna alla lobby",
     "fullscreenEnter": "Schermo intero (F)",
-    "fullscreenExit": "Esci dallo schermo intero (F)"
+    "fullscreenExit": "Esci dallo schermo intero (F)",
+    "kick": "Togli",
+    "kickConfirm": "Sicuro?",
+    "kickLabel": "Togli {name} dalla stanza",
+    "kickToast": "{name} è stato tolto dalla stanza"
+  },
+  "pause": {
+    "button": "Pausa (P)",
+    "title": "Pausa",
+    "lead": "I telefoni aspettano: nessun tiro finché non riprendi.",
+    "resume": "Riprendi",
+    "fullscreenOn": "Schermo intero",
+    "fullscreenOff": "Esci dallo schermo intero",
+    "toLobby": "Torna alla lobby",
+    "leaveRoom": "Esci e chiudi la stanza",
+    "cuePaused": "Pausa",
+    "cueResumed": "Si riprende!"
   },
   "code": {
     "title": "Inserisci il codice",
@@ -148,6 +165,7 @@
     "connecting": "Mi collego alla stanza…",
     "roomFull": "La stanza è piena: ci sono già 4 giocatori.",
     "roomGone": "Questa stanza non c'è più. Chiedi il nuovo codice a chi ha lo schermo.",
+    "kicked": "Lo schermo ti ha tolto dalla stanza. Se vuoi rientrare, chiedi il codice e ricollegati.",
     "reconnecting": "Connessione persa, mi ricollego…",
     "slotTitle": "Giocatore {slot}",
     "othersLabel": "In stanza",
