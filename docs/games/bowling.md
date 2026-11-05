@@ -107,7 +107,8 @@ Lo schermo **valida e limita** ogni campo prima di usarlo.
 - **Canaline**: collider semicircolari. La palla che ci entra viene "guidata" fino in fondo e non colpisce birilli.
 - **Lancio**: la palla parte dalla posizione della mano del Pupo alla linea di fallo con:
   - velocità lineare = `speed` nella direzione della freccia di mira + `dirOffset`;
-  - velocità angolare = `revRate` da 10 a 35 rad/s attorno a un asse orizzontale ruotato fino a 45° dall'asse di rotolamento, entrambi proporzionali a `|spin|` (`releaseAngularVelocity`). La palla parte in slittamento (giri < v/R) e l'attrito la porta al rotolamento puro nel back end.
+  - **linea di gioco** (`playingLine`): come un giocatore vero, chi fa hook parte dal lato da cui la palla rientra (fino a 29 cm dal centro) e tira leggermente verso l'esterno; la tabella è tarata in simulazione perché col tiro normale (7,5 m/s) e mira dritta la palla entri in tasca (7 cm dal birillo 1) con 0–3° d'ingresso. Più lenta curva di più (colpo alto), più veloce di meno (colpo leggero), la mira del telefono si somma. Mancini (spin < 0) a specchio;
+  - velocità angolare = `revRate` da 10 a 27 rad/s attorno a un asse orizzontale ruotato fino a 30,6° dall'asse di rotolamento, entrambi proporzionali a `|spin|` (`releaseAngularVelocity`). La palla parte in slittamento (giri < v/R) e l'attrito la porta al rotolamento puro nel back end.
 - **Sottopassi**: 4 (240 Hz) durante la fase Resolve.
 - **Conteggio**: dopo che la palla ha superato i birilli o è caduta nel pozzetto si attende che tutti i birilli siano in *sleep*, con un **timeout di 4 s**. Un birillo è **abbattuto** se è inclinato oltre 25°, se si è spostato di oltre 12 cm dal suo spot o se è caduto nel pozzetto.
 - **Spare**: tra il primo e il secondo tiro lo sweeper rimuove i birilli abbattuti e quelli in piedi tornano esattamente nel loro spot (sono "teletrasportati" sotto la copertura del pinsetter, come nel reale).
@@ -142,6 +143,8 @@ Lo schermo **valida e limita** ogni campo prima di usarlo.
 | **Reazione** | Dopo il conteggio | Primo piano del Pupo che esulta o si dispera, 1,5 s |
 
 Le transizioni usano easing morbidi; nessun taglio brusco, salvo quello verso il replay.
+
+**Festa dello strike** (implementata): appena cade il decimo birillo del primo tiro, nella scena (`strike-fx.ts`) esplodono coriandoli luminosi dal pin deck, una luce col colore del giocatore lampeggia, un'onda d'urto si allarga sulla pista e la camera trema per mezzo secondo (non con "riduci movimento"). A punteggio contato, al posto del banner normale compare `StrikeBurst`: lampo, raggi rotanti, due onde d'urto, scintille e "STRIKE!" lettera per lettera, poi il totale. Il rack resta in vista 2,7 s invece di 1,7. Replay e primo piano del Pupo non ci sono ancora.
 
 ---
 

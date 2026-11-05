@@ -12,6 +12,7 @@ import {
 } from './physics';
 import { createBowlingEnvironment, type ScoreboardInfo } from './environment';
 import { createPinGeometry, PIN_HEIGHT } from './pin-geometry';
+import { createStrikeFx } from './strike-fx';
 
 export interface BowlingScene {
   readonly scene: THREE.Scene;
@@ -22,6 +23,8 @@ export interface BowlingScene {
   setScoreboard(info: ScoreboardInfo): void;
   setBallColor(color: string): void;
   playSweep(): void;
+  /** Festa dello strike nella scena: coriandoli, lampo col colore del giocatore, camera che trema. */
+  playStrike(color: string): void;
   resize(width: number, height: number): void;
   dispose(): void;
 }
@@ -217,6 +220,8 @@ export function createBowlingScene(
   hole3.rotation.x = Math.PI / 4;
   ballMesh.add(hole3);
 
+  const strikeFx = createStrikeFx(scene);
+
   // Regia della telecamera (dietro il pupo -> segui palla -> pin cam, docs/games/bowling.md § 6)
   const initialCamPos = new THREE.Vector3(0, 1.15, -1.9);
   const initialCamTarget = new THREE.Vector3(0, 0.2, HEADPIN_Z - 3);
@@ -245,6 +250,7 @@ export function createBowlingScene(
     setScoreboard: (info) => environment.setScoreboard(info),
     setBallColor: (color) => ballMat.color.set(color),
     playSweep: () => environment.playSweep(),
+    playStrike: (color) => strikeFx.play(color),
 
     update(dt: number) {
       // 1. Sincronizzazione visiva dei 10 birilli dalla fisica Rapier
@@ -290,10 +296,15 @@ export function createBowlingScene(
       }
 
       environment.update(dt);
+      // tremolio dello strike: solo per questo frame, la regia resta dov'era
+      const shake = strikeFx.update(dt);
+      camera.position.add(shake);
       renderer.render(scene, camera);
+      camera.position.sub(shake);
     },
 
     dispose() {
+      strikeFx.dispose();
       environment.dispose();
       renderer.dispose();
       laneGeo.dispose();

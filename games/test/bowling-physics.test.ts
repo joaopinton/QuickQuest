@@ -9,6 +9,9 @@ import {
   segmentDistance,
   HEADPIN_Z,
   LANE_LENGTH,
+  LINE_SPEED,
+  playingLine,
+  POCKET_X,
   LANE_WIDTH,
   OIL_LENGTH,
 } from '../bowling/screen/physics';
@@ -341,23 +344,69 @@ describe('Bowling Physics & Geometry (USBC Specs)', () => {
       expect(slip()).toBeGreaterThan(4); // rilascio in slittamento
       while (phys.ballBody.translation().z < HEADPIN_Z - 1) phys.step(1 / 60);
       expect(slip()).toBeLessThan(0.1); // nel back end rotola
-      expect(phys.ballBody.linvel().x).toBeLessThan(-0.2); // e ha curvato verso sinistra
+      expect(phys.ballBody.linvel().x).toBeLessThan(-0.1); // e ha curvato verso sinistra
     } finally {
       phys.dispose();
     }
   });
 
-  test('un tiro in tasca con hook fa strike', async () => {
+  /** Tira sulla linea dello spin e misura dove e con che angolo arriva al birillo 1, e i birilli giù. */
+  async function throwOnLine(phys: Awaited<ReturnType<typeof createBowlingPhysicsWorld>>, spin: number, speed = LINE_SPEED, aim = 0) {
+    const line = playingLine(spin);
+    phys.resetPins();
+    phys.launchBall({ startX: line.startX, dir: line.dir + aim, speed, spin });
+    let hitX = Number.NaN;
+    let angleDeg = Number.NaN;
+    for (let i = 0; i < 360; i++) {
+      phys.step(1 / 60);
+      const b = phys.ballBody.translation();
+      if (Number.isNaN(hitX) && b.z > HEADPIN_Z - 0.3) {
+        const v = phys.ballBody.linvel();
+        hitX = b.x;
+        angleDeg = (Math.atan2(v.x, v.z) * 180) / Math.PI;
+      }
+    }
+    return { hitX, angleDeg, down: phys.getPinStatuses().filter((p) => p.knockedDown).length };
+  }
+
+  test('tiro normale sulla linea: la palla arriva in tasca e fa strike, destri e mancini', async () => {
     const phys = await createBowlingPhysicsWorld();
     try {
-      let strikes = 0;
-      for (const dir of [0.0125, 0.015, 0.0175]) {
-        phys.resetPins();
-        phys.launchBall({ startX: 0, dir, speed: 9, spin: 0.6 });
-        for (let i = 0; i < 360; i++) phys.step(1 / 60);
-        if (phys.getPinStatuses().every((p) => p.knockedDown)) strikes++;
+      for (const spin of [0, 0.3, 0.8, 1, -1]) {
+        const r = await throwOnLine(phys, spin);
+        expect(Math.abs(r.hitX - Math.sign(spin || 1) * POCKET_X)).toBeLessThan(0.015);
+        expect(r.down).toBe(10);
       }
-      expect(strikes).toBeGreaterThanOrEqual(2);
+    } finally {
+      phys.dispose();
+    }
+  });
+
+  test('più spin = più angolo d’ingresso; più lenta = più curva', async () => {
+    const phys = await createBowlingPhysicsWorld();
+    try {
+      const straight = await throwOnLine(phys, 0);
+      const medium = await throwOnLine(phys, 0.5);
+      const strong = await throwOnLine(phys, 1);
+      expect(Math.abs(straight.angleDeg)).toBeLessThan(0.2);
+      expect(Math.abs(medium.angleDeg)).toBeGreaterThan(1);
+      expect(Math.abs(strong.angleDeg)).toBeGreaterThan(Math.abs(medium.angleDeg) + 1);
+      // Hook verso -x: la palla lenta ha più tempo per curvare, quella veloce arriva più a destra
+      const slow = await throwOnLine(phys, 0.8, LINE_SPEED - 1);
+      const fast = await throwOnLine(phys, 0.8, LINE_SPEED + 1);
+      expect(slow.hitX).toBeLessThan(POCKET_X - 0.05);
+      expect(fast.hitX).toBeGreaterThan(POCKET_X + 0.05);
+    } finally {
+      phys.dispose();
+    }
+  });
+
+  test('la mira dal telefono sposta il colpo: lontano dalla tasca niente strike', async () => {
+    const phys = await createBowlingPhysicsWorld();
+    try {
+      const wide = await throwOnLine(phys, 0.5, LINE_SPEED, 0.02); // ~1° a destra: 37 cm sui birilli
+      expect(wide.hitX).toBeGreaterThan(POCKET_X + 0.25);
+      expect(wide.down).toBeLessThan(10);
     } finally {
       phys.dispose();
     }

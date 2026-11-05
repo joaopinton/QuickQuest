@@ -38,8 +38,8 @@ const E_LANE = 0.0;
 
 // Rilascio: rev rate e rotazione dell'asse crescono con |spin| (docs § 3.3)
 const REV_RATE_MIN = 10; // rad/s, palla dritta (~95 rpm)
-const REV_RATE_MAX = 35; // rad/s, cranker (~335 rpm)
-const AXIS_ROTATION_MAX = (45 * Math.PI) / 180;
+const REV_RATE_MAX = 27; // rad/s, hook forte (~260 rpm): oltre la palla non resta in pista
+const AXIS_ROTATION_MAX = (30.6 * Math.PI) / 180;
 
 // Resistenza al rotolamento di un birillo sdraiato sul pin deck (1/s): agisce solo a contatto
 const PIN_ROLLING_RESISTANCE = 1.5;
@@ -99,6 +99,36 @@ function ringsToPoints(rings: readonly (readonly [number, number])[]): Float32Ar
     }
   }
   return pts;
+}
+
+/** Tasca: centro palla a ~7 cm dal birillo 1, fra l'1 e il 3 (destri, hook verso -x) o l'1 e il 2. */
+export const POCKET_X = 0.07;
+/** Velocità del tiro "normale" per cui è tarata la linea di gioco (motion: NORMAL_SPEED). */
+export const LINE_SPEED = 7.5;
+const STANCE_PER_SPIN = 0.225; // m: più hook, più ci si sposta verso il bordo da cui la palla rientra
+/**
+ * Angolo verso l'esterno della linea per |spin| = 0, 0.1 … 1 (rad), trovato in simulazione: a
+ * LINE_SPEED e mira 0 la palla esce verso il bordo, l'hook la riporta in tasca con 0–3° d'ingresso.
+ */
+const LINE_OUT_DIR = [0, -0.0001, 0.0005, 0.0013, 0.0027, 0.0049, 0.0074, 0.0098, 0.0119, 0.0138, 0.0155];
+
+export interface PlayingLine {
+  readonly startX: number;
+  readonly dir: number;
+}
+
+/**
+ * Linea di gioco per uno spin: come un giocatore vero, chi fa hook si mette dalla parte da cui la
+ * palla rientra e tira verso l'esterno. Col tiro normale e mira dritta si arriva in tasca; più
+ * lenti la palla curva di più (colpo alto), più veloci di meno (colpo leggero), e la mira sposta.
+ */
+export function playingLine(spin: number): PlayingLine {
+  const a = Math.min(1, Math.abs(spin));
+  const side = spin < 0 ? -1 : 1;
+  const k = a * (LINE_OUT_DIR.length - 1);
+  const i = Math.min(LINE_OUT_DIR.length - 2, Math.floor(k));
+  const out = LINE_OUT_DIR[i]! + (LINE_OUT_DIR[i + 1]! - LINE_OUT_DIR[i]!) * (k - i);
+  return { startX: side * (POCKET_X + STANCE_PER_SPIN * a), dir: side * out };
 }
 
 /**

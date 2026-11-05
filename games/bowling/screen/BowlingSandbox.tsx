@@ -9,7 +9,8 @@ import { Leaderboard } from './hud/Leaderboard';
 import { Podium } from './hud/Podium';
 import { Scorecard } from './hud/Scorecard';
 import { ShotToast } from './hud/ShotToast';
-import { createBowlingPhysicsWorld, type PhysicsWorldState } from './physics';
+import { StrikeBurst } from './hud/StrikeBurst';
+import { createBowlingPhysicsWorld, playingLine, type PhysicsWorldState } from './physics';
 import { isGameOver, liveTotal, turnInfo, type GameState } from './rules';
 import { createBowlingScene, type BowlingScene } from './scene';
 import { DEFAULT_PLAYERS, useBowlingGame, type BowlingPlayer, type ShotReport } from './useBowlingGame';
@@ -33,6 +34,7 @@ export interface BowlingSandboxProps {
 }
 
 const TOAST_MS = 1700; // quanto resta in vista l'esito prima che lo sweeper sistemi il rack
+const STRIKE_TOAST_MS = 2700; // lo strike si festeggia un po' più a lungo
 const FULL_BOARD_MS = 2600; // tabellone completo al cambio di giocatore
 const THROW_TIMEOUT_MS = 12000;
 
@@ -85,6 +87,8 @@ export function BowlingSandbox({ onEndGame, players: playersProp, subscribeThrow
   const timersRef = useRef<number[]>([]);
   const finishThrowRef = useRef<(statuses: BowlingPinStatus[]) => void>(() => {});
   const onShotRef = useRef(onShot);
+  const strikeFxPlayedRef = useRef(false); // effetto 3D già partito per il tiro in corso
+  const shooterColorRef = useRef('#8E5BFF');
   onShotRef.current = onShot;
 
   const [pinStatuses, setPinStatuses] = useState<BowlingPinStatus[]>(INITIAL_PINS);
@@ -128,6 +132,10 @@ export function BowlingSandbox({ onEndGame, players: playersProp, subscribeThrow
     }
 
     const { next, report, nextTurn, isOver } = result;
+    const holdMs = report.outcome === 'strike' ? STRIKE_TOAST_MS : TOAST_MS;
+    // strike non visto durante il tiro (es. birillo caduto dopo l'ultimo controllo): si festeggia ora
+    if (report.outcome === 'strike' && !strikeFxPlayedRef.current) sc.playStrike(report.player.color);
+    strikeFxPlayedRef.current = true;
     const pinsText = `${report.pins} birill${report.pins === 1 ? 'o' : 'i'}`;
     onShotRef.current?.(report.player.id, SCOREBOARD_MESSAGE[report.outcome] ?? pinsText, report.outcome === 'strike' || report.outcome === 'spare');
     // Il tabellone 3D mostra l'esito del tiro appena fatto finché lo sweeper non sistema il rack
@@ -142,7 +150,7 @@ export function BowlingSandbox({ onEndGame, players: playersProp, subscribeThrow
     });
 
     if (isOver) {
-      later(() => setIsBusy(false), TOAST_MS);
+      later(() => setIsBusy(false), holdMs);
       return;
     }
 
@@ -157,7 +165,7 @@ export function BowlingSandbox({ onEndGame, players: playersProp, subscribeThrow
         setFullBoardOpen(true);
         later(() => setFullBoardOpen(false), FULL_BOARD_MS);
       }
-    }, TOAST_MS);
+    }, holdMs);
   };
 
   // Inizializzazione fisica Rapier3D e scena Three.js
@@ -187,6 +195,12 @@ export function BowlingSandbox({ onEndGame, players: playersProp, subscribeThrow
         lastTime = now;
 
         phys.step(dt);
+        // Strike: all'istante in cui cade l'ultimo dei 10 birilli parte la festa nella scena
+        if (throwStartRef.current !== null && !strikeFxPlayedRef.current && standingBeforeRef.current === 10
+          && phys.getPinStatuses().every((p) => p.knockedDown)) {
+          strikeFxPlayedRef.current = true;
+          sc.playStrike(shooterColorRef.current);
+        }
         sc.update(dt);
 
         if (phys.isBallActive()) {
@@ -269,8 +283,12 @@ export function BowlingSandbox({ onEndGame, players: playersProp, subscribeThrow
     // throwStartRef è sincrono: due lanci nello stesso frame (prima del re-render) ne valgono uno
     if (!phys || !canThrow || throwStartRef.current !== null) return;
 
-    const releaseData: BowlingReleaseData = { startX: 0, dir: release.dir, speed: release.speed, spin: release.spin };
+    // Linea di gioco dallo spin (posizione e uscita verso il bordo), la mira del telefono si somma
+    const line = playingLine(release.spin);
+    const releaseData: BowlingReleaseData = { startX: line.startX, dir: line.dir + release.dir, speed: release.speed, spin: release.spin };
     standingBeforeRef.current = phys.getPinStatuses().filter((p) => !p.knockedDown).length;
+    strikeFxPlayedRef.current = false;
+    shooterColorRef.current = current?.color ?? shooterColorRef.current;
     phys.launchBall(releaseData);
     setIsBusy(true);
     // La fine del tiro è rilevata nel loop di simulazione (palla uscita + birilli fermi)
@@ -382,7 +400,9 @@ export function BowlingSandbox({ onEndGame, players: playersProp, subscribeThrow
       </div>
 
       {/* Esito dell'ultimo tiro */}
-      {lastShot && <ShotToast key={lastShot.seq} shot={lastShot} />}
+      {lastShot && (lastShot.outcome === 'strike'
+        ? <StrikeBurst key={lastShot.seq} shot={lastShot} />
+        : <ShotToast key={lastShot.seq} shot={lastShot} />)}
 
       {/* Invito al lancio: si tira solo col gesto dal telefono del giocatore di turno */}
       {game && !isOver && current && (
