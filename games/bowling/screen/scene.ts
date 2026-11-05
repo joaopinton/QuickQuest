@@ -168,6 +168,7 @@ export function createBowlingScene(
 
   // ---------- Birilli ----------
   const pinGeometry = createPinGeometry();
+  const pinBaseOffset = new THREE.Vector3();
   const pinMaterial = new THREE.MeshStandardMaterial({
     vertexColors: true,
     roughness: 0.18, // finitura smaltata lucida
@@ -257,8 +258,11 @@ export function createBowlingScene(
         const pos = body.translation();
         const rot = body.rotation();
 
-        mesh.position.set(pos.x, pos.y - PIN_HEIGHT / 2, pos.z);
+        // L'origine della mesh è alla base del birillo, quella del corpo a metà altezza:
+        // l'offset va ruotato col birillo, altrimenti un birillo inclinato appare sfalsato.
         mesh.quaternion.set(rot.x, rot.y, rot.z, rot.w);
+        pinBaseOffset.set(0, -PIN_HEIGHT / 2, 0).applyQuaternion(mesh.quaternion);
+        mesh.position.set(pos.x + pinBaseOffset.x, pos.y + pinBaseOffset.y, pos.z + pinBaseOffset.z);
       }
 
       // 2. Sincronizzazione visiva della palla

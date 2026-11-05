@@ -230,3 +230,18 @@ body.is-controller { transition: background-color var(--dur-slow) var(--ease-out
   display: block; height: 100%; background: var(--slot); transform-origin: left center; transform: scaleX(0);
 }
 .ctl-meter__value { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--ink-700); min-width: 6.5ch; text-align: right; }
+.ctl-meter.is-still .ctl-meter__value { color: var(--success-500); }
+
+/* Overlay di debug (?debug): rete e sensori */
+.ctl-debug {
+  position: fixed; left: 8px; bottom: 8px; z-index: 50; margin: 0; padding: 8px 10px;
+  border-radius: var(--radius-md, 10px); background: rgb(20 20 30 / 0.78); color: #e8f7ee;
+  font: 600 11px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace; pointer-events: none; white-space: pre;
+}
+
+/* Registratore di tracce (?rec) */
+.ctl-rec {
+  position: fixed; right: 8px; bottom: 8px; z-index: 50; padding: 8px 12px; border: 0;
+  border-radius: var(--radius-pill); background: var(--ink-900); color: #fff; font: 800 13px/1 ui-monospace, monospace;
+}
+.ctl-rec.is-recording { background: var(--danger-500); }

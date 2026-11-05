@@ -179,6 +179,7 @@
     "calibSkip": "Salta (simulatore)",
     "recalibrate": "Ricalibra",
     "meterLabel": "Movimento",
+    "meterStill": "fermo",
     "thrownDetail": "Lanciato! {kmh} km/h · {aim}",
     "aimStraight": "dritto",
     "aimLeft": "{deg}° a sinistra",

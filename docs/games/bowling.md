@@ -99,13 +99,14 @@ Lo schermo **valida e limita** ogni campo prima di usarlo.
 ---
 
 ## 4. Fisica (`games/bowling/screen/physics.ts`)
-- **Palla**: sfera con massa 6,4 kg, CCD attivo, attrito palla 1,0 con regola di combinazione **`Min`**, così vince l'attrito della superficie, e restitution 0,1.
+- **Palla**: sfera con massa 6,4 kg e inerzia da raggio giratore reale (RG 2,50", I = m·RG²), CCD attivo, nessuno smorzamento, attrito palla 1,0 con regola di combinazione **`Min`**, così vince l'attrito della superficie, e restitution 0,7 (palla-birillo 0,6 con la media).
 - **Pista**: **due collider box** contigui, *olio* (μ 0,04) e *back end* (μ 0,20). In questo modo l'hook emerge da solo: nell'olio la palla scivola conservando lo spin, nel back end l'attrito converte lo spin laterale in curva fino al rotolamento puro. Si regola con [`surface-zones.ts`](../06-rendering-physics.md#estensioni-nostre-in-packagesenginephysics).
-- **Birilli**: corpo rigido con **collider composto** (2–3 capsule/cilindri lungo il profilo, oppure convex hull dal profilo lathe), massa 1,53 kg e centro di massa basso (circa a 1/3 dell'altezza), restitution 0,45 tra birilli, attrito 0,25.
+- **Birilli**: corpo rigido con **collider composto** da convex hull ricavati dallo stesso profilo lathe della mesh (pancia, collo e testa separati), massa 1,53 kg, baricentro USBC a 14,9 cm dalla base e tensore d'inerzia del solido di rotazione (`computePinInertia`), restitution 0,5 tra birilli, attrito 0,25, CCD attivo. Nessuno smorzamento in volo: solo una resistenza al rotolamento quando il birillo è sdraiato sul pin deck.
+- **Conservazione**: Rapier integra le equazioni di Eulero complete (termine giroscopico incluso), quindi il momento angolare si conserva in volo e cambia solo per gli impulsi di contatto. Non ci sono forze aggiunte a mano: l'hook è solo attrito di Coulomb tra il punto di contatto che slitta e la pista.
 - **Canaline**: collider semicircolari. La palla che ci entra viene "guidata" fino in fondo e non colpisce birilli.
 - **Lancio**: la palla parte dalla posizione della mano del Pupo alla linea di fallo con:
   - velocità lineare = `speed` nella direzione della freccia di mira + `dirOffset`;
-  - velocità angolare = rotolamento "in avanti" parziale (scivolamento iniziale) + componente laterale secondo `spinAxisTilt` e `revRate`.
+  - velocità angolare = `revRate` da 10 a 35 rad/s attorno a un asse orizzontale ruotato fino a 45° dall'asse di rotolamento, entrambi proporzionali a `|spin|` (`releaseAngularVelocity`). La palla parte in slittamento (giri < v/R) e l'attrito la porta al rotolamento puro nel back end.
 - **Sottopassi**: 4 (240 Hz) durante la fase Resolve.
 - **Conteggio**: dopo che la palla ha superato i birilli o è caduta nel pozzetto si attende che tutti i birilli siano in *sleep*, con un **timeout di 4 s**. Un birillo è **abbattuto** se è inclinato oltre 25°, se si è spostato di oltre 12 cm dal suo spot o se è caduto nel pozzetto.
 - **Spare**: tra il primo e il secondo tiro lo sweeper rimuove i birilli abbattuti e quelli in piedi tornano esattamente nel loro spot (sono "teletrasportati" sotto la copertura del pinsetter, come nel reale).

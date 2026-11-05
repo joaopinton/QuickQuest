@@ -8,8 +8,11 @@ import { pupoColor, t } from '@quickquest/ui';
 import { useLocation, useRoute } from 'preact-iso';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { createControllerConnection } from '../net/controllerConnection';
+import { createHaptics } from './haptics';
 import { hasSeenSafety, loadChoice, markSafetySeen, saveChoice } from './prefs';
 import { Calibrate } from './steps/Calibrate';
+import { DebugOverlay } from './steps/DebugOverlay';
+import { TraceRecorder } from './steps/TraceRecorder';
 import { GamePad } from './steps/GamePad';
 import { PickPupo, type PupoChoice } from './steps/PickPupo';
 import { Blocked, EnterCode, Incompatible, Probing, Safety, Welcome } from './steps/Screens';
@@ -66,6 +69,8 @@ function RoomFlow({ code }: { code: string }) {
   // un solo tracker per tutta la sessione: l'orientamento stimato resta coerente con la taratura
   const tracker = useMemo(() => createMotionTracker(), []);
   useEffect(() => () => tracker.stop(), [tracker]);
+  const haptics = useMemo(() => createHaptics(), []);
+  useEffect(() => () => haptics.destroy(), [haptics]);
   const simVariant = import.meta.env.DEV ? query.sim : undefined;
   const isBusy = useRef(false);
   const isMounted = useRef(true);
@@ -112,6 +117,7 @@ function RoomFlow({ code }: { code: string }) {
   const connect = async () => {
     if (isBusy.current) return; // doppio tap su "Connetti" o "Riprova"
     isBusy.current = true;
+    haptics.unlock(); // dentro il tap: iOS sblocca l'audio del click solo qui
     try {
       await runConnect();
     } finally {
@@ -159,62 +165,77 @@ function RoomFlow({ code }: { code: string }) {
     setStep(hasSeenSafety() ? afterPick : { k: 'safety' });
   };
 
-  switch (step.k) {
-    case 'welcome':
-      return <Welcome code={code} error={step.error} onConnect={connect} />;
-    case 'probing':
-      return <Probing progress={step.progress} />;
-    case 'fail':
-      return <Incompatible result={step.result} onRetry={connect} />;
-    case 'pick':
-      return <PickPupo slot={slot} initial={choice} onConfirm={confirmPupo} />;
-    case 'safety':
-      return <Safety onOk={() => { markSafetySeen(); setStep({ k: 'calibrate', then: { k: 'waiting' } }); }} />;
-    case 'calibrate':
-      return (
-        <Calibrate
-          tracker={tracker}
-          color={pupoColor(choice.colorId).hex}
-          isSimulated={simVariant !== undefined}
-          onDone={(p) => { setProfile(p); setStep(step.then); }}
-        />
-      );
-    case 'blocked':
-      return <Blocked message={step.message} />;
-    case 'waiting':
-      return (
-        <Waiting
-          slot={slot}
-          color={pupoColor(choice.colorId).hex}
-          accessory={choice.accessory}
-          isDemo={isDemo}
-          isLost={isLost}
-          players={players}
-          onChangePupo={() => setStep({ k: 'pick' })}
-          onLeave={() => { conn.leave(); releaseWakeLock(); route('/'); }}
-        />
-      );
-    case 'game':
-      return (
-        <GamePad
-          slot={slot}
-          color={pupoColor(choice.colorId).hex}
-          accessory={choice.accessory}
-          gameId={step.gameId}
-          layoutId={step.layoutId}
-          isDemo={isDemo}
-          isLost={isLost}
-          activeSlot={activeSlot}
-          tracker={tracker}
-          profile={profile}
-          isSimulated={simVariant !== undefined}
-          onThrow={(params) => conn.sendThrow(params)}
-          onRecalibrate={() => setStep({ k: 'calibrate', then: step })}
-          onLeave={() => { conn.leave(); releaseWakeLock(); route('/'); }}
-        />
-      );
-    default:
-      return null;
+  const screen = renderStep();
+  const isDebug = query.debug !== undefined;
+  const isRecording = query.rec !== undefined;
+  return (
+    <>
+      {screen}
+      {isDebug && <DebugOverlay tracker={tracker} conn={conn} />}
+      {isRecording && <TraceRecorder platform={detectPlatform(navigator.userAgent)} />}
+    </>
+  );
+
+  function renderStep() {
+    switch (step.k) {
+      case 'welcome':
+        return <Welcome code={code} error={step.error} onConnect={connect} />;
+      case 'probing':
+        return <Probing progress={step.progress} />;
+      case 'fail':
+        return <Incompatible result={step.result} onRetry={connect} />;
+      case 'pick':
+        return <PickPupo slot={slot} initial={choice} onConfirm={confirmPupo} />;
+      case 'safety':
+        return <Safety onOk={() => { markSafetySeen(); setStep({ k: 'calibrate', then: { k: 'waiting' } }); }} />;
+      case 'calibrate':
+        return (
+          <Calibrate
+            tracker={tracker}
+            haptics={haptics}
+            color={pupoColor(choice.colorId).hex}
+            isSimulated={simVariant !== undefined}
+            onDone={(p) => { setProfile(p); setStep(step.then); }}
+          />
+        );
+      case 'blocked':
+        return <Blocked message={step.message} />;
+      case 'waiting':
+        return (
+          <Waiting
+            slot={slot}
+            color={pupoColor(choice.colorId).hex}
+            accessory={choice.accessory}
+            isDemo={isDemo}
+            isLost={isLost}
+            players={players}
+            onChangePupo={() => setStep({ k: 'pick' })}
+            onLeave={() => { conn.leave(); releaseWakeLock(); route('/'); }}
+          />
+        );
+      case 'game':
+        return (
+          <GamePad
+            slot={slot}
+            color={pupoColor(choice.colorId).hex}
+            accessory={choice.accessory}
+            gameId={step.gameId}
+            layoutId={step.layoutId}
+            isDemo={isDemo}
+            isLost={isLost}
+            activeSlot={activeSlot}
+            tracker={tracker}
+            haptics={haptics}
+            profile={profile}
+            isSimulated={simVariant !== undefined}
+            onThrow={(params) => conn.sendThrow(params)}
+            onRecalibrate={() => setStep({ k: 'calibrate', then: step })}
+            onLeave={() => { conn.leave(); releaseWakeLock(); route('/'); }}
+          />
+        );
+      default:
+        return null;
+    }
   }
 }
 

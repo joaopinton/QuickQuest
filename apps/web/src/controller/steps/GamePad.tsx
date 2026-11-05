@@ -7,6 +7,7 @@ import {
 import type { SlotId, ThrowParams } from '@quickquest/protocol';
 import { slotStyle, t, type Accessory } from '@quickquest/ui';
 import { useEffect, useRef, useState } from 'preact/hooks';
+import type { HapticsService } from '../haptics';
 import { MotionMeter } from './MotionMeter';
 
 export interface GamePadProps {
@@ -20,6 +21,7 @@ export interface GamePadProps {
   /** Chi può lanciare adesso (deciso dallo schermo); `null` = nessuno (palla in pista). */
   readonly activeSlot: SlotId | null;
   readonly tracker: MotionTracker;
+  readonly haptics: HapticsService;
   /** Taratura dai tiri di prova; `null` col telefono simulato. */
   readonly profile: SwingProfile | null;
   /** Solo in sviluppo (`?sim`): niente sensori, il lancio è sintetizzato dalla durata della pressione. */
@@ -47,7 +49,7 @@ function simulatedThrow(heldMs: number): ThrowOutput {
 }
 
 export function GamePad({
-  slot, color, gameId, isDemo, isLost, activeSlot, tracker, profile, isSimulated, onThrow, onRecalibrate, onLeave,
+  slot, color, gameId, isDemo, isLost, activeSlot, tracker, haptics, profile, isSimulated, onThrow, onRecalibrate, onLeave,
 }: GamePadProps) {
   const [isPressed, setPressed] = useState(false);
   const [feedback, setFeedback] = useState<Feedback>(null);
@@ -76,7 +78,7 @@ export function GamePad({
     tracker.press(pressedAtRef.current);
     setPressed(true);
     setFeedback(null);
-    try { navigator.vibrate?.(45); } catch { /* vibrazione non disponibile */ }
+    haptics.play('tap');
   };
 
   const onActionUp = (e: PointerEvent) => {
@@ -97,13 +99,13 @@ export function GamePad({
     if (!swing.valid) {
       const text = t('controller.noSwingDetail', { w: swing.peak.toFixed(1), min: MIN_SWING_PEAK });
       setFeedback({ kind: 'miss', text });
-      try { navigator.vibrate?.([10, 40, 10]); } catch { /* vibrazione non disponibile */ }
+      haptics.play('error');
       return;
     }
     const th = throwFromSwing(swing, profile);
     onThrow(th);
     setFeedback({ kind: 'thrown', text: describeThrow(th) });
-    try { navigator.vibrate?.([40, 30, 80]); } catch { /* vibrazione non disponibile */ }
+    haptics.play('success');
   };
 
   const gameName = gameId === 'bowling' ? 'Bowling' : gameId;

@@ -33,6 +33,8 @@ export interface ControllerConnection {
   onLobby(cb: (players: readonly LobbyPlayer[], phase?: RoomPhase) => void): () => void;
   /** Cambio di turno: `activeSlot` è chi può lanciare adesso (`null` = nessuno). */
   onTurn(cb: (activeSlot: SlotId | null) => void): () => void;
+  /** Tempo di andata e ritorno (ms) di ogni battito, per l'overlay di debug. */
+  onRtt(cb: (rttMs: number) => void): () => void;
   onLayout(cb: (layout: ControllerLayoutInfo) => void): () => void;
   /** Cambi di stato dopo il join: benvenuto in ritardo (demo → live) o schermo perso. */
   onStatus(cb: (s: LinkStatus) => void): () => void;
@@ -76,6 +78,7 @@ function defaultTransport(code: string): ClientTransport {
 export function createControllerConnection(code: string, transport: ClientTransport = defaultTransport(code)): ControllerConnection {
   const lobbyListeners = new Set<(players: readonly LobbyPlayer[], phase?: RoomPhase) => void>();
   const turnListeners = new Set<(activeSlot: SlotId | null) => void>();
+  const rttListeners = new Set<(rttMs: number) => void>();
   const layoutListeners = new Set<(layout: ControllerLayoutInfo) => void>();
   const statusListeners = new Set<(s: LinkStatus) => void>();
   let heartbeat: ReturnType<typeof setInterval> | null = null;
@@ -143,6 +146,7 @@ export function createControllerConnection(code: string, transport: ClientTransp
         break;
       case 'pong':
         lastPong = Date.now();
+        rttListeners.forEach((cb) => cb(lastPong - msg.p.at));
         if (mode === 'lost') setStatus({ mode: 'live', slot });
         break;
       case 'error':
@@ -181,6 +185,10 @@ export function createControllerConnection(code: string, transport: ClientTransp
     },
     sendThrow(params) {
       send({ t: 'throw', p: params });
+    },
+    onRtt(cb) {
+      rttListeners.add(cb);
+      return () => rttListeners.delete(cb);
     },
     onTurn(cb) {
       turnListeners.add(cb);

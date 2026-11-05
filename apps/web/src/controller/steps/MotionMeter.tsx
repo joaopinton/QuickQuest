@@ -8,6 +8,7 @@ const FULL_SCALE = 12; // rad/s: oltre la barra è piena
 export function MotionMeter({ tracker }: { tracker: MotionTracker }) {
   const fillRef = useRef<HTMLSpanElement>(null);
   const valueRef = useRef<HTMLSpanElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   // Aggiornamento a frame d'animazione senza re-render di Preact
   useEffect(() => {
@@ -16,7 +17,9 @@ export function MotionMeter({ tracker }: { tracker: MotionTracker }) {
     const tick = () => {
       shown = Math.max(tracker.omega, shown * 0.9); // discesa morbida, salita immediata
       if (fillRef.current) fillRef.current.style.transform = `scaleX(${Math.min(1, shown / FULL_SCALE)})`;
-      if (valueRef.current) valueRef.current.textContent = `${shown.toFixed(1)} rad/s`;
+      const isStill = tracker.still.isStill;
+      if (valueRef.current) valueRef.current.textContent = isStill ? t('controller.meterStill') : `${shown.toFixed(1)} rad/s`;
+      rootRef.current?.classList.toggle('is-still', isStill);
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
@@ -24,7 +27,7 @@ export function MotionMeter({ tracker }: { tracker: MotionTracker }) {
   }, [tracker]);
 
   return (
-    <div class="ctl-meter" role="img" aria-label={t('controller.meterLabel')}>
+    <div ref={rootRef} class="ctl-meter" role="img" aria-label={t('controller.meterLabel')}>
       <span class="ctl-meter__label">{t('controller.meterLabel')}</span>
       <span class="ctl-meter__track"><span ref={fillRef} class="ctl-meter__fill" /></span>
       <span ref={valueRef} class="ctl-meter__value">0.0 rad/s</span>

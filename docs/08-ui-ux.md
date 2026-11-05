@@ -119,6 +119,12 @@ I giochi compongono questi blocchi; layout nuovi solo se servono davvero.
 
 ---
 
+### Strumenti di sviluppo sul telefono
+- `?debug`: overlay con RTT (mediana e p95 dei battiti ping/pong), frequenza dei sensori, ordine degli assi, offset del giroscopio e stato "fermo".
+- `?rec`: bottone ● REC per registrare una traccia dei sensori ([04 § 7](04-motion-input.md#7-tracce-registrazione-e-uso)).
+- La barra "Movimento" mostra **fermo** in verde quando il telefono è tenuto immobile.
+- Feedback aptico: vedi [04 § 8](04-motion-input.md#8-feedback-sul-telefono). Su iPhone vibra solo dentro un tocco.
+
 ## 3. HUD sullo schermo
 - **Minimo durante il gesto.** In alto a sinistra solo il turno (simbolo, colore, Pupo), in alto a destra il punteggio compatto.
 - **Informazioni dopo il gesto**: velocità, effetto, distanza, in un pannello che compare e scompare.

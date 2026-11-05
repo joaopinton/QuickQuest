@@ -5,10 +5,12 @@ import {
 } from '@quickquest/motion';
 import { Button, t } from '@quickquest/ui';
 import { useEffect, useRef, useState } from 'preact/hooks';
+import type { HapticsService } from '../haptics';
 import { MotionMeter } from './MotionMeter';
 
 export interface CalibrateProps {
   readonly tracker: MotionTracker;
+  readonly haptics: HapticsService;
   readonly color: string;
   readonly isSimulated: boolean;
   readonly onDone: (profile: SwingProfile | null) => void;
@@ -33,8 +35,11 @@ function SensorCheck({ tracker, onNext }: { tracker: MotionTracker; onNext: () =
 
   useEffect(() => {
     const started = performance.now();
+    let hasAxes = false;
     const id = setInterval(() => {
       if (tracker.omega > MOVE_TARGET && tracker.samples > 30) setMoving(true);
+      // mentre si muove il telefono si verifica l'ordine degli assi del giroscopio (axis-check.ts)
+      if (!hasAxes && tracker.samples > 30) hasAxes = tracker.checkAxes().order !== null;
       setNoData(tracker.samples === 0 && performance.now() - started > NO_DATA_AFTER_MS);
     }, 100);
     return () => clearInterval(id);
@@ -54,7 +59,7 @@ function SensorCheck({ tracker, onNext }: { tracker: MotionTracker; onNext: () =
   );
 }
 
-function Practice({ tracker, onProfile }: { tracker: MotionTracker; onProfile: (p: SwingProfile) => void }) {
+function Practice({ tracker, haptics, onProfile }: { tracker: MotionTracker; haptics: HapticsService; onProfile: (p: SwingProfile) => void }) {
   const [goodCount, setGoodCount] = useState(0);
   const [last, setLast] = useState<SwingAnalysis | null>(null);
   const [isPressed, setPressed] = useState(false);
@@ -65,7 +70,7 @@ function Practice({ tracker, onProfile }: { tracker: MotionTracker; onProfile: (
     (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
     tracker.press(performance.now());
     setPressed(true);
-    try { navigator.vibrate?.(40); } catch { /* vibrazione non disponibile */ }
+    haptics.play('tap');
   };
 
   const up = (e: PointerEvent) => {
@@ -74,8 +79,11 @@ function Practice({ tracker, onProfile }: { tracker: MotionTracker; onProfile: (
     setPressed(false);
     const a = tracker.release(performance.now());
     setLast(a);
-    if (!a.valid) return;
-    try { navigator.vibrate?.(60); } catch { /* vibrazione non disponibile */ }
+    if (!a.valid) {
+      haptics.play('error');
+      return;
+    }
+    haptics.play('success');
     goodRef.current = [...goodRef.current, a];
     setGoodCount(goodRef.current.length);
     if (goodRef.current.length >= PRACTICE_THROWS) {
@@ -107,7 +115,7 @@ function Practice({ tracker, onProfile }: { tracker: MotionTracker; onProfile: (
   );
 }
 
-export function Calibrate({ tracker, color, isSimulated, onDone }: CalibrateProps) {
+export function Calibrate({ tracker, haptics, color, isSimulated, onDone }: CalibrateProps) {
   const [phase, setPhase] = useState<Phase>('sensors');
   const [profile, setProfile] = useState<SwingProfile | null>(null);
 
@@ -122,9 +130,9 @@ export function Calibrate({ tracker, color, isSimulated, onDone }: CalibrateProp
 
   return (
     <section class="ctl-screen ctl-game" style={{ '--slot': color }}>
-      {phase === 'sensors' && <SensorCheck tracker={tracker} onNext={() => setPhase('practice')} />}
+      {phase === 'sensors' && <SensorCheck tracker={tracker} onNext={() => { haptics.play('select'); setPhase('practice'); }} />}
       {phase === 'practice' && (
-        <Practice tracker={tracker} onProfile={(p) => { setProfile(p); setPhase('done'); }} />
+        <Practice tracker={tracker} haptics={haptics} onProfile={(p) => { setProfile(p); setPhase('done'); }} />
       )}
       {phase === 'done' && (
         <>

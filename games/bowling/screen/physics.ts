@@ -1,23 +1,113 @@
 // Simulatore fisico del Bowling con Rapier3D (docs/games/bowling.md § 4, docs/06 § 2).
-// Misure reali USBC: pista 18.29 m, zona olio (μ 0.04), back-end asciutto (μ 0.20),
-// 10 birilli a massa e baricentro calibrati, palla 6.4 kg con CCD e hook physics.
+// Misure e masse reali USBC. Niente forze "finte": l'hook nasce solo dall'attrito di Coulomb
+// tra palla rotante e pista, gli urti solo da restituzione e attrito dei materiali.
+// Rapier integra le equazioni di Eulero complete (termine giroscopico incluso), quindi il momento
+// angolare di palla e birilli si conserva in volo e cambia solo per gli impulsi di contatto.
 
 import RAPIER from '@dimforge/rapier3d-compat';
 import type { BowlingPinStatus, BowlingReleaseData } from '../shared/events';
 import {
+  computePinInertia,
+  PIN_COM_HEIGHT,
   PIN_HEIGHT,
   PIN_MASS,
+  PIN_MAX_RADIUS,
   PIN_OFFSETS,
+  PIN_PROFILE,
 } from './pin-geometry';
 
 export const LANE_LENGTH = 18.29; // metri dalla linea di fallo al birillo 1
 export const LANE_WIDTH = 1.054; // metri (39 tavole)
-export const OIL_LENGTH = 12.0; // primi 12 metri oliati (μ 0.04)
+export const OIL_LENGTH = 12.0; // primi 12 metri oliati
 export const BALL_RADIUS = 0.108; // 21.6 cm diametro
 export const BALL_MASS = 6.4; // 14 lb in kg
+/** Raggio giratore della palla (USBC: 2.46"-2.80"); 2.50" = nucleo medio-basso. */
+export const BALL_RG = 0.0635;
 export const HEADPIN_Z = LANE_LENGTH; // Birillo 1 a z = 18.29 m
-const HOOK_ACCEL_N = 3.0; // forza laterale (N) a spin = 1 nel back-end asciutto
+
+// Coefficienti d'attrito (Coulomb) delle superfici
+const MU_OIL = 0.04; // pista oliata
+const MU_DRY = 0.2; // back end asciutto
+const MU_PIN = 0.25; // birillo (acero laccato) contro palla, birilli e pin deck
+
+// Coefficienti di restituzione: Rapier combina con la media, quindi
+// palla-birillo (0.7+0.5)/2 = 0.6, birillo-birillo 0.5, birillo-pista 0.25, palla-pista 0.35
+const E_BALL = 0.7;
+const E_PIN = 0.5;
+const E_LANE = 0.0;
+
+// Rilascio: rev rate e rotazione dell'asse crescono con |spin| (docs § 3.3)
+const REV_RATE_MIN = 10; // rad/s, palla dritta (~95 rpm)
+const REV_RATE_MAX = 35; // rad/s, cranker (~335 rpm)
+const AXIS_ROTATION_MAX = (45 * Math.PI) / 180;
+
+// Resistenza al rotolamento di un birillo sdraiato sul pin deck (1/s): agisce solo a contatto
+const PIN_ROLLING_RESISTANCE = 1.5;
+const PIN_LYING_HEIGHT = PIN_MAX_RADIUS + 0.01; // centro più basso di così = birillo a terra
 const PIN_SETTLE_SPEED = 0.15; // m/s sotto cui un birillo è considerato fermo
+const PIN_HULL_SEGMENTS = 16; // lati dei poligoni che approssimano le sezioni del birillo
+const PIN_HULL_TOLERANCE = 0.0015; // m: scarto massimo tollerato fra hull e profilo reale
+
+/**
+ * Collider del birillo: il profilo lathe viene spezzato in tratti convessi (pancia, collo, testa...).
+ * Un tratto si allunga finché nessun punto intermedio del profilo sta dentro la corda di più di
+ * PIN_HULL_TOLERANCE, così l'unione degli hull coincide col birillo visto (collo stretto compreso).
+ * Coordinate relative al centro del corpo (metà altezza).
+ */
+export function buildPinHullPoints(): Float32Array[] {
+  const profile = PIN_PROFILE.slice(1, -1); // via i punti sull'asse: restano gli anelli del profilo
+  const hulls: Float32Array[] = [];
+  let start = 0;
+  while (start < profile.length - 1) {
+    let end = start + 1;
+    while (end + 1 < profile.length && isConvexRun(profile, start, end + 1)) end++;
+    hulls.push(ringsToPoints(profile.slice(start, end + 1)));
+    start = end;
+  }
+  return hulls;
+}
+
+function isConvexRun(profile: readonly (readonly [number, number])[], from: number, to: number): boolean {
+  const [r0, y0] = profile[from]!;
+  const [r1, y1] = profile[to]!;
+  for (let i = from + 1; i < to; i++) {
+    const [r, y] = profile[i]!;
+    const chordR = r0 + ((r1 - r0) * (y - y0)) / (y1 - y0);
+    if (r < chordR - PIN_HULL_TOLERANCE) return false;
+  }
+  return true;
+}
+
+function ringsToPoints(rings: readonly (readonly [number, number])[]): Float32Array {
+  const pts = new Float32Array(rings.length * PIN_HULL_SEGMENTS * 3);
+  let k = 0;
+  for (const [r, y] of rings) {
+    for (let j = 0; j < PIN_HULL_SEGMENTS; j++) {
+      const a = (j / PIN_HULL_SEGMENTS) * Math.PI * 2;
+      pts[k++] = r * Math.cos(a);
+      pts[k++] = y - PIN_HEIGHT / 2;
+      pts[k++] = r * Math.sin(a);
+    }
+  }
+  return pts;
+}
+
+/**
+ * Velocità angolare al rilascio. Asse di rotazione orizzontale, ruotato rispetto all'asse di
+ * rotolamento puro (x) di un angolo che cresce con |spin|: la componente lungo z fa scivolare il
+ * punto di contatto di lato e l'attrito della pista la converte in curva (hook).
+ * Con omega = (wx, 0, wz) la velocità del contatto è (vx + R*wz, 0, vz - R*wx).
+ */
+export function releaseAngularVelocity(spin: number): { x: number; y: number; z: number } {
+  const amount = Math.min(1, Math.abs(spin));
+  const revRate = REV_RATE_MIN + (REV_RATE_MAX - REV_RATE_MIN) * amount;
+  const axisRotation = AXIS_ROTATION_MAX * amount;
+  return {
+    x: revRate * Math.cos(axisRotation),
+    y: 0,
+    z: Math.sign(spin) * revRate * Math.sin(axisRotation), // spin > 0: contatto verso +x, hook verso -x
+  };
+}
 
 export interface PhysicsWorldState {
   readonly world: RAPIER.World;
@@ -42,20 +132,21 @@ export async function createBowlingPhysicsWorld(): Promise<PhysicsWorldState> {
   const gravity = { x: 0.0, y: -9.81, z: 0.0 };
   const world = new RAPIER.World(gravity);
 
+  world.numSolverIterations = 8; // castello di birilli a contatto: più iterazioni, meno compenetrazioni
+
   // 1. Collider Pista: divisa in due zone (olio e back-end asciutto)
-  // Zona Olio: da z = 0 a z = OIL_LENGTH (μ = 0.04)
   const oilColliderDesc = RAPIER.ColliderDesc.cuboid(LANE_WIDTH / 2, 0.05, OIL_LENGTH / 2)
     .setTranslation(0, -0.05, OIL_LENGTH / 2)
-    .setFriction(0.04)
-    .setRestitution(0.1);
+    .setFriction(MU_OIL)
+    .setRestitution(E_LANE);
   world.createCollider(oilColliderDesc);
 
-  // Zona Back-end asciutta: da z = OIL_LENGTH a z = 20.0 m (μ = 0.22 per presa e curva dell'hook)
+  // Zona Back-end asciutta e pin deck: da z = OIL_LENGTH a z = 20.0 m
   const dryLength = 20.0 - OIL_LENGTH;
   const dryColliderDesc = RAPIER.ColliderDesc.cuboid(LANE_WIDTH / 2, 0.05, dryLength / 2)
     .setTranslation(0, -0.05, OIL_LENGTH + dryLength / 2)
-    .setFriction(0.22)
-    .setRestitution(0.1);
+    .setFriction(MU_DRY)
+    .setRestitution(E_LANE);
   world.createCollider(dryColliderDesc);
 
   // Canaline sinistra e destra (abbassate a y = -0.05 m per intrappolare le palle)
@@ -92,77 +183,56 @@ export async function createBowlingPhysicsWorld(): Promise<PhysicsWorldState> {
     RAPIER.ColliderDesc.cuboid(0.05, 0.6, 1.5).setTranslation(1.0, 0.2, 21.5),
   );
 
-  // 2. Creazione della Palla (6.4 kg, CCD attivo)
+  // 2. Palla: 6.4 kg, inerzia da raggio giratore reale (I = m*RG^2), nessuno smorzamento artificiale
+  const ballInertia = BALL_MASS * BALL_RG ** 2;
   const ballBodyDesc = RAPIER.RigidBodyDesc.dynamic()
     .setTranslation(0, BALL_RADIUS, -1.0)
     .setCcdEnabled(true)
-    .setLinearDamping(0.05)
-    .setAngularDamping(0.05);
+    .setLinearDamping(0)
+    .setAngularDamping(0);
   const ballBody = world.createRigidBody(ballBodyDesc);
 
   const ballColliderDesc = RAPIER.ColliderDesc.ball(BALL_RADIUS)
-    .setDensity(BALL_MASS / ((4 / 3) * Math.PI * BALL_RADIUS ** 3))
+    .setMassProperties(
+      BALL_MASS,
+      { x: 0, y: 0, z: 0 },
+      { x: ballInertia, y: ballInertia, z: ballInertia },
+      { w: 1, x: 0, y: 0, z: 0 },
+    )
+    // Attrito 1.0 con regola Min: vince sempre quello della superficie toccata (olio, asciutto, birillo)
     .setFriction(1.0)
     .setFrictionCombineRule(RAPIER.CoefficientCombineRule.Min)
-    .setRestitution(0.1);
+    .setRestitution(E_BALL);
   world.createCollider(ballColliderDesc, ballBody);
 
-  // 3. Creazione dei 10 Birilli (corpi rigidi dinamici con collider composito)
+  // 3. Birilli: forma dal profilo reale, massa 1.53 kg, baricentro USBC a 14.9 cm dalla base,
+  // tensore d'inerzia del solido di rotazione (asse del birillo = y locale)
   const pinBodies: RAPIER.RigidBody[] = [];
+  const pinHulls = buildPinHullPoints();
+  const pinInertia = computePinInertia();
+  const pinCom = { x: 0, y: PIN_COM_HEIGHT - PIN_HEIGHT / 2, z: 0 };
 
-  function spawnPin(id: number, rx: number, rz: number): RAPIER.RigidBody {
-    const x = rx;
-    const z = HEADPIN_Z + rz;
-    const y = 0; // base a livello pista
-
+  function spawnPin(rx: number, rz: number): RAPIER.RigidBody {
     const pinBodyDesc = RAPIER.RigidBodyDesc.dynamic()
-      .setTranslation(x, y + PIN_HEIGHT / 2, z)
-      .setLinearDamping(0.2)
-      .setAngularDamping(0.3)
+      .setTranslation(rx, PIN_HEIGHT / 2, HEADPIN_Z + rz)
+      .setAdditionalMassProperties(
+        PIN_MASS,
+        pinCom,
+        { x: pinInertia.transverse, y: pinInertia.axial, z: pinInertia.transverse },
+        { w: 1, x: 0, y: 0, z: 0 },
+      )
+      .setLinearDamping(0)
+      .setAngularDamping(0) // in volo il momento angolare si conserva; v. rollingResistance()
+      .setCcdEnabled(true)
       .setCanSleep(true);
-
     const body = world.createRigidBody(pinBodyDesc);
 
-    // Collider composito per birillo: base larga + corpo + testa
-    // Con centro di massa abbassato a ~1/3 altezza per garantire il tipico wobble e ribaltamento
-    const baseRadius = 0.042;
-    const bellyRadius = 0.058;
-    const headRadius = 0.032;
-
-    const density = PIN_MASS / 0.003; // calcolato per ottenere 1.53 kg totali
-
-    // Segmento inferiore (base)
-    const baseDesc = RAPIER.ColliderDesc.cylinder(0.04, baseRadius)
-      .setTranslation(0, -PIN_HEIGHT / 2 + 0.04, 0)
-      .setDensity(density * 1.5) // più pesante alla base
-      .setFriction(0.25)
-      .setRestitution(0.45);
-    world.createCollider(baseDesc, body);
-
-    // Segmento pancia
-    const bellyDesc = RAPIER.ColliderDesc.cylinder(0.07, bellyRadius)
-      .setTranslation(0, -PIN_HEIGHT / 2 + 0.12, 0)
-      .setDensity(density)
-      .setFriction(0.25)
-      .setRestitution(0.45);
-    world.createCollider(bellyDesc, body);
-
-    // Segmento collo (evita che i birilli si compenetrino sopra la pancia)
-    const neckDesc = RAPIER.ColliderDesc.cylinder(0.065, 0.026)
-      .setTranslation(0, -PIN_HEIGHT / 2 + 0.255, 0)
-      .setDensity(density * 0.7)
-      .setFriction(0.25)
-      .setRestitution(0.45);
-    world.createCollider(neckDesc, body);
-
-    // Segmento testa
-    const headDesc = RAPIER.ColliderDesc.ball(headRadius)
-      .setTranslation(0, PIN_HEIGHT / 2 - headRadius, 0)
-      .setDensity(density * 0.7)
-      .setFriction(0.25)
-      .setRestitution(0.45);
-    world.createCollider(headDesc, body);
-
+    for (const points of pinHulls) {
+      const hull = RAPIER.ColliderDesc.convexHull(points);
+      if (!hull) throw new Error('Bowling: hull del birillo non valido');
+      // Densità 0: massa e inerzia arrivano tutte dalle proprietà del corpo
+      world.createCollider(hull.setDensity(0).setFriction(MU_PIN).setRestitution(E_PIN), body);
+    }
     return body;
   }
 
@@ -190,7 +260,7 @@ export async function createBowlingPhysicsWorld(): Promise<PhysicsWorldState> {
         body.setEnabled(true);
         placeOnSpot(body, targetX, targetZ);
       } else {
-        const newBody = spawnPin(offset.id, offset.x, offset.z);
+        const newBody = spawnPin(offset.x, offset.z);
         pinBodies.push(newBody);
       }
     }
@@ -199,11 +269,19 @@ export async function createBowlingPhysicsWorld(): Promise<PhysicsWorldState> {
   resetPins();
 
   let isThrown = false;
-  let activeSpin = 0;
+
+  /** Un birillo sdraiato che rotola sul pin deck perde giri per deformazione al contatto. */
+  function rollingResistance(dt: number) {
+    const factor = Math.max(0, 1 - PIN_ROLLING_RESISTANCE * dt);
+    pinBodies.forEach((body, i) => {
+      if (removedPins.has(i) || body.isSleeping() || body.translation().y > PIN_LYING_HEIGHT) return;
+      const w = body.angvel();
+      body.setAngvel({ x: w.x * factor, y: w.y * factor, z: w.z * factor }, false);
+    });
+  }
 
   function parkBall() {
     isThrown = false;
-    activeSpin = 0;
     ballBody.setEnabled(true);
     ballBody.setTranslation({ x: 0, y: BALL_RADIUS, z: -1.0 }, true);
     ballBody.setLinvel({ x: 0, y: 0, z: 0 }, true);
@@ -249,15 +327,7 @@ export async function createBowlingPhysicsWorld(): Promise<PhysicsWorldState> {
       world.timestep = subDt;
 
       for (let s = 0; s < substeps; s++) {
-        // Fisica dell'hook: nel back-end asciutto (z > 12m), l'attrito laterale converte lo spin in curva
-        if (isThrown) {
-          const ballPos = ballBody.translation();
-          if (ballPos.z > OIL_LENGTH && ballPos.z < HEADPIN_Z + 1.0) {
-            // Curva progressiva verso sinistra (-X) per hook sinistro (spin > 0)
-            const hookForce = -activeSpin * HOOK_ACCEL_N;
-            ballBody.applyImpulse({ x: hookForce * subDt, y: 0, z: 0 }, true);
-          }
-        }
+        rollingResistance(subDt);
         world.step();
       }
 
@@ -269,23 +339,19 @@ export async function createBowlingPhysicsWorld(): Promise<PhysicsWorldState> {
 
     launchBall(data: BowlingReleaseData) {
       isThrown = true;
-      activeSpin = data.spin;
       ballBody.setEnabled(true);
 
+      // La palla tocca la pista al rilascio: nessuna caduta che la farebbe rimbalzare
       const startX = Math.max(-0.45, Math.min(0.45, data.startX));
-      ballBody.setTranslation({ x: startX, y: BALL_RADIUS + 0.01, z: 0.1 }, true);
+      ballBody.setTranslation({ x: startX, y: BALL_RADIUS, z: 0.1 }, true);
+      ballBody.setRotation({ w: 1, x: 0, y: 0, z: 0 }, true);
 
-      // Velocità lineare lungo la direzione di mira
       const speed = Math.max(3.5, Math.min(11.0, data.speed));
-      const vx = speed * Math.sin(data.dir);
-      const vz = speed * Math.cos(data.dir);
-      ballBody.setLinvel({ x: vx, y: -0.2, z: vz }, true);
-
-      // Velocità angolare iniziale:
-      // Rotolamento parziale (ωx) + spin laterale (ωz) per effetto hook
-      const rollRate = (vz / BALL_RADIUS) * 0.4; // scivolamento iniziale realistico sull'olio
-      const spinRate = data.spin * 15.0; // rad/s (positivo: la base scivola a destra, reazione spinge a sinistra)
-      ballBody.setAngvel({ x: rollRate, y: 0, z: spinRate }, true);
+      ballBody.setLinvel({ x: speed * Math.sin(data.dir), y: 0, z: speed * Math.cos(data.dir) }, true);
+      // Rilascio in slittamento: i giri (<= 35 rad/s) sono molto meno di v/R (~75 rad/s);
+      // l'attrito porta poi la palla al rotolamento puro, conservando il momento angolare
+      // attorno al punto di contatto
+      ballBody.setAngvel(releaseAngularVelocity(data.spin), true);
       ballBody.wakeUp();
     },
 
