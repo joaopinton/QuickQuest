@@ -112,3 +112,50 @@ Ricerca su GitHub del 2026-11-04. ★ = stelle, la data è l'ultimo push. Per og
    - **dead-reckoning lato schermo**: si proietta la posa in avanti con ω per la latenza misurata. Riduce il ritardo percepito del braccio del Pupo e si aggiunge al buffer di interpolazione di [03 § 5](03-network-protocol.md#5-latenza-e-interpolazione);
    - un **Controller Lab** (telefono 3D che segue quello reale, con le letture dei sensori), da inserire tra gli strumenti di sviluppo della Fase 2.
 5. **Orientamento** → `psiphi75/ahrs` è il primo candidato per il filtro (Madgwick), contro un filtro complementare scritto da noi (S1).
+
+---
+
+## Aggiornamento del 2026-11-05
+
+Seconda ricerca su GitHub, mirata a **giochi da cui prendere idee** e a **funzioni per migliorare il controllo**. Sono elencati solo i repo nuovi rispetto alle sezioni precedenti. ⚠️ Un repo senza licenza si può solo **studiare**: il codice non si copia.
+
+### 9. Altri progetti "telefono = controller"
+
+| Repo | ★ · licenza | Uso | Perché è utile |
+|---|---|---|---|
+| [choijunhuk/phonemote](https://github.com/choijunhuk/phonemote) | 0 · MIT · 2026-10 | 📖 **Da studiare per primo** | TS, 9 giochi (tennis, bowling, tiro con l'arco, golf, sci…). Il telefono manda solo **frame grezzi binari** (68 byte) e la loro interpretazione avviene tutta sul PC: pipeline `normalize → fuse → detect → GameAction`, e una regola ESLint impedisce alle scene di leggere i sensori. `ARCHITECTURE.md` (in coreano) raccoglie 64 decisioni prese misurando telefoni veri: **assi di `rotationRate` di Chrome diversi dalla specifica**, correzione per la rotazione dello schermo, solo RTT (niente latenza one-way), Wake Lock riacquisito su `visibilitychange`. Debug overlay con RTT mediana/p95, Hz e perdita di pacchetti. Contiene anche un giocatore da tastiera che sintetizza frame di sensori. |
+| [doncebay/tennis-training](https://github.com/doncebay/tennis-training) | 3 · MIT · 2026-09 | 📖 | Tennis con il telefono come racchetta. Lo swing si rileva al **picco della velocità angolare**, e la velocità dello swing dà la potenza; **il timing decide la direzione** (in anticipo = incrociato, in ritardo = lungolinea). Il giocatore si muove da solo verso la palla. Sul telefono c'è un "pock" sonoro a ogni colpo. JS senza build. |
+| [kuehn-lars/CouchCourt](https://github.com/kuehn-lars/CouchCourt) | 6 · MIT · 2026-10 | 📖 | Tennis locale multiplayer **pensato per iPhone/Safari**: un solo tap per il permesso dei sensori, dritto/rovescio riconosciuti dal gesto, forza = intensità dello swing. TS + Vite + Three.js. |
+| [veersaraf/kaleydo-world](https://github.com/veersaraf/kaleydo-world) | 0 · MIT · 2026-10 | 📖🎨 | Tennis, bowling, **duello con la spada**, tiro con l'arco, home run derby. Tutto generato via codice (niente modelli, texture o file audio), con split screen per il versus locale. Da studiare per la [scherma](games/fencing.md). |
+| [rghvagrwl/putt-pals](https://github.com/rghvagrwl/putt-pals) | 0 · **nessuna licenza** · 2026-08 | 📖 (solo studio) | Minigolf da party, con due controlli: **fionda trascinando sul touch** oppure **swing vero (mira con la bussola + potenza dall'accelerometro)**. Il giocatore che si riconnette ritrova la sua palla e i turni AFK vengono saltati. Utile per il [golf](games/golf.md). |
+| [PHMFG/boom-pets](https://github.com/PHMFG/boom-pets) | 1 · MIT · 2026-10 | 📖 | 8 minigiochi con joystick + un tasto e una ruota che estrae il gioco. Bot nei posti vuoti, il telefono che cade riprende il suo personaggio, `?solo&autostart` per una partita di soli bot. Ogni partita viene registrata e **`pnpm report` produce un report di playtest**. |
+| [foster-curtis/phone-controller-games](https://github.com/foster-curtis/phone-controller-games) | 0 · MIT · 2026-11 | 📖 | Monorepo pnpm molto simile al nostro. `packages/controller-kit` contiene shell del telefono, widget di input, gesti e **dev harness**; `game-kit` loop a passo fisso e RNG con seed. Controllo del bundle per ogni gioco. |
+| [vucinatim/air-jam](https://github.com/vucinatim/air-jam) | 8 · MIT · 2026-11 | 📖 | Framework open source alternativo ad AirConsole (React, TS). Da confrontare con il nostro [contratto modulo](05-game-module-contract.md). |
+| [stixez/ac-playtest](https://github.com/stixez/ac-playtest) | 0 · MIT · 2026-10 | 📖 | Playtest **scriptati con Playwright**: schermo + N telefoni simulati, con touch "trusted", ingressi e uscite. Idea da portare nei nostri `e2e/`. |
+
+### 10. Controllo: librerie e tecniche
+
+| Repo | ★ · licenza | Uso | Note |
+|---|---|---|---|
+| [lochie/web-haptics](https://github.com/lochie/web-haptics) | 2.8k · MIT · 2026-09 | 🧩 | Feedback aptico sul web mobile, **anche su iOS**, dove `navigator.vibrate` non esiste: oggi le nostre chiamate in `Calibrate.tsx` e `GamePad.tsx` sull'iPhone non fanno nulla. Su iOS funziona solo dentro un gesto dell'utente (tap), quindi va bene per i bottoni ma non per la vibrazione all'impatto durante uno swing. |
+| [samdenty/ios-vibrator-pro-max](https://github.com/samdenty/ios-vibrator-pro-max) | 278 · nessuna licenza · 2026-06 | 📖 | Polyfill di `navigator.vibrate` per Safari, con lo stesso trucco dello switch nascosto. Il README spiega bene i limiti: da iOS 18.4 serve l'interazione dell'utente. Altri repo segnalano che con iOS 26.5 il trucco non funziona più: va **verificato su un iPhone vero**. |
+| [casiez/OneEuroFilter](https://github.com/casiez/OneEuroFilter) (npm `1eurofilter`) | 264 · 2026-08 | 🧩 (verificare la licenza npm) | **Filtro 1€**: smoothing adattivo (forte da fermi, quasi nullo in movimento). È la forma standard dello "smoothing adattivo" di Pocket Sports, per la **mira col telefono** del bowling e il puntamento del barber, senza aggiungere ritardo agli swing. Sono poche righe: si può anche riscrivere seguendo il paper. |
+| [herenickname/timesync](https://github.com/herenickname/timesync) | 0 · MIT · 2025-12 | 🧩/📖 | Fork TS di `enmasseio/timesync`: offset del clock tra telefono e schermo via WebSocket. Serve se vogliamo **marcare il gesto con l'ora del telefono** e collocarlo con precisione sulla timeline dello schermo (timing del tennis, rilascio del bowling). |
+| [GordonLesti/dynamic-time-warping](https://github.com/GordonLesti/dynamic-time-warping) | 52 · MIT · 2017 | 📖 | DTW in JS: riconosce un gesto confrontandolo con un template registrato. Utile per i gesti "a forma" (affondo della scherma, taglio col rasoio) dove una soglia sola non basta. |
+| [wcchoi/dollar-q](https://github.com/wcchoi/dollar-q) | 17 · MIT · 2019 | 📖 | Riconoscitore **$Q** in JS, per gesti disegnati sul touch, per esempio un minigioco di disegno o un menu a gesti. |
+
+### 11. Giochi singoli da studiare (fisica e gameplay)
+
+| Repo | ★ · licenza | Note |
+|---|---|---|
+| [bridge-mind/tideline](https://github.com/bridge-mind/tideline) | 10 · MIT | Pesca 3D in Three.js, procedurale e senza build: lancio e recupero si adattano bene a un **minigioco di pesca** con il telefono come canna. |
+| [dammafra/hook-a-fish](https://github.com/dammafra/hook-a-fish) | 43 · **AGPL** | Pesca da luna park in Three.js. Licenza AGPL: si guarda solo come riferimento visivo, il codice non si copia. |
+| [LiamOsler/curling](https://github.com/LiamOsler/curling) | 0 · nessuna licenza | Curling 3D in Three.js: la fisica degli scivolamenti e degli urti è vicina a quella delle **bocce** ([bocce](games/bocce.md)). Solo studio. |
+
+### Cosa conviene fare (proposta)
+
+1. **Haptics su iOS** con `web-haptics` per i bottoni e le conferme del telefono. È piccolo e sistema un buco reale: l'iPhone oggi non vibra mai.
+2. **Filtro 1€** sulla mira col telefono del bowling, al posto di uno smoothing fisso o in aggiunta a esso.
+3. Leggere le decisioni D1–D64 di **PhoneMote**, soprattutto gli assi di `rotationRate` misurati, e confrontarle con `packages/motion/src/adapter.ts`.
+4. Per i prossimi giochi: **tennis-training / CouchCourt** per il timing dello swing (utile anche per la scherma), **putt-pals** per i due modi di controllo del golf, **kaleydo-world** per la spada.
+5. Debug overlay con **RTT p95, Hz e perdita di pacchetti** sul modello di PhoneMote, da affiancare al Controller Lab già previsto.
