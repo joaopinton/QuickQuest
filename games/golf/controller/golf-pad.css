@@ -4,6 +4,32 @@
   box-shadow: var(--shadow-soft); font-weight: 800; text-align: center;
 }
 
+/* Scelta della mazza: tre bastoni disegnati, quello in mano si alza e prende il colore del giocatore. */
+.golf-clubs {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; align-items: end;
+}
+.golf-clubs--putter { grid-template-columns: minmax(0, 160px); justify-content: center; }
+.golf-club {
+  position: relative; display: grid; justify-items: center; gap: 2px; padding: 10px 6px 12px;
+  border: 0; border-radius: var(--radius-lg); background: var(--surface); color: var(--ink-300);
+  box-shadow: var(--shadow-soft); font: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 180ms ease, color 180ms ease;
+}
+.golf-club__art {
+  width: 100%; max-width: 64px; height: auto; transform-origin: 70% 10%;
+  transition: transform 260ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.golf-club__name { font: 700 1rem/1.1 var(--font-display); color: var(--ink-900); }
+.golf-club__meta { font-size: 0.72rem; font-weight: 700; color: var(--ink-600); text-align: center; }
+.golf-club.is-selected {
+  color: var(--slot); transform: translateY(-6px);
+  box-shadow: 0 0 0 3px var(--slot), var(--shadow-soft);
+}
+.golf-club.is-selected .golf-club__art { transform: rotate(-8deg); }
+.golf-club:not(.is-selected):active:not(:disabled) { transform: scale(0.96); }
+.golf-club:disabled { cursor: default; opacity: 0.55; }
+.golf-club:focus-visible { outline: 3px solid var(--slot); outline-offset: 3px; }
+
 .golf-pad__aim {
   position: relative; display: grid; place-items: center; height: 56px; border-radius: var(--radius-pill);
   background: var(--ink-100); overflow: hidden; opacity: 0.6; transition: opacity 200ms ease;
@@ -19,5 +45,5 @@
 .golf-pad__aim-label { position: relative; top: 18px; font-size: 0.8rem; font-weight: 700; color: var(--ink-600); }
 
 @media (prefers-reduced-motion: reduce) {
-  .golf-pad__aim, .golf-pad__aim-dot { transition: none; }
+  .golf-pad__aim, .golf-pad__aim-dot, .golf-club, .golf-club__art { transition: none; }
 }

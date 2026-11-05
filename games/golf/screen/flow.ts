@@ -1,7 +1,8 @@
 // Ponte tra i messaggi della stanza e le regole del golf: valida gli eventi dei telefoni
 // (lo schermo è autoritativo) e decide quali feedback mandare a chi.
 import type { Cue, GameEvent, SlotId } from '@quickquest/protocol';
-import { CLUBS, currentHole, distanceToPin, findPlayer, type Club, type GolfEvent, type GolfState, type HoleTerm, type RefusedReason, type ShotInput } from './rules';
+import { CLUB_TEXT, isClub, PUTT_TURN_MARK, type Club } from '../shared/clubs';
+import { currentHole, distanceToPin, findPlayer, type GolfEvent, type GolfState, type HoleTerm, type RefusedReason, type ShotInput } from './rules';
 
 const finite = (v: unknown, lo: number, hi: number): number | null =>
   typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : null;
@@ -22,7 +23,7 @@ export function parseShot(e: GameEvent): ShotInput | null {
 export function parseClub(e: GameEvent): Club | null {
   if (e.kind !== 'club') return null;
   const club = e.data.club;
-  return typeof club === 'string' && (CLUBS as readonly string[]).includes(club) ? (club as Club) : null;
+  return isClub(club) ? club : null;
 }
 
 export const TERM_TEXT: Readonly<Record<HoleTerm, string>> = {
@@ -43,7 +44,10 @@ const REFUSED_TEXT: Readonly<Record<RefusedReason, string>> = {
   hole_finished: 'Hai già finito la buca',
 };
 
-const CLUB_TEXT: Readonly<Record<Club, string>> = { driver: 'driver', iron: 'ferro', wedge: 'wedge', putter: 'putter' };
+export const PENALTY_TEXT: Readonly<Record<'water' | 'oob', string>> = {
+  water: 'In acqua: +1 colpo, si droppa fuori',
+  oob: 'Fuori limite: +1 colpo, si ritira da dove eri',
+};
 
 export interface Outbox {
   readonly cues: readonly { readonly slot: SlotId | null; readonly cue: Cue }[];
@@ -58,7 +62,7 @@ export function turnText(state: GolfState, id: string): string {
   const p = findPlayer(state, id);
   if (!p) return 'Tocca a te';
   const d = Math.round(distanceToPin(currentHole(state), p.ball));
-  return p.lie === 'green' ? `Tocca a te · putt da ${d} m` : `Tocca a te · ${CLUB_TEXT[p.club]} · ${d} m alla bandiera`;
+  return p.lie === 'green' ? `Tocca a te · ${PUTT_TURN_MARK} ${d} m` : `Tocca a te · ${CLUB_TEXT[p.club]} · ${d} m alla bandiera`;
 }
 
 /** Cosa dire ai telefoni dopo gli eventi delle regole. */
@@ -80,6 +84,9 @@ export function outboxFor(events: readonly GolfEvent[], state: GolfState): Outbo
       case 'holed':
         cues.push({ slot: asSlot(e.playerId), cue: { kind: 'success', text: `${TERM_TEXT[e.term]} ${e.strokes} colpi` } });
         break;
+      case 'penalty':
+        cues.push({ slot: asSlot(e.playerId), cue: { kind: 'error', text: PENALTY_TEXT[e.hazard] } });
+        break;
       case 'picked_up':
         cues.push({ slot: asSlot(e.playerId), cue: { kind: 'select', text: 'Palla raccolta' } });
         break;
@@ -95,10 +102,32 @@ export function outboxFor(events: readonly GolfEvent[], state: GolfState): Outbo
   return activeSlot === undefined ? { cues } : { cues, activeSlot };
 }
 
+/** La camera resta su chi ha appena tirato fino a `until` (ms, stesso orologio di `now`). */
+export interface FocusHold {
+  readonly playerId: string;
+  readonly until: number;
+}
+
+/**
+ * Chi inquadrare: la palla in movimento, poi quella appena fermata (o che cade in buca) per
+ * qualche istante, poi chi tira adesso. `null` se non c'è nessuno.
+ */
+export function cameraFocusId(state: GolfState, hold: FocusHold | null, now: number): string | null {
+  const moving = state.players.find((p) => p.flight);
+  if (moving) return moving.id;
+  if (hold && now < hold.until && findPlayer(state, hold.playerId)) return hold.playerId;
+  if (state.turn && findPlayer(state, state.turn)) return state.turn;
+  if (hold && findPlayer(state, hold.playerId)) return hold.playerId;
+  return state.players[0]?.id ?? null;
+}
+
 /** Altezza visiva della palla (m): parabola sul carry, nulla quando rotola. */
-export function ballHeight(flight: { readonly airborne: boolean; readonly carryLeft: number; readonly carryM: number } | null): number {
+export function ballHeight(
+  flight: { readonly airborne: boolean; readonly carryLeft: number; readonly carryM: number; readonly apexM?: number } | null,
+): number {
   if (!flight || !flight.airborne || flight.carryM <= 0) return 0;
   const p = Math.min(1, Math.max(0, 1 - flight.carryLeft / flight.carryM));
-  const apex = Math.min(40, flight.carryM * 0.15);
+  // il volo del colpo e ogni rimbalzo hanno la loro altezza
+  const apex = flight.apexM ?? Math.min(40, flight.carryM * 0.15);
   return 4 * apex * p * (1 - p);
 }

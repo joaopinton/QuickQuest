@@ -45,6 +45,21 @@ Stroke play su 3 buche (MVP), punteggio relativo al par. Il putter si seleziona 
 ## Camera
 Dietro il giocatore → segue la palla in volo (con indicatore della distanza) → camera all'atterraggio → panoramica del green con la linea di pendenza.
 
+Com'è fatta oggi (`games/golf/screen/scene.ts`): la camera sta sempre dietro la palla, sulla linea palla → buca, e guarda verso la buca. In volo resta sulla linea del colpo; a palla ferma gira attorno alla palla e torna a mirare la buca, anche quando la palla l'ha superata. Più si è vicini, più la camera scende e si avvicina (putt). Dopo un colpo resta un attimo sulla palla ferma (`cameraFocusId`, `flow.ts`), così si vede la palla cadere in buca: la buca è un foro vero nel green, la bandiera si alza, la palla scivola dentro e rimbalza sul fondo.
+
+## Rimbalzi e rotolamento
+All'atterraggio la palla rimbalza e poi rotola (`touchdown`, `rules.ts`). La corsa dopo l'atterraggio è una quota del carry che dipende dal terreno e dalla mazza (driver corre, wedge ha effetto e si ferma). Fairway: due rimbalzi; green: uno, morbido; rough: uno basso; sabbia: nessuno, la palla si pianta. Mentre rotola, la frenata è quella del terreno sotto la palla in quel momento: dal fairway nel rough rallenta, nella sabbia si ferma. Ogni contatto manda un evento `touchdown` per gli sbuffi d'erba o di sabbia sullo schermo.
+
+Sullo schermo (`fx.ts`): scia a puntini del colore del giocatore, che sbiadisce a palla ferma; cerchio di mira dove cade la mazza scelta a piena potenza, vento compreso (`aimPreview`); bandierina che sventola col vento; scheda del colpo coi metri fatti.
+
+## Acqua e fuori limite
+Ostacoli in `games/golf/screen/hazards.ts`. Laghetti generati col seme (con un generatore a parte, così i semi vecchi tengono le stesse buche): a volte uno a lato del fairway e, sui par 3, a volte uno davanti al green da superare in volo. Mai su green, tee, bunker o oltre i paletti. Paletti bianchi a |x| = 48 m, dietro il tee e 35 m oltre il green; oltre, il prato è più scuro.
+
+Regole (semplificate): conta solo dove la palla tocca terra (in volo si passa sopra), ma anche rotolando si può entrare. Acqua: +1 colpo, drop fuori dall'acqua sulla linea verso il punto di partenza. Fuori limite: +1 colpo e si ritira da dove si era. Evento `penalty` → spruzzo (o sbuffo), la palla sparisce un attimo, la camera guarda lo spruzzo e poi va al drop; messaggio sullo schermo e cue d'errore al telefono. Il cerchio di mira diventa rosso se a piena potenza la mazza finisce in un ostacolo.
+
+## Mazze
+Sul telefono le mazze sono disegnate (`games/golf/shared/ClubArt.tsx`) e si sceglie toccandole: driver, ferro, wedge con la distanza massima; sul green c'è solo il putter. Il pad si allinea alla mazza suggerita dallo schermo leggendo il testo del turno (`clubFromTurnText`). La stessa mazza disegnata compare sullo schermo nel riquadro di chi tira.
+
 ## Rischi
 - **Contenuti**: le buche richiedono level design → editor minimo di heightfield + oggetti (JSON) e partenza con 3 buche.
 - **Swing a due mani**: rischio di colpire oggetti o persone → avviso di spazio dedicato, swing anche "a metà" accettato.

@@ -2,18 +2,41 @@
 // I colpi arrivano già riconosciuti dai telefoni (ADR-002); qui si validano e si giocano.
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { ScreenGameProps, ScreenPlayer } from '../../contract';
-import { ballHeight, outboxFor, parseClub, parseShot, TERM_TEXT } from './flow';
+import { ClubArt } from '../shared/ClubArt';
+import { CLUB_NAME } from '../shared/clubs';
+import { ballHeight, cameraFocusId, outboxFor, parseClub, parseShot, TERM_TEXT, type FocusHold } from './flow';
+import { hazardAt } from './hazards';
 import {
-  applyShot, createGolf, currentHole, distanceToPin, findPlayer, leaderboard, removePlayer, setClub, stepGolf,
-  type GolfEvent, type GolfState, type Step,
+  aimPreview, applyShot, createGolf, currentHole, distanceToPin, findPlayer, leaderboard, removePlayer, setClub, stepGolf,
+  type GolfEvent, type GolfPlayer, type GolfState, type Lie, type Step,
 } from './rules';
-import { createGolfScene, type GolfScene } from './scene';
+import { createGolfScene, type BallState, type GolfScene } from './scene';
 import './golf.css';
 
 const HOLES = 3;
 const HUD_REFRESH_MS = 100;
 const TOAST_MS = 2200;
 const MAX_FRAME_S = 0.1;
+/** Dopo un colpo la camera resta sulla palla ferma (o che cade in buca) prima di passare al turno dopo. */
+const FOCUS_HOLD_MS = 1600;
+const SHOT_CARD_MS = 3200;
+/** Dopo acqua o fuori limite la camera guarda lo spruzzo, poi va al drop. */
+const PENALTY_VIEW_MS = 1300;
+const DANGER_COLOR = '#ff4d4d';
+
+const LIE_TEXT: Readonly<Record<Lie, string>> = { tee: 'tee', fairway: 'fairway', green: 'green', rough: 'rough', bunker: 'sabbia' };
+/** Da dove si tira, se rende il colpo più difficile. */
+const LIE_FROM: Partial<Record<Lie, string>> = { rough: 'dal rough', bunker: 'dalla sabbia' };
+
+interface ShotCard {
+  readonly club: string;
+  readonly metres: number;
+  readonly lie: string;
+  readonly color: string;
+  readonly at: number;
+}
+
+const ballState = (p: GolfPlayer): BallState => (p.result === 'holed' ? 'holed' : p.result === 'picked_up' ? 'gone' : 'play');
 
 interface Toast {
   readonly text: string;
@@ -24,9 +47,11 @@ interface Toast {
 function toastFor(e: GolfEvent, players: readonly ScreenPlayer[]): Omit<Toast, 'at'> | null {
   const who = (id: string) => players.find((p) => p.id === id);
   if (e.kind === 'holed') return { text: `${who(e.playerId)?.name ?? e.playerId}: ${TERM_TEXT[e.term]}`, color: who(e.playerId)?.color ?? '#fff' };
-  if (e.kind === 'landed' && (e.lie === 'bunker' || e.lie === 'rough')) {
-    return { text: e.lie === 'bunker' ? 'Nel bunker!' : 'Nel rough', color: who(e.playerId)?.color ?? '#fff' };
+  // dove si ferma conta più di dove cade: dal fairway può rimbalzare nella sabbia
+  if (e.kind === 'rested' && !e.record.holed && !e.record.penalty && (e.record.endLie === 'bunker' || e.record.endLie === 'rough')) {
+    return { text: e.record.endLie === 'bunker' ? 'Nel bunker!' : 'Nel rough', color: who(e.playerId)?.color ?? '#fff' };
   }
+  if (e.kind === 'penalty') return { text: e.hazard === 'water' ? 'In acqua! +1' : 'Fuori limite! +1', color: who(e.playerId)?.color ?? '#fff' };
   if (e.kind === 'hole_started') return { text: `Buca ${e.hole} · par ${e.par}`, color: '#ffffff' };
   return null;
 }
@@ -44,10 +69,13 @@ export function Screen({ players, subscribeEvents, setActiveSlot, sendCue, onEnd
   const sceneRef = useRef<GolfScene | null>(null);
   const [hud, setHud] = useState<GolfState | null>(null);
   const [toast, setToast] = useState<Toast | null>(null);
+  const [shotCard, setShotCard] = useState<ShotCard | null>(null);
   const io = useRef({ setActiveSlot, sendCue });
   io.current = { setActiveSlot, sendCue };
   const pausedRef = useRef(isPaused);
   pausedRef.current = isPaused;
+  const holdRef = useRef<FocusHold | null>(null);
+  const penaltyViewRef = useRef<{ readonly at: { x: number; y: number }; readonly until: number } | null>(null);
 
   /** Applica un passo delle regole: stato, feedback ai telefoni, toast. */
   const commit = (step: Step) => {
@@ -57,6 +85,20 @@ export function Screen({ players, subscribeEvents, setActiveSlot, sendCue, onEnd
     if (out.activeSlot !== undefined) io.current.setActiveSlot(out.activeSlot);
     for (const { slot, cue } of out.cues) io.current.sendCue(slot, cue);
     for (const e of step.events) {
+      if (e.kind === 'penalty') {
+        penaltyViewRef.current = { at: e.at, until: performance.now() + PENALTY_VIEW_MS };
+        sceneRef.current?.penalty(e.playerId, e.at, e.hazard);
+      }
+      if (e.kind === 'rested') {
+        const extra = e.record.penalty ? PENALTY_VIEW_MS : 0;
+        holdRef.current = { playerId: e.playerId, until: performance.now() + FOCUS_HOLD_MS + extra };
+      }
+      if (e.kind === 'hole_started') holdRef.current = null;
+      if (e.kind === 'touchdown') sceneRef.current?.puff(e.at, e.lie, e.hop);
+      if (e.kind === 'rested' && e.record.kind === 'full' && !e.record.holed && !e.record.penalty) {
+        const color = roster.find((r) => r.id === e.playerId)?.color ?? '#fff';
+        setShotCard({ club: CLUB_NAME[e.record.club], metres: Math.round(e.record.distanceM), lie: LIE_TEXT[e.record.endLie], color, at: performance.now() });
+      }
       const t = toastFor(e, roster);
       if (t) setToast({ ...t, at: performance.now() });
       if (e.kind === 'hole_started') sceneRef.current?.setHole(currentHole(step.state));
@@ -93,10 +135,18 @@ export function Screen({ players, subscribeEvents, setActiveSlot, sendCue, onEnd
         const st = stateRef.current!;
         scene.setBalls(st.players.map((p) => {
           const color = roster.find((r) => r.id === p.id)?.color ?? '#ffffff';
-          return { id: p.id, color, x: p.ball.x, y: p.ball.y, height: ballHeight(p.flight) };
-        }));
-        const focus = st.players.find((p) => p.flight) ?? (st.turn ? findPlayer(st, st.turn) : undefined) ?? st.players[0];
-        if (focus) scene.follow({ x: focus.ball.x, y: focus.ball.y, height: ballHeight(focus.flight) }, dt);
+          return { id: p.id, color, x: p.ball.x, y: p.ball.y, height: ballHeight(p.flight), state: ballState(p), isMoving: p.flight !== null };
+        }), dt);
+        const focusId = cameraFocusId(st, holdRef.current, now);
+        const focus = focusId ? findPlayer(st, focusId) : undefined;
+        const aimer = st.phase === 'aim' && st.turn ? findPlayer(st, st.turn) : undefined;
+        const aimAt = aimer ? aimPreview(currentHole(st), aimer) : null;
+        // cerchio rosso se a piena potenza la mazza finisce in acqua o fuori
+        const aimColor = aimAt && hazardAt(currentHole(st), aimAt) ? DANGER_COLOR : roster.find((r) => r.id === aimer?.id)?.color ?? '#ffffff';
+        scene.setAim(aimAt, aimColor);
+        const splash = penaltyViewRef.current;
+        if (splash && now < splash.until) scene.follow({ x: splash.at.x, y: splash.at.y, height: 0, isMoving: true }, dt);
+        else if (focus) scene.follow({ x: focus.ball.x, y: focus.ball.y, height: ballHeight(focus.flight), isMoving: focus.flight !== null }, dt);
       }
       scene.render();
       raf = requestAnimationFrame(frame);
@@ -139,6 +189,12 @@ export function Screen({ players, subscribeEvents, setActiveSlot, sendCue, onEnd
   }, [players]);
 
   useEffect(() => {
+    if (!shotCard) return;
+    const id = setTimeout(() => setShotCard(null), SHOT_CARD_MS);
+    return () => clearTimeout(id);
+  }, [shotCard]);
+
+  useEffect(() => {
     if (!toast) return;
     const id = setTimeout(() => setToast(null), TOAST_MS);
     return () => clearTimeout(id);
@@ -148,6 +204,7 @@ export function Screen({ players, subscribeEvents, setActiveSlot, sendCue, onEnd
   const shooter = hud?.turn ? findPlayer(hud, hud.turn) : undefined;
   const shooterInfo = shooter ? roster.find((r) => r.id === shooter.id) : undefined;
   const board = hud ? leaderboard(hud) : [];
+  const shooterClub = shooter?.lie === 'green' ? 'putter' : shooter?.club ?? 'driver';
 
   return (
     <div class="golf">
@@ -163,8 +220,14 @@ export function Screen({ players, subscribeEvents, setActiveSlot, sendCue, onEnd
 
           {shooter && shooterInfo && hud.phase === 'aim' && (
             <p class="golf__turn" style={{ '--player': shooterInfo.color }} aria-live="polite">
-              {shooterInfo.symbol} Tocca a {shooterInfo.name} · {shooter.lie === 'green' ? 'putt' : shooter.club} ·{' '}
-              {Math.round(distanceToPin(hole, shooter.ball))} m
+              <ClubArt club={shooterClub} class="golf__turn-club" />
+              <span>
+                {shooterInfo.symbol} Tocca a {shooterInfo.name}
+                <small class="golf__turn-detail">
+                  {CLUB_NAME[shooterClub]} · {Math.round(distanceToPin(hole, shooter.ball))} m alla buca
+                  {LIE_FROM[shooter.lie] ? ` · ${LIE_FROM[shooter.lie]}` : ''}
+                </small>
+              </span>
             </p>
           )}
 
@@ -181,6 +244,13 @@ export function Screen({ players, subscribeEvents, setActiveSlot, sendCue, onEnd
               );
             })}
           </ol>
+
+          {shotCard && (
+            <p class="golf__shot" style={{ '--player': shotCard.color }} role="status">
+              <span class="golf__shot-metres">{shotCard.metres}<small> m</small></span>
+              <span class="golf__shot-detail">{shotCard.club} · {shotCard.lie}</span>
+            </p>
+          )}
 
           {toast && <p class="golf__toast" style={{ '--player': toast.color }} role="status">{toast.text}</p>}
 

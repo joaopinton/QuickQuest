@@ -22,6 +22,12 @@ test('golf: dalla lobby al primo colpo dal telefono simulato', async ({ context 
   await expect(screen.getByText('Buca 1/3')).toBeVisible({ timeout: 15_000 });
   await expect(phone.getByText(/Tocca a te · .* m alla bandiera/)).toBeVisible({ timeout: 10_000 });
 
+  // la mazza si sceglie toccando il disegno: lo schermo la mette in mano al giocatore
+  const wedge = phone.getByRole('radio', { name: /Wedge/ });
+  await wedge.click();
+  await expect(wedge).toHaveAttribute('aria-checked', 'true');
+  await expect(screen.getByText(/Wedge · \d+ m alla buca/)).toBeVisible({ timeout: 5_000 });
+
   await phone.getByRole('button', { name: 'Colpo di prova' }).click();
   await expect(screen.getByText('1 colpi')).toBeVisible({ timeout: 10_000 });
   // con un solo giocatore, a palla ferma il turno torna a lui
