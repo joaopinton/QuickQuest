@@ -101,7 +101,9 @@
     "selectedGame": "Gioco scelto: {name}",
     "gameRunningTitle": "Partita in corso: {name}",
     "gameRunningLead": "Guarda lo schermo! Muovi il controller per giocare.",
-    "endGame": "Torna alla lobby"
+    "endGame": "Torna alla lobby",
+    "fullscreenEnter": "Schermo intero (F)",
+    "fullscreenExit": "Esci dallo schermo intero (F)"
   },
   "code": {
     "title": "Inserisci il codice",

@@ -16,7 +16,7 @@ export default defineConfig({
     environment: 'node',
     coverage: {
       provider: 'v8',
-      include: ['packages/protocol/src/**', 'packages/motion/src/**', 'packages/ui/src/i18n/**', 'packages/ui/src/palette.ts', 'games/registry.ts', 'games/loaders.ts', 'games/golf/screen/rules.ts', 'games/golf/screen/flow.ts', 'games/golf/controller/recognizer.ts', 'apps/web/src/controller/haptics.ts', 'apps/web/src/net/rtt.ts'],
+      include: ['packages/protocol/src/**', 'packages/motion/src/**', 'packages/ui/src/i18n/**', 'packages/ui/src/palette.ts', 'games/registry.ts', 'games/loaders.ts', 'games/golf/screen/rules.ts', 'games/golf/screen/flow.ts', 'games/golf/controller/recognizer.ts', 'apps/web/src/controller/haptics.ts', 'apps/web/src/net/rtt.ts', 'apps/web/src/screen/fullscreen.ts'],
       thresholds: { lines: 80, functions: 80, branches: 75 },
     },
   },

@@ -7,6 +7,7 @@ import type { ComponentType } from 'preact';
 import { lazy, Suspense } from 'preact/compat';
 import { useMemo, useState } from 'preact/hooks';
 import { useScreenRoom } from '../../net/useScreenRoom';
+import { FullscreenToggle } from '../components/FullscreenToggle';
 import { GameCard } from '../components/GameCard';
 import { QrCode } from '../components/QrCode';
 import './lobby.css';
@@ -167,6 +168,8 @@ export function Lobby() {
         <a href="/" aria-label={t('nav.home')}><Logo size="md" /></a>
         <p class="lobby__badge">{t('lobby.demoBadge')}</p>
       </header>
+      {/* schermo intero per lobby e per ogni gioco: sta sopra qualsiasi scena */}
+      <FullscreenToggle />
 
       {phase === 'playing' ? (
         loadersFor(selectedGame) ? (
