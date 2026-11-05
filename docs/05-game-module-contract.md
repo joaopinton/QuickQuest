@@ -153,8 +153,16 @@ Intro (presentazione, 3 s, saltabile)
 
 ## 6. Implementazione attuale
 
-Versione minima, additiva (2026-11-05): il bowling resta sul suo cablaggio (messaggio `throw`, `GamePad.tsx`, `BowlingSandbox`), i giochi nuovi usano:
-- `games/contract.ts`: `ScreenGameProps` (giocatori, `subscribeEvents`, `setActiveSlot`, `sendCue`, `onEndGame`) e `ControllerPadProps` (slot, turno, tracker, haptics, ultimo cue, `send`);
-- `games/loaders.ts`: `import()` dinamici di `Screen` e `Pad` per ogni gioco, `isPlayable(id)` per la lobby;
+Dal 2026-11-05 tutti i giochi giocabili (bowling e golf) passano dal contratto:
+- `games/contract.ts`: `ScreenGameProps` (giocatori, `subscribeEvents`, `setActiveSlot`, `sendCue`, `onEndGame`) e `ControllerPadProps` (slot, turno, tracker con `press`/`release`/`cancel`, haptics, taratura `swingProfile`, `onRecalibrate`, ultimo cue, `send`);
+- `games/loaders.ts`: `import()` dinamici di `Screen` e `Pad` per ogni gioco, `isPlayable(id)` per la lobby (giocabile = ha i loader, nessun caso speciale);
 - protocollo: `game-event { gameId, e: { kind, data } }` dal telefono (validato: `data` piatto, ≤ 16 campi, numeri finiti, stringhe ≤ 32), inoltrato allo schermo solo per il gioco in corso e, se c'è un turno, solo dal giocatore di turno; `cue { slot | null, kind, text? }` dallo schermo ai telefoni, che lo trasformano in vibrazione o click.
-La migrazione del bowling su questo contratto è rimandata: richiede di toccare `games/bowling/`.
+
+Eventi per gioco:
+
+| Gioco | `kind` | `data` | Codec |
+|---|---|---|---|
+| bowling | `throw` | `speed` (m/s), `spin` (−1..1), `dir` (rad) | `games/bowling/shared/events.ts` (`throwEvent` / `parseThrowEvent`) |
+| golf | `shot`, `club` | v. `games/golf/controller/GolfPad.tsx` | `games/golf/screen/flow.ts` |
+
+Il vecchio messaggio dedicato `throw` è stato tolto dal protocollo: il bowling chiude il turno da sé (`setActiveSlot(null)` mentre la palla è in pista) e manda l'esito del tiro al telefono con un cue.

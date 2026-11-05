@@ -6,7 +6,7 @@ import {
 import { Button, t } from '@quickquest/ui';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { HapticsService } from '../haptics';
-import { MotionMeter } from './MotionMeter';
+import { MotionMeter } from '@quickquest/games/shared/MotionMeter';
 
 export interface CalibrateProps {
   readonly tracker: MotionTracker;

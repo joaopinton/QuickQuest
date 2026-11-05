@@ -32,13 +32,6 @@ export type ErrorCode = 'ROOM_FULL' | 'ROOM_NOT_FOUND' | 'UNSUPPORTED_DEVICE' | 
 
 export type RoomPhase = 'lobby' | 'starting' | 'playing';
 
-/** Parametri del lancio misurati dal gesto sul telefono (docs/04 § 6). */
-export interface ThrowParams {
-  readonly speed: number; // m/s
-  readonly spin: number; // -1 .. +1
-  readonly dir: number; // radianti
-}
-
 /**
  * Evento di gioco generico, riconosciuto sul telefono (ADR-002) e interpretato dallo schermo.
  * `kind` dice cosa è successo (es. `shot`), `data` porta i numeri: niente oggetti annidati.
@@ -65,7 +58,6 @@ export type ControllerMessage =
   | { t: 'ready'; p: { layoutId: string } }
   | { t: 'select-game'; p: { gameId: string } }
   | { t: 'start'; p: { gameId: string } }
-  | { t: 'throw'; p: ThrowParams }
   | { t: 'game-event'; p: { gameId: string; e: GameEvent } }
   /** Solo dallo schermo (relay): feedback per un telefono (`slot`) o per tutti (`null`). */
   | { t: 'cue'; p: Cue & { slot: SlotId | null } }
@@ -84,7 +76,6 @@ export type ServerMessage =
   | { t: 'layout'; p: { gameId: string; layoutId: string; params?: Record<string, unknown> } }
   | { t: 'turn'; p: { activeSlot: SlotId | null } }
   /** Lancio di un telefono inoltrato allo schermo, con lo slot timbrato dall'host. */
-  | { t: 'throw'; p: ThrowParams & { slot?: SlotId } }
   /** Evento di gioco inoltrato allo schermo, con lo slot timbrato dall'host. */
   | { t: 'game-event'; p: { gameId: string; e: GameEvent; slot?: SlotId } }
   /** Feedback dallo schermo, consegnato al telefono. */
@@ -159,9 +150,6 @@ function validPayload(t: string, p: unknown): boolean {
     case 'bye':
     case 'end-game':
       return true;
-    case 'throw':
-      return isNum(p.speed, 0, 20) && isNum(p.spin, -1, 1) && isNum(p.dir, -1, 1)
-        && (p.slot === undefined || isSlot(p.slot));
     case 'game-event':
       return typeof p.gameId === 'string' && ID_REGEX.test(p.gameId) && isGameEvent(p.e)
         && (p.slot === undefined || isSlot(p.slot));

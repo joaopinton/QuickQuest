@@ -10,7 +10,6 @@ import {
   type RoomHost,
   type RoomPhase,
   type SlotId,
-  type ThrowParams,
   type Cue,
   type GameEvent,
   type WsClientTransport,
@@ -29,8 +28,6 @@ export interface ScreenRoom {
   returnToLobby(): void;
   /** Chi può lanciare adesso dal proprio telefono (`null` = nessuno). */
   setActiveSlot(slot: SlotId | null): void;
-  /** Lanci fatti col gesto dal telefono del giocatore di turno. */
-  onThrow(cb: ThrowListener): () => void;
   /** Eventi dei giochi sul contratto modulo (games/contract.ts). */
   onGameEvent(cb: GameEventListener): () => void;
   /** Feedback per un telefono (`slot`) o per tutti (`null`). */
@@ -39,7 +36,6 @@ export interface ScreenRoom {
 
 export type GameEventListener = (slot: SlotId, e: GameEvent) => void;
 
-export type ThrowListener = (slot: SlotId, params: ThrowParams) => void;
 
 export function joinUrlFor(code: string, origin: string = window.location.origin): string {
   return `${origin}/c/${code}`;
@@ -52,8 +48,6 @@ export function useScreenRoom(): ScreenRoom {
   const [selectedGame, setSelectedGame] = useState<string | null>(null);
   const hostRef = useRef<RoomHost | null>(null);
   const wsRef = useRef<WsClientTransport | null>(null);
-  const throwListeners = useRef(new Set<ThrowListener>());
-  const emitThrow: ThrowListener = (slot, params) => throwListeners.current.forEach((cb) => cb(slot, params));
   const eventListeners = useRef(new Set<GameEventListener>());
   const emitEvent = (slot: SlotId, e: GameEvent) => eventListeners.current.forEach((cb) => cb(slot, e));
 
@@ -67,8 +61,6 @@ export function useScreenRoom(): ScreenRoom {
           setPlayers(m.p.players);
           if (m.p.phase) setPhase(m.p.phase);
           if (m.p.selectedGame !== undefined) setSelectedGame(m.p.selectedGame);
-        } else if (m.t === 'throw' && m.p.slot) {
-          emitThrow(m.p.slot, { speed: m.p.speed, spin: m.p.spin, dir: m.p.dir });
         } else if (m.t === 'game-event' && m.p.slot) {
           emitEvent(m.p.slot, m.p.e);
         }
@@ -87,7 +79,6 @@ export function useScreenRoom(): ScreenRoom {
         if (ph) setPhase(ph);
         if (sg !== undefined) setSelectedGame(sg ?? null);
       },
-      onThrow: emitThrow,
       onGameEvent: (slot, _gameId, e) => emitEvent(slot, e),
     });
     hostRef.current = host;
@@ -136,11 +127,6 @@ export function useScreenRoom(): ScreenRoom {
   };
 
   // identità stabile: chi si iscrive non deve ri-iscriversi a ogni render
-  const onThrow = useCallback((cb: ThrowListener) => {
-    throwListeners.current.add(cb);
-    return () => { throwListeners.current.delete(cb); };
-  }, []);
-
   const onGameEvent = useCallback((cb: GameEventListener) => {
     eventListeners.current.add(cb);
     return () => { eventListeners.current.delete(cb); };
@@ -161,7 +147,6 @@ export function useScreenRoom(): ScreenRoom {
     startGame,
     returnToLobby,
     setActiveSlot,
-    onThrow,
     onGameEvent,
     sendCue,
   };

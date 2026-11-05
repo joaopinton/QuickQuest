@@ -1,8 +1,7 @@
 import { GAMES, type GameMeta } from '@quickquest/games';
 import type { ScreenGameProps, ScreenPlayer } from '@quickquest/games/contract';
 import { isPlayable, loadersFor } from '@quickquest/games/loaders';
-import { SLOT_IDS, type LobbyPlayer, type SlotId } from '@quickquest/protocol';
-import type { BowlingPlayer } from '@quickquest/games/bowling/screen/useBowlingGame';
+import { SLOT_IDS, type LobbyPlayer } from '@quickquest/protocol';
 import { Button, Logo, PlayerSlot, showToast, slotStyle, t, type Accessory, type SlotState } from '@quickquest/ui';
 import type { ComponentType } from 'preact';
 import { lazy, Suspense } from 'preact/compat';
@@ -12,12 +11,8 @@ import { GameCard } from '../components/GameCard';
 import { QrCode } from '../components/QrCode';
 import './lobby.css';
 
-const BowlingSandbox = lazy(() =>
-  import('@quickquest/games/bowling/screen/BowlingSandbox').then((m) => m.BowlingSandbox),
-);
-
-/** Giocatori collegati per il bowling: colore del Pupo scelto sul telefono e simbolo dello slot. */
-function bowlingPlayers(players: readonly LobbyPlayer[]): BowlingPlayer[] {
+/** Giocatori collegati come li vede un gioco: colore del Pupo scelto sul telefono e simbolo dello slot. */
+function screenPlayers(players: readonly LobbyPlayer[]): ScreenPlayer[] {
   return players
     .filter((p) => p.state !== 'disconnected')
     .map((p) => {
@@ -30,11 +25,6 @@ function bowlingPlayers(players: readonly LobbyPlayer[]): BowlingPlayer[] {
         symbol: slot.symbol,
       };
     });
-}
-
-/** Giocatori collegati come li vede un gioco sul contratto modulo. */
-function screenPlayers(players: readonly LobbyPlayer[]): ScreenPlayer[] {
-  return bowlingPlayers(players).map((p) => ({ ...p, id: p.id as SlotId }));
 }
 
 /** Scena di un gioco sul contratto modulo, caricata solo quando serve. */
@@ -50,8 +40,6 @@ function ModuleGame({ gameId, ...props }: ScreenGameProps & { gameId: string }) 
     </Suspense>
   );
 }
-
-const isSlotId = (id: string | null): id is SlotId => id !== null && (SLOT_IDS as readonly string[]).includes(id);
 
 function slotState(p: LobbyPlayer | undefined): SlotState {
   return p ? p.state : 'empty';
@@ -156,7 +144,7 @@ function PlayingScreen({
 }
 
 export function Lobby() {
-  const { code, players, joinUrl, phase, selectedGame, startGame, returnToLobby, setActiveSlot, onThrow, onGameEvent, sendCue } = useScreenRoom();
+  const { code, players, joinUrl, phase, selectedGame, startGame, returnToLobby, setActiveSlot, onGameEvent, sendCue } = useScreenRoom();
   const [isChoosing, setChoosing] = useState(false);
   const active = players.filter((p) => p.state !== 'disconnected').length;
   const bySlot = new Map(players.map((p) => [p.slot, p]));
@@ -181,22 +169,7 @@ export function Lobby() {
       </header>
 
       {phase === 'playing' ? (
-        selectedGame === 'bowling' ? (
-          <Suspense
-            fallback={
-              <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '1.5rem', background: '#161224' }}>
-                🎳 Caricamento pista da bowling...
-              </div>
-            }
-          >
-            <BowlingSandbox
-              onEndGame={returnToLobby}
-              players={bowlingPlayers(players)}
-              subscribeThrows={onThrow}
-              onActivePlayerChange={(id) => setActiveSlot(isSlotId(id) ? id : null)}
-            />
-          </Suspense>
-        ) : loadersFor(selectedGame) ? (
+        loadersFor(selectedGame) ? (
           <ModuleGame
             gameId={selectedGame!}
             players={screenPlayers(players)}

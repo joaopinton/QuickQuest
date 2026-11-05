@@ -1,7 +1,6 @@
-// Contratto minimo di un modulo di gioco (docs/05). Il bowling resta per ora sul suo cablaggio
-// (messaggio `throw`); i giochi nuovi passano da qui: eventi generici `game-event` dal telefono,
-// `cue` dallo schermo al telefono, componenti caricati con import() dinamico.
-import type { FusedSample, MotionTracker } from '@quickquest/motion';
+// Contratto di un modulo di gioco (docs/05). Tutti i giochi passano da qui: eventi generici
+// `game-event` dal telefono, `cue` dallo schermo al telefono, componenti caricati con import() dinamico.
+import type { FusedSample, MotionTracker, SwingProfile } from '@quickquest/motion';
 import type { Cue, CueKind, GameEvent, SlotId } from '@quickquest/protocol';
 import type { ComponentType } from 'preact';
 
@@ -38,8 +37,13 @@ export interface ControllerPadProps {
   readonly isLost: boolean;
   readonly isDemo: boolean;
   readonly isSimulated: boolean;
-  readonly tracker: Pick<MotionTracker, 'subscribe' | 'still' | 'omega'>;
+  /** Campioni fusi a 60 Hz, quiete, velocità angolare; press/release per i gesti "tieni premuto". */
+  readonly tracker: Pick<MotionTracker, 'subscribe' | 'still' | 'omega' | 'press' | 'release' | 'cancel'>;
   readonly haptics: ControllerHaptics;
+  /** Taratura del giocatore dai tiri di prova; `null` se non c'è (telefono simulato). */
+  readonly swingProfile: SwingProfile | null;
+  /** Rifà la taratura; poi il telefono torna sul pad. */
+  readonly onRecalibrate: () => void;
   /** Ultimo feedback ricevuto dallo schermo. */
   readonly lastCue: Cue | null;
   readonly send: (e: GameEvent) => void;

@@ -15,7 +15,6 @@ import { Calibrate } from './steps/Calibrate';
 import { DebugOverlay } from './steps/DebugOverlay';
 import { ModulePad } from './steps/ModulePad';
 import { TraceRecorder } from './steps/TraceRecorder';
-import { GamePad } from './steps/GamePad';
 import { PickPupo, type PupoChoice } from './steps/PickPupo';
 import { Blocked, EnterCode, Incompatible, Probing, Safety, Welcome } from './steps/Screens';
 import { Waiting } from './steps/Waiting';
@@ -223,39 +222,24 @@ function RoomFlow({ code }: { code: string }) {
           />
         );
       case 'game':
-        if (loadersFor(step.gameId)) {
-          return (
-            <ModulePad
-              gameId={step.gameId}
-              slot={slot}
-              color={pupoColor(choice.colorId).hex}
-              activeSlot={activeSlot}
-              isLost={isLost}
-              isDemo={isDemo}
-              isSimulated={simVariant !== undefined}
-              tracker={tracker}
-              haptics={haptics}
-              lastCue={lastCue}
-              send={(e) => conn.sendGameEvent(step.gameId, e)}
-              onLeave={() => { conn.leave(); releaseWakeLock(); route('/'); }}
-            />
-          );
+        // gioco sconosciuto (telefono più vecchio dello schermo): si resta in attesa
+        if (!loadersFor(step.gameId)) {
+          return <Waiting slot={slot} color={pupoColor(choice.colorId).hex} accessory={choice.accessory} isDemo={isDemo} isLost={isLost} players={players} onChangePupo={() => setStep({ k: 'pick' })} onLeave={() => { conn.leave(); releaseWakeLock(); route('/'); }} />;
         }
         return (
-          <GamePad
+          <ModulePad
+            gameId={step.gameId}
             slot={slot}
             color={pupoColor(choice.colorId).hex}
-            accessory={choice.accessory}
-            gameId={step.gameId}
-            layoutId={step.layoutId}
-            isDemo={isDemo}
-            isLost={isLost}
             activeSlot={activeSlot}
+            isLost={isLost}
+            isDemo={isDemo}
+            isSimulated={simVariant !== undefined}
             tracker={tracker}
             haptics={haptics}
-            profile={profile}
-            isSimulated={simVariant !== undefined}
-            onThrow={(params) => conn.sendThrow(params)}
+            swingProfile={profile}
+            lastCue={lastCue}
+            send={(e) => conn.sendGameEvent(step.gameId, e)}
             onRecalibrate={() => setStep({ k: 'calibrate', then: step })}
             onLeave={() => { conn.leave(); releaseWakeLock(); route('/'); }}
           />

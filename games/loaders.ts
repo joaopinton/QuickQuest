@@ -9,6 +9,10 @@ export interface GameLoaders {
 }
 
 export const GAME_LOADERS: Partial<Record<GameMeta['id'], GameLoaders>> = {
+  bowling: {
+    screen: () => import('./bowling/screen/BowlingScreen'),
+    controller: () => import('./bowling/controller/BowlingPad'),
+  },
   golf: {
     screen: () => import('./golf/screen/GolfScreen'),
     controller: () => import('./golf/controller/GolfPad'),
@@ -19,7 +23,7 @@ export function loadersFor(id: string | null): GameLoaders | undefined {
   return id ? GAME_LOADERS[id as GameMeta['id']] : undefined;
 }
 
-/** Si può avviare dalla lobby: il bowling (cablato) o un gioco con i suoi loader. */
+/** Si può avviare dalla lobby: ha i suoi loader. */
 export function isPlayable(id: string): boolean {
-  return id === 'bowling' || loadersFor(id) !== undefined;
+  return loadersFor(id) !== undefined;
 }

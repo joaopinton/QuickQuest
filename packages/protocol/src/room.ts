@@ -144,14 +144,6 @@ export function applyTurn(state: RoomState, activeSlot: SlotId | null): RoomStat
   return { ...state, activeSlot };
 }
 
-/** Slot del giocatore dietro una connessione, se può lanciare adesso. */
-export function throwerSlot(state: RoomState, connectionId: string): SlotId | null {
-  if (state.phase !== 'playing') return null;
-  const player = state.players.find(byConnection(connectionId));
-  if (!player || player.slot !== state.activeSlot) return null;
-  return player.slot;
-}
-
 /**
  * Chi può mandare un evento di gioco: un giocatore della partita in corso. Se lo schermo ha
  * indicato un turno, solo il giocatore di turno; se il turno è libero (`null`), chiunque.

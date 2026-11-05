@@ -3,7 +3,10 @@ import {
   BALL_MASS,
   BALL_RADIUS,
   BALL_RG,
+  ballHitsPin,
   createBowlingPhysicsWorld,
+  pinAxisSegment,
+  segmentDistance,
   HEADPIN_Z,
   LANE_LENGTH,
   LANE_WIDTH,
@@ -118,6 +121,79 @@ describe('Bowling Physics & Geometry (USBC Specs)', () => {
     }
   });
 
+  test('senza palla i birilli restano fermi sullo spot (niente cadute da soli)', async () => {
+    const phys = await createBowlingPhysicsWorld();
+    try {
+      for (let i = 0; i < 300; i++) phys.step(1 / 60); // 5 secondi
+      const statuses = phys.getPinStatuses();
+      expect(statuses.every((p) => !p.knockedDown && p.tiltAngleDeg < 0.01)).toBe(true);
+      expect(PIN_OFFSETS.every((_, i) => phys.isPinStanding(i))).toBe(true);
+    } finally {
+      phys.dispose();
+    }
+  });
+
+  test('un birillo sbloccato ma non colpito resta in piedi (base stabile)', async () => {
+    const phys = await createBowlingPhysicsWorld();
+    try {
+      PIN_OFFSETS.forEach((_, i) => phys.releasePin(i));
+      for (let i = 0; i < 300; i++) phys.step(1 / 60);
+      expect(phys.getPinStatuses().every((p) => !p.knockedDown && p.tiltAngleDeg < 2)).toBe(true);
+    } finally {
+      phys.dispose();
+    }
+  });
+
+  test("i birilli si muovono solo quando la palla entra nella loro hitbox", async () => {
+    const phys = await createBowlingPhysicsWorld();
+    try {
+      phys.launchBall({ startX: 0, dir: 0, speed: 8, spin: 0 });
+      let firstRelease = -1;
+      for (let i = 0; i < 240 && firstRelease < 0; i++) {
+        phys.step(1 / 60);
+        if (PIN_OFFSETS.some((_, k) => !phys.isPinStanding(k))) firstRelease = i;
+        // Finché nessuno è stato toccato, nessuno è caduto
+        if (firstRelease < 0) expect(phys.getPinStatuses().some((p) => p.knockedDown)).toBe(false);
+      }
+      expect(firstRelease).toBeGreaterThan(0);
+      // Allo sblocco la palla è al birillo 1: davanti di meno di un raggio più la pancia (+ un passo)
+      const gap = HEADPIN_Z - phys.ballBody.translation().z;
+      expect(gap).toBeLessThan(BALL_RADIUS + 0.0605 + 8 / 60);
+      expect(phys.isPinStanding(0)).toBe(false);
+
+      for (let i = 0; i < 180; i++) phys.step(1 / 60);
+      expect(phys.getPinStatuses().filter((p) => p.knockedDown).length).toBeGreaterThan(3);
+    } finally {
+      phys.dispose();
+    }
+  });
+
+  test('palla in canalina: nessun birillo toccato, nessuno cade', async () => {
+    const phys = await createBowlingPhysicsWorld();
+    try {
+      phys.launchBall({ startX: 0.45, dir: 0.05, speed: 7, spin: 0 });
+      for (let i = 0; i < 300; i++) phys.step(1 / 60);
+      expect(phys.getPinStatuses().some((p) => p.knockedDown)).toBe(false);
+    } finally {
+      phys.dispose();
+    }
+  });
+
+  test('hitbox: distanza fra segmenti e contatto palla–birillo', () => {
+    const o = { x: 0, y: 0, z: 0 };
+    expect(segmentDistance(o, { x: 1, y: 0, z: 0 }, { x: 0.5, y: 1, z: -1 }, { x: 0.5, y: 1, z: 1 })).toBeCloseTo(1, 6);
+    expect(segmentDistance(o, o, { x: 3, y: 4, z: 0 }, { x: 3, y: 4, z: 0 })).toBeCloseTo(5, 6);
+    const axis = pinAxisSegment({ x: 0, y: PIN_HEIGHT / 2, z: 10 }, { x: 0, y: 0, z: 0, w: 1 });
+    expect(axis[0].y).toBeCloseTo(0, 6);
+    expect(axis[1].y).toBeCloseTo(PIN_HEIGHT, 6);
+    const ball = { x: 0, y: BALL_RADIUS, z: 9.5 };
+    // Ferma a 50 cm: niente colpo; a 8 m/s in 1/16 s la arriva addosso
+    expect(ballHitsPin(ball, { x: 0, y: 0, z: 0 }, axis, 1 / 240)).toBe(false);
+    expect(ballHitsPin(ball, { x: 0, y: 0, z: 8 }, axis, 1 / 16)).toBe(true);
+    // Passa di lato a 20 cm: fuori dalla hitbox
+    expect(ballHitsPin({ ...ball, x: 0.2 }, { x: 0, y: 0, z: 8 }, axis, 1 / 8)).toBe(false);
+  });
+
   test('effetto hook nel backend asciutto curva la traiettoria con spin elevato', async () => {
     const phys = await createBowlingPhysicsWorld();
     try {
@@ -186,6 +262,7 @@ describe('Bowling Physics & Geometry (USBC Specs)', () => {
   test('masse, baricentri e inerzie reali di palla e birilli', async () => {
     const phys = await createBowlingPhysicsWorld();
     try {
+      phys.releasePin(0); // un corpo fisso non espone massa: lo sblocco
       phys.step(1 / 60); // Rapier aggiorna le proprietà di massa al primo passo
       expect(phys.ballBody.mass()).toBeCloseTo(BALL_MASS, 3);
       const ballI = phys.ballBody.principalInertia();
@@ -201,8 +278,10 @@ describe('Bowling Physics & Geometry (USBC Specs)', () => {
 
       const inertia = computePinInertia();
       const pinI = pin.principalInertia();
-      expect(pinI.y).toBeCloseTo(inertia.axial, 5);
-      expect(pinI.x).toBeCloseTo(inertia.transverse, 5);
+      // Rapier può riordinare gli assi principali (frame locale ruotato): confronto i valori
+      const [minI, , maxI] = [pinI.x, pinI.y, pinI.z].sort((a, b) => a - b);
+      expect(minI).toBeCloseTo(inertia.axial, 5);
+      expect(maxI).toBeCloseTo(inertia.transverse, 5);
       // Ordine di grandezza di un birillo reale: trasversale ~0.013 kg·m², assiale ~0.0018 kg·m²
       expect(inertia.transverse).toBeGreaterThan(0.01);
       expect(inertia.transverse).toBeLessThan(0.017);
@@ -216,6 +295,7 @@ describe('Bowling Physics & Geometry (USBC Specs)', () => {
     const phys = await createBowlingPhysicsWorld();
     try {
       phys.world.gravity = { x: 0, y: 0, z: 0 };
+      phys.releasePin(0); // in piedi è un corpo fisso: lo sblocco come se fosse stato colpito
       const pin = phys.pinBodies[0]!;
       pin.setTranslation({ x: 0, y: 3, z: 5 }, true); // lontano da tutto
       pin.setAngvel({ x: 4, y: 25, z: -2 }, true); // non allineato agli assi principali

@@ -2,7 +2,7 @@
 // succede con un telefono vero finché il relay Cloudflare non esiste (il trasporto è locale).
 import {
   createLocalClient, createWsClient, HEARTBEAT_MS, relayUrl, type Capabilities, type ClientTransport, type ErrorCode, type LobbyPlayer,
-  type Profile, type RoomPhase, type ServerMessage, type WsClientTransport, type SlotId, type ThrowParams,
+  type Profile, type RoomPhase, type ServerMessage, type WsClientTransport, type SlotId,
   type Cue, type GameEvent,
 } from '@quickquest/protocol';
 
@@ -29,8 +29,6 @@ export interface ControllerConnection {
   join(capabilities: Capabilities): Promise<JoinResult>;
   sendProfile(profile: Profile): void;
   sendReady(layoutId: string): void;
-  /** Lancio misurato dal gesto: lo schermo lo accetta solo se è il nostro turno. */
-  sendThrow(params: ThrowParams): void;
   /** Evento di un gioco sul contratto modulo (games/contract.ts). */
   sendGameEvent(gameId: string, e: GameEvent): void;
   /** Feedback chiesto dallo schermo (vibrazione/click e testo). */
@@ -198,9 +196,6 @@ export function createControllerConnection(code: string, transport: ClientTransp
     onCue(cb) {
       cueListeners.add(cb);
       return () => cueListeners.delete(cb);
-    },
-    sendThrow(params) {
-      send({ t: 'throw', p: params });
     },
     onRtt(cb) {
       rttListeners.add(cb);

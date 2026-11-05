@@ -1,35 +1,13 @@
-// Controller del bowling: il lancio parte dal gesto del giocatore di turno (docs/04 § 6).
+// Pad del bowling sul contratto modulo (games/contract.ts): il lancio parte dal gesto del giocatore
+// di turno (docs/04 § 6) e arriva allo schermo come game-event "throw".
 // Tieni premuto, braccio indietro, swing in avanti, alza il pollice. La mira è la direzione
 // dello swing (girati a sinistra o a destra), la forza è la velocità del braccio.
-import {
-  MIN_SWING_PEAK, throwFromSwing, type MotionTracker, type SwingProfile, type ThrowOutput,
-} from '@quickquest/motion';
-import type { SlotId, ThrowParams } from '@quickquest/protocol';
-import { slotStyle, t, type Accessory } from '@quickquest/ui';
+import { MIN_SWING_PEAK, throwFromSwing, type ThrowOutput } from '@quickquest/motion';
+import { slotStyle, t } from '@quickquest/ui';
 import { useEffect, useRef, useState } from 'preact/hooks';
-import type { HapticsService } from '../haptics';
-import { MotionMeter } from './MotionMeter';
-
-export interface GamePadProps {
-  readonly slot: SlotId;
-  readonly color: string;
-  readonly accessory: Accessory;
-  readonly gameId: string;
-  readonly layoutId: string;
-  readonly isDemo: boolean;
-  readonly isLost: boolean;
-  /** Chi può lanciare adesso (deciso dallo schermo); `null` = nessuno (palla in pista). */
-  readonly activeSlot: SlotId | null;
-  readonly tracker: MotionTracker;
-  readonly haptics: HapticsService;
-  /** Taratura dai tiri di prova; `null` col telefono simulato. */
-  readonly profile: SwingProfile | null;
-  /** Solo in sviluppo (`?sim`): niente sensori, il lancio è sintetizzato dalla durata della pressione. */
-  readonly isSimulated: boolean;
-  readonly onThrow: (params: ThrowParams) => void;
-  readonly onRecalibrate: () => void;
-  readonly onLeave: () => void;
-}
+import type { ControllerPadProps } from '../../contract';
+import { MotionMeter } from '../../shared/MotionMeter';
+import { throwEvent } from '../shared/events';
 
 const FEEDBACK_MS = 3500;
 
@@ -48,9 +26,9 @@ function simulatedThrow(heldMs: number): ThrowOutput {
   return { speed: 5 + Math.min(1, heldMs / 1000) * 4, spin: 0.25, dir: 0 };
 }
 
-export function GamePad({
-  slot, color, gameId, isDemo, isLost, activeSlot, tracker, haptics, profile, isSimulated, onThrow, onRecalibrate, onLeave,
-}: GamePadProps) {
+export function Pad({
+  slot, color, isDemo, isLost, activeSlot, tracker, haptics, swingProfile, lastCue, isSimulated, send, onRecalibrate, onLeave,
+}: ControllerPadProps) {
   const [isPressed, setPressed] = useState(false);
   const [feedback, setFeedback] = useState<Feedback>(null);
   const pressedAtRef = useRef(0);
@@ -90,7 +68,7 @@ export function GamePad({
     if (isSimulated) {
       tracker.cancel();
       const th = simulatedThrow(now - pressedAtRef.current);
-      onThrow(th);
+      send(throwEvent(th));
       setFeedback({ kind: 'thrown', text: describeThrow(th) });
       return;
     }
@@ -102,16 +80,16 @@ export function GamePad({
       haptics.play('error');
       return;
     }
-    const th = throwFromSwing(swing, profile);
-    onThrow(th);
+    const th = throwFromSwing(swing, swingProfile);
+    send(throwEvent(th));
     setFeedback({ kind: 'thrown', text: describeThrow(th) });
     haptics.play('success');
   };
 
-  const gameName = gameId === 'bowling' ? 'Bowling' : gameId;
 
   let turnText: string;
   if (feedback) turnText = feedback.text;
+  else if (lastCue?.text && !isMyTurn) turnText = lastCue.text; // esito del tiro detto dallo schermo
   else if (isMyTurn) turnText = t('controller.yourTurn');
   else if (activeSlot) turnText = t('controller.waitTurn', { slot: `${slotStyle(activeSlot).symbol} ${activeSlot}` });
   else turnText = t('controller.laneBusy');
@@ -139,7 +117,7 @@ export function GamePad({
           <span>{style.symbol}</span>
           <strong>{slot}</strong>
         </div>
-        <span class="ctl-game__title">{gameName}</span>
+        <span class="ctl-game__title">Bowling</span>
         {statusBadge}
       </header>
 

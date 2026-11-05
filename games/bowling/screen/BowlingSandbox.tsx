@@ -2,7 +2,7 @@
 // della lobby, con punteggio dopo ogni tiro e classifica (docs/06, docs/07, docs/games/bowling.md).
 
 import { useEffect, useRef, useState } from 'preact/hooks';
-import type { BowlingPinStatus, BowlingReleaseData } from '../shared/events';
+import type { BowlingPinStatus, BowlingReleaseData, GestureThrow } from '../shared/events';
 import { SWEEP_MS, SWEEP_SWAP_MS, type ScoreboardInfo } from './environment';
 import { GameSetup } from './hud/GameSetup';
 import { Leaderboard } from './hud/Leaderboard';
@@ -18,8 +18,7 @@ import './hud/hud.css';
 
 export type { BowlingPlayer } from './useBowlingGame';
 
-/** Parametri di un lancio fatto col gesto sul telefono. */
-export type GestureThrow = Pick<BowlingReleaseData, 'speed' | 'spin' | 'dir'>;
+export type { GestureThrow } from '../shared/events';
 export type ThrowSubscriber = (cb: (playerId: string, release: GestureThrow) => void) => () => void;
 
 export interface BowlingSandboxProps {
@@ -29,6 +28,8 @@ export interface BowlingSandboxProps {
   readonly subscribeThrows?: ThrowSubscriber;
   /** Chi può lanciare adesso (id del giocatore) o `null`: lo si dice ai telefoni. */
   readonly onActivePlayerChange?: (playerId: string | null) => void;
+  /** Esito del tiro appena chiuso, per il telefono di chi ha tirato. */
+  readonly onShot?: (playerId: string, text: string, isGood: boolean) => void;
 }
 
 const TOAST_MS = 1700; // quanto resta in vista l'esito prima che lo sweeper sistemi il rack
@@ -71,7 +72,7 @@ function scoreboardFor(game: GameState, players: readonly BowlingPlayer[], messa
   };
 }
 
-export function BowlingSandbox({ onEndGame, players: playersProp, subscribeThrows, onActivePlayerChange }: BowlingSandboxProps) {
+export function BowlingSandbox({ onEndGame, players: playersProp, subscribeThrows, onActivePlayerChange, onShot }: BowlingSandboxProps) {
   // Giocatori collegati ora (per la schermata iniziale) e formazione fissata a inizio partita
   const lobbyPlayers = playersProp && playersProp.length > 0 ? playersProp : DEFAULT_PLAYERS;
   const { game, roster: players, lastShot, start, record, reset } = useBowlingGame();
@@ -83,6 +84,8 @@ export function BowlingSandbox({ onEndGame, players: playersProp, subscribeThrow
   const standingBeforeRef = useRef(10); // birilli in piedi al momento del lancio
   const timersRef = useRef<number[]>([]);
   const finishThrowRef = useRef<(statuses: BowlingPinStatus[]) => void>(() => {});
+  const onShotRef = useRef(onShot);
+  onShotRef.current = onShot;
 
   const [pinStatuses, setPinStatuses] = useState<BowlingPinStatus[]>(INITIAL_PINS);
   const [isBusy, setIsBusy] = useState(false); // palla in pista o rack in sistemazione
@@ -125,6 +128,8 @@ export function BowlingSandbox({ onEndGame, players: playersProp, subscribeThrow
     }
 
     const { next, report, nextTurn, isOver } = result;
+    const pinsText = `${report.pins} birill${report.pins === 1 ? 'o' : 'i'}`;
+    onShotRef.current?.(report.player.id, SCOREBOARD_MESSAGE[report.outcome] ?? pinsText, report.outcome === 'strike' || report.outcome === 'spare');
     // Il tabellone 3D mostra l'esito del tiro appena fatto finché lo sweeper non sistema il rack
     sc.setScoreboard({
       playerName: report.player.name,
@@ -133,7 +138,7 @@ export function BowlingSandbox({ onEndGame, players: playersProp, subscribeThrow
       frameCount: next.frameCount,
       roll: report.roll,
       total: report.total,
-      message: SCOREBOARD_MESSAGE[report.outcome] ?? `${report.pins} birill${report.pins === 1 ? 'o' : 'i'}`,
+      message: SCOREBOARD_MESSAGE[report.outcome] ?? pinsText,
     });
 
     if (isOver) {
@@ -261,7 +266,8 @@ export function BowlingSandbox({ onEndGame, players: playersProp, subscribeThrow
   // Esecuzione lancio palla: i parametri arrivano dal gesto sul telefono del giocatore di turno
   const handleThrow = (release: GestureThrow) => {
     const phys = physicsRef.current;
-    if (!phys || !canThrow) return;
+    // throwStartRef è sincrono: due lanci nello stesso frame (prima del re-render) ne valgono uno
+    if (!phys || !canThrow || throwStartRef.current !== null) return;
 
     const releaseData: BowlingReleaseData = { startX: 0, dir: release.dir, speed: release.speed, spin: release.spin };
     standingBeforeRef.current = phys.getPinStatuses().filter((p) => !p.knockedDown).length;

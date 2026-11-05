@@ -29,7 +29,8 @@
         "apps/web/dist/assets/ControllerApp-*.js",
         "apps/web/dist/assets/ControllerApp-*.css",
         "apps/web/dist/assets/burst-*.js",
-        "apps/web/dist/assets/compat.module-*.js"
+        "apps/web/dist/assets/compat.module-*.js",
+        "apps/web/dist/assets/MotionMeter-*.js"
       ],
       "limit": "100 KB"
     },
@@ -40,6 +41,14 @@
         "apps/web/dist/assets/GolfPad-*.css"
       ],
       "limit": "15 KB"
+    },
+    {
+      "name": "telefono, pad del bowling",
+      "path": [
+        "apps/web/dist/assets/BowlingPad-*.js",
+        "apps/web/dist/assets/events-*.js"
+      ],
+      "limit": "10 KB"
     },
     {
       "name": "home (/)",

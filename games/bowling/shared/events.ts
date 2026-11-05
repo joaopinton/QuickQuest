@@ -23,3 +23,27 @@ export interface BowlingShotResult {
   readonly speedKmh: number;
   readonly durationSeconds: number;
 }
+
+/** Parametri di un lancio fatto col gesto sul telefono. */
+export type GestureThrow = Pick<BowlingReleaseData, 'speed' | 'spin' | 'dir'>;
+
+/** Evento del contratto modulo (`game-event`) per un lancio: il telefono lo manda, lo schermo lo legge. */
+export const THROW_EVENT = 'throw';
+
+/** Limiti fisici plausibili: un valore fuori scala è un dato rotto, non un lancio. */
+const MAX_SPEED = 15; // m/s
+const MAX_DIR = 0.5; // rad
+
+export function throwEvent(th: GestureThrow): { kind: string; data: Record<string, number> } {
+  const round = (v: number) => Math.round(v * 1000) / 1000;
+  return { kind: THROW_EVENT, data: { speed: round(th.speed), spin: round(th.spin), dir: round(th.dir) } };
+}
+
+/** Lancio dentro un `game-event`, o `null` se l'evento non è un lancio valido. */
+export function parseThrowEvent(e: { readonly kind: string; readonly data: Readonly<Record<string, unknown>> }): GestureThrow | null {
+  if (e.kind !== THROW_EVENT) return null;
+  const { speed, spin, dir } = e.data;
+  if (typeof speed !== 'number' || typeof spin !== 'number' || typeof dir !== 'number') return null;
+  if (!(speed > 0 && speed <= MAX_SPEED) || !(Math.abs(spin) <= 1) || !(Math.abs(dir) <= MAX_DIR)) return null;
+  return { speed, spin, dir };
+}

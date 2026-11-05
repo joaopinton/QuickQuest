@@ -1,6 +1,6 @@
 // Host della stanza: collega un HostTransport al reducer. Oggi gira nella scheda dello schermo.
 
-import type { Cue, GameEvent, LobbyPlayer, RoomPhase, ServerMessage, SlotId, ThrowParams } from './messages';
+import type { Cue, GameEvent, LobbyPlayer, RoomPhase, ServerMessage, SlotId } from './messages';
 import {
   applyDisconnect,
   applyHello,
@@ -14,7 +14,6 @@ import {
   createRoom,
   expireStale,
   lobbyPlayers,
-  throwerSlot,
   gameEventSlot,
   connectionsFor,
   type RoomState,
@@ -36,7 +35,6 @@ export interface RoomHostOptions {
   /** Chiamato a ogni cambio di stato che va persistito. */
   readonly onState?: (state: RoomState) => void;
   /** Lancio valido del giocatore di turno: va consegnato allo schermo. */
-  readonly onThrow?: (slot: SlotId, params: ThrowParams) => void;
   /** Evento di gioco di un giocatore ammesso: va consegnato allo schermo. */
   readonly onGameEvent?: (slot: SlotId, gameId: string, e: GameEvent) => void;
   /**
@@ -66,7 +64,7 @@ export interface RoomHost {
 
 export function createRoomHost(opts: RoomHostOptions): RoomHost {
   const {
-    code, transport, onLobby, now = Date.now, makeToken = randomId, staleMs = STALE_MS, initialState, onState, onThrow, onGameEvent,
+    code, transport, onLobby, now = Date.now, makeToken = randomId, staleMs = STALE_MS, initialState, onState, onGameEvent,
     isScreen = () => false,
   } = opts;
   let state: RoomState = initialState ?? createRoom(code);
@@ -142,14 +140,6 @@ export function createRoomHost(opts: RoomHostOptions): RoomHost {
           transport.sendTo(from, layoutMsg(state.selectedGame));
           transport.sendTo(from, turnMsg());
         }
-        break;
-      }
-      case 'throw': {
-        // solo il telefono del giocatore di turno può lanciare: gli altri vengono ignorati
-        const slot = throwerSlot(state, from);
-        if (!slot) break;
-        setTurn(null); // un tiro alla volta: il prossimo lo riapre lo schermo
-        onThrow?.(slot, { speed: msg.p.speed, spin: msg.p.spin, dir: msg.p.dir });
         break;
       }
       case 'game-event': {

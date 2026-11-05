@@ -47,6 +47,14 @@ const PIN_LYING_HEIGHT = PIN_MAX_RADIUS + 0.01; // centro più basso di così = 
 const PIN_SETTLE_SPEED = 0.15; // m/s sotto cui un birillo è considerato fermo
 const PIN_HULL_SEGMENTS = 16; // lati dei poligoni che approssimano le sezioni del birillo
 const PIN_HULL_TOLERANCE = 0.0015; // m: scarto massimo tollerato fra hull e profilo reale
+/**
+ * Base del birillo: cilindro fino al primo anello sopra la base. Il contatto hull convesso–pista in
+ * Rapier vibra (il birillo "cammina" e cade da solo in pochi secondi); cilindro–pista è stabile.
+ */
+const PIN_BASE_RADIUS = PIN_PROFILE[1]![0];
+const PIN_BASE_TOP = PIN_PROFILE[2]![1];
+/** Gioco minimo fra hitbox: sotto questa distanza (oltre al moto del sottopasso) è un colpo. */
+const HIT_MARGIN = 0.004;
 
 /**
  * Collider del birillo: il profilo lathe viene spezzato in tratti convessi (pancia, collo, testa...).
@@ -55,7 +63,8 @@ const PIN_HULL_TOLERANCE = 0.0015; // m: scarto massimo tollerato fra hull e pro
  * Coordinate relative al centro del corpo (metà altezza).
  */
 export function buildPinHullPoints(): Float32Array[] {
-  const profile = PIN_PROFILE.slice(1, -1); // via i punti sull'asse: restano gli anelli del profilo
+  // Via i punti sull'asse e l'anello di base (lo copre il cilindro di base): restano gli anelli sopra
+  const profile = PIN_PROFILE.slice(2, -1);
   const hulls: Float32Array[] = [];
   let start = 0;
   while (start < profile.length - 1) {
@@ -109,6 +118,76 @@ export function releaseAngularVelocity(spin: number): { x: number; y: number; z:
   };
 }
 
+export interface Vec3 {
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+}
+
+const sub = (a: Vec3, b: Vec3): Vec3 => ({ x: a.x - b.x, y: a.y - b.y, z: a.z - b.z });
+const dot = (a: Vec3, b: Vec3): number => a.x * b.x + a.y * b.y + a.z * b.z;
+const clamp01 = (v: number): number => Math.max(0, Math.min(1, v));
+const EPS = 1e-12;
+
+/** Distanza minima fra i segmenti p1-q1 e p2-q2 (Ericson, Real-Time Collision Detection 5.1.9). */
+export function segmentDistance(p1: Vec3, q1: Vec3, p2: Vec3, q2: Vec3): number {
+  const d1 = sub(q1, p1);
+  const d2 = sub(q2, p2);
+  const r = sub(p1, p2);
+  const a = dot(d1, d1);
+  const e = dot(d2, d2);
+  const f = dot(d2, r);
+  let s = 0;
+  let t = 0;
+  if (a <= EPS) {
+    t = e <= EPS ? 0 : clamp01(f / e);
+  } else {
+    const c = dot(d1, r);
+    if (e <= EPS) {
+      s = clamp01(-c / a);
+    } else {
+      const b = dot(d1, d2);
+      const denom = a * e - b * b;
+      s = denom > EPS ? clamp01((b * f - c * e) / denom) : 0;
+      t = (b * s + f) / e;
+      if (t < 0) {
+        t = 0;
+        s = clamp01(-c / a);
+      } else if (t > 1) {
+        t = 1;
+        s = clamp01((b - c) / a);
+      }
+    }
+  }
+  const gap = sub(
+    { x: p1.x + d1.x * s, y: p1.y + d1.y * s, z: p1.z + d1.z * s },
+    { x: p2.x + d2.x * t, y: p2.y + d2.y * t, z: p2.z + d2.z * t },
+  );
+  return Math.sqrt(dot(gap, gap));
+}
+
+/** Asse del birillo (base → sommità) dati il centro del corpo e la rotazione. */
+export function pinAxisSegment(center: Vec3, q: Vec3 & { readonly w: number }): [Vec3, Vec3] {
+  const h = PIN_HEIGHT / 2;
+  // Asse y locale ruotato dal quaternione
+  const ax = 2 * (q.x * q.y - q.w * q.z);
+  const ay = 1 - 2 * (q.x * q.x + q.z * q.z);
+  const az = 2 * (q.y * q.z + q.w * q.x);
+  return [
+    { x: center.x - ax * h, y: center.y - ay * h, z: center.z - az * h },
+    { x: center.x + ax * h, y: center.y + ay * h, z: center.z + az * h },
+  ];
+}
+
+/**
+ * Hitbox: la palla è una sfera che spazza il tragitto del sottopasso, il birillo un cilindro
+ * (capsula) col raggio della pancia attorno al suo asse. Vero se si toccano entro dt.
+ */
+export function ballHitsPin(ballPos: Vec3, ballVel: Vec3, pinAxis: readonly [Vec3, Vec3], dt: number): boolean {
+  const end = { x: ballPos.x + ballVel.x * dt, y: ballPos.y + ballVel.y * dt, z: ballPos.z + ballVel.z * dt };
+  return segmentDistance(ballPos, end, pinAxis[0], pinAxis[1]) <= BALL_RADIUS + PIN_MAX_RADIUS + HIT_MARGIN;
+}
+
 export interface PhysicsWorldState {
   readonly world: RAPIER.World;
   readonly ballBody: RAPIER.RigidBody;
@@ -120,6 +199,10 @@ export interface PhysicsWorldState {
   clearKnockedPins(): void;
   /** Il birillo è stato tolto dalla pista dallo sweeper. */
   isPinRemoved(index: number): boolean;
+  /** Il birillo è fermo sullo spot, bloccato finché qualcosa non entra nella sua hitbox. */
+  isPinStanding(index: number): boolean;
+  /** Sblocca un birillo (diventa un corpo dinamico) come se fosse stato colpito. */
+  releasePin(index: number): void;
   getPinStatuses(): BowlingPinStatus[];
   isBallActive(): boolean;
   arePinsSettled(): boolean;
@@ -227,6 +310,14 @@ export async function createBowlingPhysicsWorld(): Promise<PhysicsWorldState> {
       .setCanSleep(true);
     const body = world.createRigidBody(pinBodyDesc);
 
+    world.createCollider(
+      RAPIER.ColliderDesc.cylinder(PIN_BASE_TOP / 2, PIN_BASE_RADIUS)
+        .setTranslation(0, PIN_BASE_TOP / 2 - PIN_HEIGHT / 2, 0)
+        .setDensity(0)
+        .setFriction(MU_PIN)
+        .setRestitution(E_PIN),
+      body,
+    );
     for (const points of pinHulls) {
       const hull = RAPIER.ColliderDesc.convexHull(points);
       if (!hull) throw new Error('Bowling: hull del birillo non valido');
@@ -238,8 +329,43 @@ export async function createBowlingPhysicsWorld(): Promise<PhysicsWorldState> {
 
   // Birilli tolti dallo sweeper (disabilitati fino al prossimo rack completo)
   const removedPins = new Set<number>();
+  // Birilli in piedi sullo spot: corpi fissi, non tremano e non cadono finché la palla (o un
+  // birillo già in moto) non entra nella loro hitbox. Solo allora diventano dinamici.
+  const standingPins = new Set<number>();
+
+  function freeze(i: number) {
+    standingPins.add(i);
+    pinBodies[i]?.setBodyType(RAPIER.RigidBodyType.Fixed, false);
+  }
+
+  function release(i: number) {
+    const body = pinBodies[i];
+    if (!body || !standingPins.delete(i)) return;
+    body.setBodyType(RAPIER.RigidBodyType.Dynamic, true);
+  }
+
+  /** Prima di ogni sottopasso: sblocca i birilli fermi toccati dalla palla o da un birillo in moto. */
+  function releaseHitPins(dt: number) {
+    if (standingPins.size === 0) return;
+    const movers = pinBodies.flatMap((body, i) => {
+      if (standingPins.has(i) || removedPins.has(i) || body.isSleeping()) return [];
+      const v = body.linvel();
+      const w = body.angvel();
+      const sweep = (Math.hypot(v.x, v.y, v.z) + Math.hypot(w.x, w.y, w.z) * (PIN_HEIGHT / 2)) * dt;
+      return [{ axis: pinAxisSegment(body.translation(), body.rotation()), reach: 2 * PIN_MAX_RADIUS + sweep + HIT_MARGIN }];
+    });
+    const ballLive = isThrown && ballBody.isEnabled();
+    for (const i of [...standingPins]) {
+      const body = pinBodies[i]!;
+      const axis = pinAxisSegment(body.translation(), body.rotation());
+      const hitByBall = ballLive && ballHitsPin(ballBody.translation(), ballBody.linvel(), axis, dt);
+      const hitByPin = movers.some((m) => segmentDistance(m.axis[0], m.axis[1], axis[0], axis[1]) <= m.reach);
+      if (hitByBall || hitByPin) release(i);
+    }
+  }
 
   function placeOnSpot(body: RAPIER.RigidBody, x: number, z: number) {
+    body.setBodyType(RAPIER.RigidBodyType.Dynamic, false);
     body.setTranslation({ x, y: PIN_HEIGHT / 2, z }, true);
     body.setRotation({ w: 1, x: 0, y: 0, z: 0 }, true);
     body.setLinvel({ x: 0, y: 0, z: 0 }, true);
@@ -263,18 +389,20 @@ export async function createBowlingPhysicsWorld(): Promise<PhysicsWorldState> {
         const newBody = spawnPin(offset.x, offset.z);
         pinBodies.push(newBody);
       }
+      freeze(i);
     }
   }
 
-  resetPins();
-
   let isThrown = false;
+
+  resetPins();
 
   /** Un birillo sdraiato che rotola sul pin deck perde giri per deformazione al contatto. */
   function rollingResistance(dt: number) {
     const factor = Math.max(0, 1 - PIN_ROLLING_RESISTANCE * dt);
     pinBodies.forEach((body, i) => {
-      if (removedPins.has(i) || body.isSleeping() || body.translation().y > PIN_LYING_HEIGHT) return;
+      if (standingPins.has(i) || removedPins.has(i) || body.isSleeping()) return;
+      if (body.translation().y > PIN_LYING_HEIGHT) return;
       const w = body.angvel();
       body.setAngvel({ x: w.x * factor, y: w.y * factor, z: w.z * factor }, false);
     });
@@ -327,6 +455,7 @@ export async function createBowlingPhysicsWorld(): Promise<PhysicsWorldState> {
       world.timestep = subDt;
 
       for (let s = 0; s < substeps; s++) {
+        releaseHitPins(subDt);
         rollingResistance(subDt);
         world.step();
       }
@@ -368,6 +497,7 @@ export async function createBowlingPhysicsWorld(): Promise<PhysicsWorldState> {
         const offset = PIN_OFFSETS[i];
         if (!body || !offset) return;
         if (status.knockedDown) {
+          standingPins.delete(i);
           removedPins.add(i);
           // Parcheggiato lontano dalla pista e disabilitato: non interagisce più con palla e birilli
           body.setTranslation({ x: 0, y: -5, z: HEADPIN_Z + 4 + i * 0.5 }, false);
@@ -376,12 +506,21 @@ export async function createBowlingPhysicsWorld(): Promise<PhysicsWorldState> {
           body.setEnabled(false);
         } else {
           placeOnSpot(body, offset.x, HEADPIN_Z + offset.z);
+          freeze(i);
         }
       });
     },
 
     isPinRemoved(index: number): boolean {
       return removedPins.has(index);
+    },
+
+    isPinStanding(index: number): boolean {
+      return standingPins.has(index);
+    },
+
+    releasePin(index: number) {
+      release(index);
     },
 
     getPinStatuses(): BowlingPinStatus[] {
@@ -396,7 +535,7 @@ export async function createBowlingPhysicsWorld(): Promise<PhysicsWorldState> {
 
     arePinsSettled(): boolean {
       return pinBodies.every((body, i) => {
-        if (removedPins.has(i) || body.isSleeping()) return true;
+        if (standingPins.has(i) || removedPins.has(i) || body.isSleeping()) return true;
         const v = body.linvel();
         const w = body.angvel();
         return Math.hypot(v.x, v.y, v.z) < PIN_SETTLE_SPEED && Math.hypot(w.x, w.y, w.z) < 0.6;

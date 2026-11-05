@@ -141,12 +141,12 @@ describe('lancio col gesto dal telefono del giocatore di turno', () => {
     c.t.send({ t: 'profile', p: { color: '#9C6BFF', accessory: 'glasses' } });
   };
 
-  test('solo il telefono di turno lancia; dopo il tiro il turno si chiude', async () => {
+  test('bowling sul contratto: solo il telefono di turno lancia', async () => {
     const roomCode = `G${String(++code).padStart(3, '0')}`;
     const throws: [string, number][] = [];
     const host = createRoomHost({
       code: roomCode, transport: createLocalHost(roomCode), onLobby: () => {},
-      onThrow: (slot, p) => throws.push([slot, p.speed]),
+      onGameEvent: (slot, _gameId, e) => throws.push([slot, Number(e.data.speed)]),
     });
     cleanups.push(() => host.close());
     const mk = () => {
@@ -165,13 +165,14 @@ describe('lancio col gesto dal telefono del giocatore di turno', () => {
 
     host.setTurn('P1');
     await until(() => b.inbox.some((m) => m.t === 'turn' && m.p.activeSlot === 'P1'));
-    b.t.send({ t: 'throw', p: { speed: 7, spin: 0, dir: 0 } }); // non è il suo turno
-    a.t.send({ t: 'throw', p: { speed: 8, spin: 0.2, dir: 0.01 } });
+    b.t.send({ t: 'game-event', p: { gameId: 'bowling', e: { kind: 'throw', data: { speed: 7, spin: 0, dir: 0 } } } }); // non è il suo turno
+    a.t.send({ t: 'game-event', p: { gameId: 'bowling', e: { kind: 'throw', data: { speed: 8, spin: 0.2, dir: 0.01 } } } });
     await until(() => throws.length > 0);
     await new Promise((r) => setTimeout(r, 20));
     expect(throws).toEqual([['P1', 8]]);
-    expect(host.state().activeSlot).toBeNull();
-    a.t.send({ t: 'throw', p: { speed: 8, spin: 0, dir: 0 } }); // secondo tiro senza turno
+    host.setTurn('P2'); // tocca a P2: un altro lancio di P1 non passa
+    await until(() => a.inbox.some((m) => m.t === 'turn' && m.p.activeSlot === 'P2'));
+    a.t.send({ t: 'game-event', p: { gameId: 'bowling', e: { kind: 'throw', data: { speed: 8, spin: 0, dir: 0 } } } });
     await new Promise((r) => setTimeout(r, 20));
     expect(throws).toHaveLength(1);
   });

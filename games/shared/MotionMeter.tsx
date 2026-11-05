@@ -5,7 +5,7 @@ import { useEffect, useRef } from 'preact/hooks';
 
 const FULL_SCALE = 12; // rad/s: oltre la barra è piena
 
-export function MotionMeter({ tracker }: { tracker: MotionTracker }) {
+export function MotionMeter({ tracker }: { tracker: Pick<MotionTracker, 'omega' | 'still'> }) {
   const fillRef = useRef<HTMLSpanElement>(null);
   const valueRef = useRef<HTMLSpanElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
