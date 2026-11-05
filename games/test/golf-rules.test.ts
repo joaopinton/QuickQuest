@@ -77,7 +77,7 @@ describe('colpi', () => {
 
   test('faccia aperta: la palla finisce a destra; chiusa: a sinistra', () => {
     const calm = createGolf(['P1'], { seed: 4 }).state;
-    const noWind = { ...calm, course: calm.course.map((h) => ({ ...h, wind: 0 })) };
+    const noWind = { ...calm, course: calm.course.map((h) => ({ ...h, wind: 0, water: [] })) };
     const open = settle(applyShot(noWind, 'P1', FULL(0.8, 10))).state.players[0]!;
     const closed = settle(applyShot(noWind, 'P1', FULL(0.8, -10))).state.players[0]!;
     const straight = settle(applyShot(noWind, 'P1', FULL(0.8, 0))).state.players[0]!;

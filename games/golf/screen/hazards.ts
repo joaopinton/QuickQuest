@@ -1,7 +1,8 @@
 // Ostacoli del golf: acqua e fuori limite (docs/games/golf.md § Acqua e fuori limite).
 // Solo geometria e regole di drop, senza Three.js: le usano le regole e la scena.
 // Regole, semplificate dal golf vero:
-// - acqua: +1 colpo, si droppa fuori dall'acqua sulla linea verso il punto di partenza;
+// - acqua: +1 colpo, si droppa dietro il punto da cui si è tirato, più lontano dalla bandiera:
+//   buttarla in acqua non fa mai guadagnare strada;
 // - fuori limite (paletti bianchi): +1 colpo e si ritira da dove si era tirato.
 import type { Bunker, GolfHole, Point } from './rules';
 
@@ -20,9 +21,11 @@ export const OOB_HALF_WIDTH_M = 48;
 /** Fuori limite dietro il tee e oltre il green. */
 export const OOB_BEHIND_TEE_M = -20;
 export const OOB_PAST_GREEN_M = 35;
-/** Quanto fuori dall'acqua si droppa. */
-export const WATER_DROP_CLEAR_M = 2;
+/** Quanto dietro il punto di tiro si droppa dopo l'acqua. */
+export const WATER_DROP_BACK_M = 10;
 const DROP_SEARCH_STEP_M = 0.5;
+/** Il drop non va troppo dietro il tee. */
+const DROP_MIN_Y_M = OOB_BEHIND_TEE_M + 6;
 
 export function inPond(w: Pond, p: Point): boolean {
   return ((p.x - w.x) / w.rx) ** 2 + ((p.y - w.y) / w.ry) ** 2 <= 1;
@@ -35,17 +38,27 @@ export function hazardAt(hole: GolfHole, p: Point): Hazard | null {
 }
 
 /**
- * Drop dall'acqua: dal punto in cui la palla è entrata si torna verso `from` (da dove si è
- * tirato) finché si esce dall'acqua, più qualche metro. Mai oltre `from`.
+ * Drop dall'acqua: dal punto da cui si è tirato (`from`) si va indietro, lontano dalla
+ * bandiera, di WATER_DROP_BACK_M, su terreno senza ostacoli. Mai più vicino alla bandiera di
+ * `from`: chi la butta in acqua non guadagna strada. `entry` (dove è entrata) serve solo se
+ * `from` coincide con la bandiera.
  */
 export function waterDrop(hole: GolfHole, entry: Point, from: Point): Point {
-  const dx = from.x - entry.x;
-  const dy = from.y - entry.y;
-  const d = Math.hypot(dx, dy);
-  if (d < 1e-6) return from;
-  const at = (s: number): Point => ({ x: entry.x + (dx / d) * s, y: entry.y + (dy / d) * s });
-  for (let s = DROP_SEARCH_STEP_M; s < d; s += DROP_SEARCH_STEP_M) {
-    if (hazardAt(hole, at(s)) === null) return at(Math.min(d, s + WATER_DROP_CLEAR_M));
+  const pin = { x: 0, y: hole.lengthM };
+  let dx = from.x - pin.x;
+  let dy = from.y - pin.y;
+  let d = Math.hypot(dx, dy);
+  if (d < 1e-6) {
+    dx = from.x - entry.x;
+    dy = from.y - entry.y;
+    d = Math.hypot(dx, dy) || 1;
+  }
+  const ux = dx / d;
+  const uy = dy / d;
+  const at = (s: number): Point => ({ x: from.x + ux * s, y: Math.max(DROP_MIN_Y_M, from.y + uy * s) });
+  for (let s = WATER_DROP_BACK_M; s >= 0; s -= DROP_SEARCH_STEP_M) {
+    const p = at(s);
+    if (hazardAt(hole, p) === null && Math.hypot(p.x - pin.x, p.y - pin.y) >= d - 1e-9) return p;
   }
   return from;
 }

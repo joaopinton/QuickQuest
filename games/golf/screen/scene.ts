@@ -1,12 +1,14 @@
 // Scena 3D del golf (Three.js), stile "Soft Toy" (docs/07): colline morbide, colori pieni,
 // materiali toon e nessun asset esterno. Coordinate di gioco: x attraverso la buca, y verso la
 // bandiera; in Three.js y di gioco diventa −z, e l'alto è +y.
-// Le superfici piatte si disegnano con Shape in coordinate di gioco e si ruotano di −90° su x:
-// così (x, y) di gioco finisce in (x, −z) senza conti, e la buca è un vero foro nel prato.
+// Il prato è la griglia di quote di terrain.ts (terrain-mesh.ts), con la buca come foro vero;
+// palle, bandiera, acqua e paletti stanno alla quota del terreno sotto di loro.
 import * as THREE from 'three';
 import { createGolfFx } from './fx';
-import { OOB_BEHIND_TEE_M, OOB_HALF_WIDTH_M, OOB_PAST_GREEN_M, type Hazard, type Pond } from './hazards';
-import { FAIRWAY_HALF_WIDTH_M, pinOf, type GolfHole, type Lie, type Point } from './rules';
+import { OOB_BEHIND_TEE_M, OOB_HALF_WIDTH_M, OOB_PAST_GREEN_M, inPond, type Hazard, type Pond } from './hazards';
+import { pinOf, type GolfHole, type Lie, type Point } from './rules';
+import { groundHeight, waterLevel } from './terrain';
+import { buildTerrainMesh } from './terrain-mesh';
 
 export type BallState = 'play' | 'holed' | 'gone';
 
@@ -49,10 +51,6 @@ export interface GolfScene {
 
 const COLORS = {
   sky: 0xbfe6ff,
-  rough: 0x5fb84a,
-  fairway: 0x7ed957,
-  green: 0x9be56f,
-  sand: 0xf3dc9b,
   tee: 0x6ac24f,
   pole: 0xffffff,
   flag: 0xff5a5f,
@@ -95,6 +93,7 @@ const CAM_UP_MAX = 7;
 const CAM_LOOK_AHEAD_MAX = 40;
 const CAM_SNAP_M = 80;
 const AIM_MIN_DIST_M = 0.8;
+const CAM_GROUND_CLEAR_M = 1.5;
 
 const toon = (color: number) => new THREE.MeshToonMaterial({ color });
 
@@ -127,20 +126,12 @@ function ellipseShape(w: Pond, grow = 0): THREE.Shape {
   return s;
 }
 
-/** Paletti bianchi del fuori limite ai lati e dietro il green, e prato più scuro oltre. */
-function addOutOfBounds(course: THREE.Group, hole: GolfHole) {
-  const far = GROUND_HALF;
+/** Paletti bianchi del fuori limite ai lati e dietro il green, piantati nel terreno. */
+function addStakes(course: THREE.Group, hole: GolfHole) {
   const back = hole.lengthM + OOB_PAST_GREEN_M;
-  const strips = [
-    rectShape(-far, -far, -OOB_HALF_WIDTH_M, far),
-    rectShape(OOB_HALF_WIDTH_M, -far, far, far),
-    rectShape(-OOB_HALF_WIDTH_M, back, OOB_HALF_WIDTH_M, far),
-    rectShape(-OOB_HALF_WIDTH_M, -far, OOB_HALF_WIDTH_M, OOB_BEHIND_TEE_M),
-  ];
-  for (const strip of strips) course.add(flat(strip, COLORS.outOfBounds, 0.01));
   const stakeAt = (x: number, y: number) => {
     const stake = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, STAKE_HEIGHT, 8), toon(COLORS.stake));
-    stake.position.set(x, STAKE_HEIGHT / 2, -y);
+    stake.position.set(x, groundHeight(hole, { x, y }) + STAKE_HEIGHT / 2, -y);
     course.add(stake);
   };
   for (let y = OOB_BEHIND_TEE_M; y <= back; y += STAKE_SPACING_M) {
@@ -216,11 +207,15 @@ export function createGolfScene(container: HTMLElement): GolfScene {
   scene.add(course);
   const flag = new THREE.Group(); // asta e bandierina: si alzano insieme
   let pin: Point = { x: 0, y: 0 };
+  let currentHole: GolfHole | null = null;
+  /** Quota del terreno sotto un punto di gioco. */
+  const ground = (x: number, y: number) => (currentHole ? groundHeight(currentHole, { x, y }) : 0);
+  let cupGround = 0;
   let flagLift = 0;
   let cloth: THREE.Mesh | null = null;
   let wind = 0;
   let clock = 0;
-  const fx = createGolfFx(scene);
+  const fx = createGolfFx(scene, ground);
 
   const balls = new Map<string, BallRecord>();
   const ballGeometry = new THREE.SphereGeometry(BALL_RADIUS_VIS, 20, 14);
@@ -241,7 +236,7 @@ export function createGolfScene(container: HTMLElement): GolfScene {
   const spawnRipple = () => {
     const mesh = new THREE.Mesh(rippleGeometry, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, depthWrite: false }));
     mesh.rotation.x = -Math.PI / 2;
-    mesh.position.set(pin.x, 0.1, -pin.y);
+    mesh.position.set(pin.x, cupGround + 0.1, -pin.y);
     scene.add(mesh);
     ripples.push({ mesh, t: 0 });
   };
@@ -273,18 +268,19 @@ export function createGolfScene(container: HTMLElement): GolfScene {
       const k = t / SINK_SLIDE_S;
       rec.mesh.position.set(
         THREE.MathUtils.lerp(rec.sinkFrom.x, cx, k),
-        THREE.MathUtils.lerp(rec.sinkFrom.y, BALL_RADIUS_VIS, k),
+        THREE.MathUtils.lerp(rec.sinkFrom.y, cupGround + BALL_RADIUS_VIS, k),
         THREE.MathUtils.lerp(rec.sinkFrom.z, cz, k),
       );
       return;
     }
     if (!wasFalling) spawnRipple();
     const ft = t - SINK_SLIDE_S;
-    const floor = -CUP_DEPTH + BALL_RADIUS_VIS;
-    const fallS = Math.sqrt((2 * (BALL_RADIUS_VIS - floor)) / SINK_GRAVITY);
+    const top = cupGround + BALL_RADIUS_VIS;
+    const floor = cupGround - CUP_DEPTH + BALL_RADIUS_VIS;
+    const fallS = Math.sqrt((2 * (top - floor)) / SINK_GRAVITY);
     let y: number;
     if (ft < fallS) {
-      y = BALL_RADIUS_VIS - 0.5 * SINK_GRAVITY * ft * ft;
+      y = top - 0.5 * SINK_GRAVITY * ft * ft;
     } else {
       // un rimbalzo smorzato sul fondo della buca
       const bt = ft - fallS;
@@ -298,37 +294,32 @@ export function createGolfScene(container: HTMLElement): GolfScene {
   return {
     setHole(hole) {
       clearCourse();
+      currentHole = hole;
       pin = pinOf(hole);
-      const cupHole = { ...pin, r: CUP_RADIUS_VIS };
-      // prato, fairway che si ferma al green, green con il foro della buca
-      course.add(flat(rectShape(-GROUND_HALF, -GROUND_HALF, GROUND_HALF, GROUND_HALF), COLORS.rough, 0, cupHole));
-      const fairwayEnd = hole.lengthM - hole.greenRadiusM * 0.6;
-      course.add(flat(rectShape(-FAIRWAY_HALF_WIDTH_M, -10, FAIRWAY_HALF_WIDTH_M, fairwayEnd), COLORS.fairway, 0.02));
-      course.add(flat(circleShape(pin.x, pin.y, hole.greenRadiusM), COLORS.green, 0.04, cupHole));
-      for (const b of hole.bunkers) {
-        const coversCup = Math.hypot(b.x - pin.x, b.y - pin.y) < b.radiusM + CUP_RADIUS_VIS;
-        course.add(flat(circleShape(b.x, b.y, b.radiusM), COLORS.sand, 0.06, coversCup ? cupHole : undefined));
-      }
+      cupGround = groundHeight(hole, pin);
+      // fuori dalla griglia: prato del fuori limite, piatto
+      course.add(flat(rectShape(-GROUND_HALF, -GROUND_HALF, GROUND_HALF, GROUND_HALF), COLORS.outOfBounds, -0.03));
+      course.add(buildTerrainMesh(hole, CUP_RADIUS_VIS));
       for (const w of hole.water ?? []) {
-        course.add(flat(ellipseShape(w, 0.9), COLORS.waterEdge, 0.045));
-        course.add(flat(ellipseShape(w), COLORS.water, 0.05));
+        const level = waterLevel(hole, w);
+        // il pelo dell'acqua copre la conca fin dove il terreno sale sopra
+        course.add(flat(ellipseShape(w, Math.max(w.rx, w.ry) * 0.12 + 0.9), COLORS.waterEdge, level - 0.01));
+        course.add(flat(ellipseShape(w, Math.max(w.rx, w.ry) * 0.12), COLORS.water, level));
       }
-      addOutOfBounds(course, hole);
+      addStakes(course, hole);
       const tee = new THREE.Mesh(new THREE.BoxGeometry(6, 0.3, 4), toon(COLORS.tee));
       tee.position.set(0, 0.15, 1);
       course.add(tee);
 
-      // la buca: un cilindro scuro aperto, con fondo e bordo bianco
+      // la buca: un cilindro scuro aperto, con fondo e bordo bianco, nel foro del prato
       const cupWall = new THREE.Mesh(
         new THREE.CylinderGeometry(CUP_RADIUS_VIS, CUP_RADIUS_VIS, CUP_DEPTH, 40, 1, true),
         new THREE.MeshToonMaterial({ color: COLORS.cup, side: THREE.BackSide }),
       );
-      cupWall.position.set(pin.x, -CUP_DEPTH / 2 + 0.04, -pin.y);
+      cupWall.position.set(pin.x, cupGround - CUP_DEPTH / 2 + 0.3, -pin.y);
       course.add(cupWall);
-      const cupFloor = flat(circleShape(pin.x, pin.y, CUP_RADIUS_VIS), COLORS.cup, -CUP_DEPTH + 0.04);
-      course.add(cupFloor);
-      const rim = flat(circleShape(pin.x, pin.y, CUP_RADIUS_VIS + 0.12), COLORS.rim, 0.07, cupHole);
-      course.add(rim);
+      course.add(flat(circleShape(pin.x, pin.y, CUP_RADIUS_VIS), COLORS.cup, cupGround - CUP_DEPTH + 0.3));
+      course.add(flat(circleShape(pin.x, pin.y, CUP_RADIUS_VIS + 0.12), COLORS.rim, cupGround + 0.05, { ...pin, r: CUP_RADIUS_VIS }));
 
       flag.clear();
       const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, POLE_HEIGHT, 10), toon(COLORS.pole));
@@ -341,7 +332,7 @@ export function createGolfScene(container: HTMLElement): GolfScene {
       wind = hole.wind;
       cloth.rotation.y = wind < 0 ? Math.PI : 0;
       flag.add(pole, cloth);
-      flag.position.set(pin.x, 0, -pin.y);
+      flag.position.set(pin.x, cupGround, -pin.y);
       course.add(flag);
       flagLift = 0;
       fx.clearTrails();
@@ -365,7 +356,8 @@ export function createGolfScene(container: HTMLElement): GolfScene {
         }
         rec.hiddenFor = Math.max(0, rec.hiddenFor - dt);
         rec.mesh.visible = v.state !== 'gone' && rec.hiddenFor === 0;
-        fx.trail(v.id, v.color, new THREE.Vector3(v.x, BALL_RADIUS_VIS + v.height, -v.y), v.isMoving && v.state === 'play');
+        const g = ground(v.x, v.y);
+        fx.trail(v.id, v.color, new THREE.Vector3(v.x, g + BALL_RADIUS_VIS + v.height, -v.y), v.isMoving && v.state === 'play');
         rec.shadow.visible = v.state === 'play' && rec.hiddenFor === 0;
         if (v.state === 'holed') {
           if (rec.sinkT === null) {
@@ -377,9 +369,9 @@ export function createGolfScene(container: HTMLElement): GolfScene {
           continue;
         }
         rec.sinkT = null;
-        rec.mesh.position.set(v.x, BALL_RADIUS_VIS + v.height, -v.y);
+        rec.mesh.position.set(v.x, g + BALL_RADIUS_VIS + v.height, -v.y);
         // l'ombra resta a terra e si allarga (e sbiadisce) quando la palla sale
-        rec.shadow.position.set(v.x, 0.09, -v.y);
+        rec.shadow.position.set(v.x, g + 0.12, -v.y);
         rec.shadow.scale.setScalar(1 + v.height * 0.04);
         (rec.shadow.material as THREE.MeshBasicMaterial).opacity = 0.22 / (1 + v.height * 0.08);
         if (v.state === 'play' && v.height === 0 && Math.hypot(v.x - pin.x, v.y - pin.y) < FLAG_LIFT_NEAR_M) wantsFlagOut = true;
@@ -393,7 +385,7 @@ export function createGolfScene(container: HTMLElement): GolfScene {
         fx.dropTrail(id);
       }
       flagLift = THREE.MathUtils.lerp(flagLift, wantsFlagOut ? FLAG_LIFT_M : 0, ease(6, dt));
-      flag.position.y = flagLift;
+      flag.position.y = cupGround + flagLift;
       updateRipples(dt);
       clock += dt;
       if (cloth) {
@@ -413,7 +405,8 @@ export function createGolfScene(container: HTMLElement): GolfScene {
     },
 
     penalty(id, at, hazard) {
-      if (hazard === 'water') fx.splash(at);
+      const pond = currentHole?.water?.find((w) => inPond(w, at));
+      if (hazard === 'water') fx.splash(at, pond && currentHole ? waterLevel(currentHole, pond) : ground(at.x, at.y));
       else fx.puff(at, 'rough', 1);
       const rec = balls.get(id);
       if (rec) rec.hiddenFor = PENALTY_HIDE_S;
@@ -429,7 +422,8 @@ export function createGolfScene(container: HTMLElement): GolfScene {
       const back = clamp(4 + dist * 0.35, CAM_BACK_MIN, CAM_BACK_MAX);
       const up = clamp(2 + dist * 0.12, CAM_UP_MIN, CAM_UP_MAX) + target.height * 0.6;
       const lookAhead = target.isMoving ? CAM_LOOK_AHEAD_MAX * 0.75 : Math.min(dist * 0.6, CAM_LOOK_AHEAD_MAX);
-      const focus = new THREE.Vector3(target.x, target.height * 0.5, -target.y);
+      const g = ground(target.x, target.y);
+      const focus = new THREE.Vector3(target.x, g + target.height * 0.5, -target.y);
 
       const snap = cam.needsSnap || cam.focus.distanceTo(focus) > CAM_SNAP_M;
       cam.needsSnap = false;
@@ -443,9 +437,10 @@ export function createGolfScene(container: HTMLElement): GolfScene {
 
       const dir = new THREE.Vector3(Math.sin(cam.heading), 0, -Math.cos(cam.heading));
       camera.position.copy(cam.focus).addScaledVector(dir, -cam.back);
-      camera.position.y = cam.up;
+      // la camera sta sopra la palla e non entra mai nelle colline
+      camera.position.y = Math.max(cam.focus.y - target.height * 0.5 + cam.up, ground(camera.position.x, -camera.position.z) + CAM_GROUND_CLEAR_M);
       const look = cam.focus.clone().addScaledVector(dir, lookAhead);
-      look.y = target.height * 0.5;
+      look.y = ground(look.x, -look.z) * 0.5 + g * 0.5 + target.height * 0.5;
       if (snap) cam.look.copy(look);
       else cam.look.lerp(look, kFollow);
       camera.lookAt(cam.look);

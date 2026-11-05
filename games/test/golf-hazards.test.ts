@@ -1,7 +1,8 @@
-// Acqua e fuori limite: +1 colpo; dall'acqua si droppa fuori, dal fuori limite si ritira.
+// Acqua e fuori limite: +1 colpo; dall'acqua si droppa dietro il punto di tiro (mai avanti),
+// dal fuori limite si ritira da dove si era.
 import { describe, expect, test } from 'vitest';
 import { outboxFor } from '../golf/screen/flow';
-import { hazardAt, makeWater, OOB_HALF_WIDTH_M, waterDrop } from '../golf/screen/hazards';
+import { hazardAt, makeWater, OOB_HALF_WIDTH_M, WATER_DROP_BACK_M, waterDrop } from '../golf/screen/hazards';
 import { applyShot, createGolf, findPlayer, makeCourse, seededRng, stepGolf, type GolfEvent, type GolfHole, type GolfState, type ShotInput } from '../golf/screen/rules';
 
 const POND = { x: 0, y: 150, rx: 12, ry: 8 };
@@ -36,12 +37,22 @@ describe('dove sono gli ostacoli', () => {
     expect(hazardAt(HOLE, { x: 0, y: HOLE.lengthM })).toBeNull();
   });
 
-  test('il drop dall\'acqua è fuori dall\'acqua, sulla linea verso il punto di partenza', () => {
-    const drop = waterDrop(HOLE, { x: 0, y: 150 }, { x: 0, y: 0 });
+  test('il drop dall\'acqua è dietro il punto di tiro, più lontano dalla bandiera: mai avanti', () => {
+    const pin = { x: 0, y: HOLE.lengthM };
+    const dist = (p: { x: number; y: number }) => Math.hypot(p.x - pin.x, p.y - pin.y);
+    // tirato da 100 m, finito in acqua a 150: si torna dietro i 100 m
+    const from = { x: 6, y: 100 };
+    const drop = waterDrop(HOLE, { x: 0, y: 150 }, from);
     expect(hazardAt(HOLE, drop)).toBeNull();
-    expect(drop.x).toBeCloseTo(0, 5);
-    expect(drop.y).toBeLessThan(POND.y - POND.ry);
-    expect(drop.y).toBeGreaterThan(POND.y - POND.ry - 4);
+    expect(dist(drop)).toBeGreaterThan(dist(from) + WATER_DROP_BACK_M - 0.5);
+    expect(drop.y).toBeLessThan(from.y);
+    // dal tee si va dietro il tee
+    expect(waterDrop(HOLE, { x: 0, y: 150 }, { x: 0, y: 0 }).y).toBeLessThan(0);
+    // se dietro c'è altra acqua, ci si avvicina al punto di tiro, mai oltre
+    const wet: GolfHole = { ...HOLE, water: [POND, { x: 0, y: 92, rx: 10, ry: 4 }] };
+    const d2 = waterDrop(wet, { x: 0, y: 150 }, { x: 0, y: 100 });
+    expect(hazardAt(wet, d2)).toBeNull();
+    expect(dist(d2)).toBeGreaterThanOrEqual(dist({ x: 0, y: 100 }));
   });
 
   test('i laghetti generati non toccano green, tee, bunker né i paletti; stesso seme stessa acqua', () => {
@@ -68,7 +79,7 @@ describe('dove sono gli ostacoli', () => {
 });
 
 describe('penalità in partita', () => {
-  test('in acqua: +1 colpo, palla droppata fuori dall\'acqua, il telefono lo sa', () => {
+  test('in acqua: +1 colpo, palla droppata dietro il tee (mai avanti), il telefono lo sa', () => {
     // si cerca la potenza con cui il ferro cade (o rotola) nel laghetto a 142–158 m
     const s = onHole(HOLE);
     const power = [0.7, 0.72, 0.74, 0.76, 0.78, 0.8].find((pw) => play(applyShot(s, 'P1', FULL(pw)).state).events.some((e) => e.kind === 'penalty'));
@@ -80,7 +91,7 @@ describe('penalità in partita', () => {
     const p = findPlayer(state, 'P1')!;
     expect(p.strokes).toBe(2);
     expect(hazardAt(HOLE, p.ball)).toBeNull();
-    expect(p.ball.y).toBeLessThan(POND.y - POND.ry);
+    expect(p.ball.y).toBeLessThan(0); // tirato dal tee: si torna dietro il tee
     const rested = events.find((e) => e.kind === 'rested');
     expect(rested?.kind === 'rested' && rested.record.penalty).toBe('water');
     expect(outboxFor(events, state).cues.some((c) => c.cue.kind === 'error' && /acqua/.test(c.cue.text ?? ''))).toBe(true);

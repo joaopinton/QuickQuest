@@ -42,6 +42,8 @@ interface WaterRing {
 interface Particle {
   readonly mesh: THREE.Mesh;
   readonly velocity: THREE.Vector3;
+  /** Quota sotto cui la particella non scende (il terreno o l'acqua). */
+  readonly floor: number;
   t: number;
 }
 
@@ -52,15 +54,16 @@ export interface GolfFx {
   clearTrails(): void;
   /** Sbuffo al contatto col terreno: colore e quantità dipendono dal terreno. */
   puff(at: Point, lie: Lie, strength: number): void;
-  /** Palla in acqua: spruzzo e cerchi sull'acqua. */
-  splash(at: Point): void;
+  /** Palla in acqua: spruzzo e cerchi sul pelo dell'acqua (quota `level`). */
+  splash(at: Point, level: number): void;
   /** Cerchio dove cade la mazza scelta a piena potenza; `null` lo nasconde. */
   setAim(at: Point | null, color: string): void;
   update(dt: number): void;
   dispose(): void;
 }
 
-export function createGolfFx(scene: THREE.Scene): GolfFx {
+/** `ground(x, y)`: quota del terreno sotto un punto di gioco. */
+export function createGolfFx(scene: THREE.Scene, ground: (x: number, y: number) => number): GolfFx {
   const trailGeometry = new THREE.SphereGeometry(TRAIL_RADIUS, 10, 8);
   const puffGeometry = new THREE.SphereGeometry(0.22, 8, 6);
   const trails = new Map<string, Trail>();
@@ -144,27 +147,28 @@ export function createGolfFx(scene: THREE.Scene): GolfFx {
         const a = (i / n) * Math.PI * 2 + Math.random() * 0.6;
         const out = (1.5 + Math.random() * 2.5) * strength;
         const mesh = new THREE.Mesh(puffGeometry, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 1, depthWrite: false }));
-        mesh.position.set(at.x, 0.3, -at.y);
+        const g = ground(at.x, at.y);
+        mesh.position.set(at.x, g + 0.3, -at.y);
         scene.add(mesh);
-        particles.push({ mesh, velocity: new THREE.Vector3(Math.cos(a) * out, lift * (0.6 + Math.random() * 0.6) * strength, Math.sin(a) * out), t: 0 });
+        particles.push({ mesh, velocity: new THREE.Vector3(Math.cos(a) * out, lift * (0.6 + Math.random() * 0.6) * strength, Math.sin(a) * out), floor: g + 0.15, t: 0 });
       }
     },
 
-    splash(at) {
+    splash(at, level) {
       for (let i = 0; i < SPLASH_COUNT; i++) {
         const a = (i / SPLASH_COUNT) * Math.PI * 2 + Math.random() * 0.4;
         const out = 1 + Math.random() * 2.2;
         const color = SPLASH_COLORS[i % SPLASH_COLORS.length]!;
         const mesh = new THREE.Mesh(puffGeometry, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 1, depthWrite: false }));
-        mesh.position.set(at.x, 0.3, -at.y);
+        mesh.position.set(at.x, level + 0.3, -at.y);
         scene.add(mesh);
         // colonna d'acqua: più in alto che di lato
-        particles.push({ mesh, velocity: new THREE.Vector3(Math.cos(a) * out, 7 + Math.random() * 5, Math.sin(a) * out), t: 0 });
+        particles.push({ mesh, velocity: new THREE.Vector3(Math.cos(a) * out, 7 + Math.random() * 5, Math.sin(a) * out), floor: level + 0.15, t: 0 });
       }
       for (let k = 0; k < 3; k++) {
         const mesh = new THREE.Mesh(waterRingGeometry, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false }));
         mesh.rotation.x = -Math.PI / 2;
-        mesh.position.set(at.x, 0.08, -at.y);
+        mesh.position.set(at.x, level + 0.08, -at.y);
         scene.add(mesh);
         waterRings.push({ mesh, t: 0, delay: k * 0.22 });
       }
@@ -173,7 +177,7 @@ export function createGolfFx(scene: THREE.Scene): GolfFx {
     setAim(at, color) {
       aim.visible = at !== null;
       if (!at) return;
-      aim.position.set(at.x, 0.12, -at.y);
+      aim.position.set(at.x, ground(at.x, at.y) + 0.3, -at.y);
       ringMaterial.color.set(color);
     },
 
@@ -212,7 +216,7 @@ export function createGolfFx(scene: THREE.Scene): GolfFx {
         p.t += dt;
         p.velocity.y -= PUFF_GRAVITY * dt;
         p.mesh.position.addScaledVector(p.velocity, dt);
-        if (p.mesh.position.y < 0.15) p.mesh.position.y = 0.15;
+        if (p.mesh.position.y < p.floor) p.mesh.position.y = p.floor;
         const left = 1 - p.t / PUFF_LIFE_S;
         (p.mesh.material as THREE.MeshBasicMaterial).opacity = Math.max(0, left);
         p.mesh.scale.setScalar(0.6 + 0.6 * Math.max(0, left));

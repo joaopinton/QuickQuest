@@ -9,9 +9,11 @@
 // Lo stato è immutabile: ogni funzione restituisce uno stato nuovo e gli eventi accaduti.
 
 import { CLUB_CARRY_M, CLUBS, type Club } from '../shared/clubs';
-import { dropPoint, hazardAt, makeWater, type Hazard, type Pond } from './hazards';
+import { dropPoint, makeWater, type Hazard, type Pond } from './hazards';
+import { CUP_RADIUS_M, FLIGHT_STEP, firstContact, launchFull, launchPutt, stepBall, type Flight } from './physics';
+import { makeHills, type Hill } from './terrain';
 
-export { CLUB_CARRY_M, CLUBS, type Club, type Hazard, type Pond };
+export { CLUB_CARRY_M, CLUBS, CUP_RADIUS_M, type Club, type Flight, type Hazard, type Hill, type Pond };
 export type Lie = 'tee' | 'fairway' | 'rough' | 'bunker' | 'green';
 export type ShotKind = 'full' | 'putt';
 export type GolfPhase = 'aim' | 'flight' | 'hole_over' | 'over';
@@ -30,39 +32,20 @@ export interface GolfHole {
   readonly greenRadiusM: number;
   /** Moltiplica la lunghezza del putt: green veloce = palla che corre. */
   readonly greenSpeed: number;
-  /** Curva del putt (gradi per metro): la pendenza del green. */
+  /** Pendenza laterale del green: + scende verso destra (terrain.ts, GREEN_GRADE_PER_SLOPE). */
   readonly slopeDegPerM: number;
   /** Vento laterale (m/s), + verso destra. */
   readonly wind: number;
   readonly bunkers: readonly Bunker[];
   /** Laghetti: palla dentro = +1 colpo e drop (hazards.ts). */
   readonly water?: readonly Pond[];
+  /** Colline e avvallamenti del terreno (terrain.ts); senza, il campo è piatto. */
+  readonly hills?: readonly Hill[];
 }
 
 export interface Point {
   readonly x: number;
   readonly y: number;
-}
-
-export interface Flight {
-  readonly headingDeg: number;
-  readonly speed: number;
-  readonly airborne: boolean;
-  /** Metri che mancano al prossimo contatto col terreno (volo o rimbalzo). */
-  readonly carryLeft: number;
-  /** Lunghezza del tratto in aria corrente (il volo, poi ogni rimbalzo). */
-  readonly carryM: number;
-  /** Altezza massima visiva del tratto in aria corrente (m). */
-  readonly apexM: number;
-  readonly curveDegPerM: number;
-  readonly decel: number;
-  /** Contatti col terreno finora: 0 = ancora nel volo del colpo. */
-  readonly hops: number;
-  /** Metri da fare dopo il primo contatto (rimbalzi + rotolamento), decisi all'atterraggio. */
-  readonly runM: number;
-  /** Quanto la mazza fa correre la palla all'atterraggio (wedge: effetto, si ferma). */
-  readonly spin: number;
-  readonly isPutt: boolean;
 }
 
 /** Colpo riconosciuto sul telefono. */
@@ -140,50 +123,17 @@ export interface Step {
 
 const LIE_CARRY: Readonly<Record<Lie, number>> = { tee: 1, fairway: 1, rough: 0.82, bunker: 0.6, green: 1 };
 const LIE_SPREAD: Readonly<Record<Lie, number>> = { tee: 1, fairway: 1, rough: 1.4, bunker: 1.6, green: 1 };
-/** Dopo l'atterraggio la palla fa ancora questa frazione del carry (rimbalzi + rotolamento). */
-const ROLL_FRACTION: Readonly<Record<Lie, number>> = { tee: 0.16, fairway: 0.16, rough: 0.05, bunker: 0.01, green: 0.07 };
-
-/**
- * Come risponde il terreno. `hops`: lunghezza di ogni rimbalzo come quota della corsa dopo
- * l'atterraggio (il resto si rotola); `friction`: frenata del rotolamento (m/s²), letta sotto
- * la palla a ogni passo, così una palla che corre dal fairway nel rough rallenta, e nella
- * sabbia si pianta.
- */
-interface Surface {
-  readonly hops: readonly number[];
-  readonly friction: number;
-}
-const SURFACE: Readonly<Record<Lie, Surface>> = {
-  tee: { hops: [0.38, 0.14], friction: 3.5 },
-  fairway: { hops: [0.38, 0.14], friction: 3.5 },
-  green: { hops: [0.22], friction: 2.2 }, // un approccio sul green morde; il putt corre (PUTT_DECEL)
-  rough: { hops: [0.18], friction: 6.5 },
-  bunker: { hops: [], friction: 14 },
-};
-/** Driver: palla bassa che corre; wedge: effetto all'indietro, si ferma quasi dove cade. */
-const CLUB_RUN: Readonly<Record<Club, number>> = { driver: 1.25, iron: 1, wedge: 0.45, putter: 1 };
-const HOP_APEX_PER_M = 0.14;
-const HOP_APEX_MAX_M = 4;
-const HOP_MIN_M = 0.6;
-const HOP_SPEED_MIN = 4;
-const FLIGHT_APEX_MAX_M = 40;
-const FLIGHT_APEX_PER_M = 0.15;
-const PUTT_DECEL = 1;
 export const FAIRWAY_HALF_WIDTH_M = 18;
+/** Quota della faccia che decide la direzione di partenza; il resto lo fa la curva (sidespin). */
 const FACE_START_SHARE = 0.35;
-const CURVE_PER_FACE_DEG = 0.0035;
-const WIND_CURVE_PER_MS = 0.004;
 export const FACE_LIMIT_DEG = 12;
 export const AIM_LIMIT_DEG = 15;
-export const CUP_RADIUS_M = 0.055;
-const CUP_CAPTURE_SPEED = 1.4;
 /** Palla ferma così vicina: concessa, con il colpo del tap-in. 55 mm di buca da 5 m chiederebbero 0,6° di linea. */
 export const GIMME_RADIUS_M = 0.45;
 const PUTT_M_PER_DEG = 0.09;
 export const PUTT_MIN_DEG = 3;
 const STROKES_OVER_PAR = 5;
 const HOLE_OVER_SECONDS = 3;
-const FLIGHT_STEP = 1 / 120;
 const MAX_CATCH_UP = 0.25;
 const PAR_POOL: readonly number[] = [4, 4, 3, 5, 4, 4, 3, 5, 4];
 const DEG = Math.PI / 180;
@@ -231,7 +181,11 @@ export function makeCourse(holes: number, seed: number): readonly GolfHole[] {
   }
   // l'acqua usa un generatore suo: i semi esistenti tengono le stesse buche
   const waterRng = seededRng(seed * 7919 + 13);
-  return pars.map((par) => makeHole(par, rng)).map((h) => ({ ...h, water: makeWater(h, waterRng, FAIRWAY_HALF_WIDTH_M) }));
+  const hillRng = seededRng(seed * 104729 + 7);
+  return pars
+    .map((par) => makeHole(par, rng))
+    .map((h) => ({ ...h, water: makeWater(h, waterRng, FAIRWAY_HALF_WIDTH_M) }))
+    .map((h) => ({ ...h, hills: makeHills(h, hillRng, FAIRWAY_HALF_WIDTH_M) }));
 }
 
 export function suggestClub(distanceM: number, lie: Lie): Club {
@@ -355,40 +309,14 @@ export function applyShot(state: GolfState, id: string, shot: ShotInput): Step {
   let carryM: number;
   if (isPutt) {
     carryM = shot.strokeDeg * PUTT_M_PER_DEG * hole.greenSpeed;
-    flight = {
-      headingDeg: bearingDeg + aimDeg,
-      speed: Math.sqrt(2 * PUTT_DECEL * Math.max(0, carryM)),
-      airborne: false,
-      carryLeft: 0,
-      carryM,
-      apexM: 0,
-      curveDegPerM: hole.slopeDegPerM,
-      decel: PUTT_DECEL,
-      hops: 1,
-      runM: carryM,
-      spin: 1,
-      isPutt: true,
-    };
+    flight = launchPutt(hole, player.ball, bearingDeg + aimDeg, carryM);
   } else {
     // un colpo "full" fatto dolcemente, o un putt fuori dal green, gioca la mazza in mano
     const power = shot.kind === 'putt' ? clamp01(shot.strokeDeg / 140) : clamp01(shot.power);
-    const faceDeg = shot.kind === 'putt' ? 0 : clamp(shot.faceDeg, -FACE_LIMIT_DEG, FACE_LIMIT_DEG);
-    const spread = LIE_SPREAD[player.lie];
-    carryM = CLUB_CARRY_M[player.club] * (0.35 + 0.65 * power) * LIE_CARRY[player.lie];
-    flight = {
-      headingDeg: bearingDeg + aimDeg + faceDeg * FACE_START_SHARE * spread,
-      speed: 26 + 0.09 * carryM,
-      airborne: true,
-      carryLeft: carryM,
-      carryM,
-      apexM: Math.min(FLIGHT_APEX_MAX_M, carryM * FLIGHT_APEX_PER_M),
-      curveDegPerM: faceDeg * CURVE_PER_FACE_DEG * spread + hole.wind * WIND_CURVE_PER_MS,
-      decel: 0,
-      hops: 0,
-      runM: 0,
-      spin: CLUB_RUN[player.club],
-      isPutt: false,
-    };
+    const faceDeg = (shot.kind === 'putt' ? 0 : clamp(shot.faceDeg, -FACE_LIMIT_DEG, FACE_LIMIT_DEG)) * LIE_SPREAD[player.lie];
+    const club = player.club === 'putter' ? 'wedge' : player.club;
+    carryM = CLUB_CARRY_M[club] * (0.35 + 0.65 * power) * LIE_CARRY[player.lie];
+    flight = launchFull(hole, player.ball, { club, lie: player.lie, carryM, faceDeg, headingDeg: bearingDeg + aimDeg + faceDeg * FACE_START_SHARE });
   }
   const struck: GolfPlayer = { ...player, strokes: player.strokes + 1, flight, shotFrom: player.ball, clubChosen: false };
   return {
@@ -398,46 +326,22 @@ export function applyShot(state: GolfState, id: string, shot: ShotInput): Step {
 }
 
 /**
- * Contatto col terreno: decide il prossimo rimbalzo o l'inizio del rotolamento. Al primo
- * contatto si fissa quanta strada farà ancora la palla (terreno × mazza); ogni rimbalzo ne
- * consuma un pezzo, e il resto si rotola con la frenata del terreno.
- */
-export function touchdown(hole: GolfHole, f: Flight, lie: Lie): Flight {
-  const surface = SURFACE[lie];
-  const runM = f.hops === 0 ? f.carryM * ROLL_FRACTION[lie] * f.spin : f.runM;
-  const hopM = runM * (surface.hops[f.hops] ?? 0);
-  const base: Flight = { ...f, hops: f.hops + 1, curveDegPerM: lie === 'green' ? hole.slopeDegPerM : 0, decel: surface.friction };
-  if (hopM >= HOP_MIN_M) {
-    const rollSpeed = Math.sqrt(2 * surface.friction * Math.max(0, runM - hopM));
-    return {
-      ...base,
-      airborne: true,
-      carryLeft: hopM,
-      carryM: hopM,
-      apexM: Math.min(HOP_APEX_MAX_M, hopM * HOP_APEX_PER_M),
-      speed: Math.max(HOP_SPEED_MIN, rollSpeed * 1.1),
-      runM: runM - hopM,
-    };
-  }
-  return { ...base, airborne: false, carryLeft: 0, apexM: 0, speed: Math.sqrt(2 * surface.friction * runM), runM };
-}
-
-/**
  * Dove cade la mazza in mano a piena potenza, mirando alla bandiera con la faccia dritta,
  * vento compreso: il cerchio di mira sullo schermo. `null` sul green (lì si putta).
  */
 export function aimPreview(hole: GolfHole, player: GolfPlayer): Point | null {
   if (player.lie === 'green' || player.club === 'putter') return null;
+  const key = `${player.ball.x},${player.ball.y},${player.club},${player.lie}`;
+  const memo = aimMemo.get(hole);
+  if (memo?.key === key) return memo.at;
   const carryM = CLUB_CARRY_M[player.club] * LIE_CARRY[player.lie];
-  const bearing = Math.atan2(-player.ball.x, hole.lengthM - player.ball.y);
-  // il vento piega il volo: deriva laterale ≈ curvatura × carry² / 2
-  const drift = hole.wind * WIND_CURVE_PER_MS * DEG * carryM * carryM / 2;
-  const side = { x: Math.cos(bearing), y: -Math.sin(bearing) };
-  return {
-    x: player.ball.x + Math.sin(bearing) * carryM + side.x * drift,
-    y: player.ball.y + Math.cos(bearing) * carryM + side.y * drift,
-  };
+  const bearingDeg = Math.atan2(-player.ball.x, hole.lengthM - player.ball.y) / DEG;
+  const flight = launchFull(hole, player.ball, { club: player.club, lie: player.lie, carryM, faceDeg: 0, headingDeg: bearingDeg });
+  const at = firstContact(hole, player.ball, flight);
+  aimMemo.set(hole, { key, at });
+  return at;
 }
+const aimMemo = new WeakMap<GolfHole, { readonly key: string; readonly at: Point }>();
 
 interface FlightStep {
   readonly player: GolfPlayer;
@@ -458,55 +362,35 @@ function penalize(hole: GolfHole, player: GolfPlayer, hazard: Hazard, at: Point,
   return { player: placed, events, rested: true, holed: false, conceded: false, penalty: hazard };
 }
 
-/** Un passo di volo/rotolamento (passo fisso). */
+/** Un passo di volo/rotolamento (passo fisso), con la fisica di physics.ts. */
 function advanceFlight(hole: GolfHole, player: GolfPlayer, h: number): FlightStep {
-  const f = player.flight!;
-  const stepM = f.speed * h;
-  const headingDeg = f.headingDeg + f.curveDegPerM * stepM;
-  const ball = { x: player.ball.x + Math.sin(headingDeg * DEG) * stepM, y: player.ball.y + Math.cos(headingDeg * DEG) * stepM };
-  let next: Flight = { ...f, headingDeg };
+  const r = stepBall(hole, player.ball, player.flight!, h);
   const events: GolfEvent[] = [];
-  const moving = (p: GolfPlayer): FlightStep => ({ player: p, events, rested: false, holed: false, conceded: false, penalty: null });
-  let lie = player.lie;
-
-  if (f.airborne) {
-    const carryLeft = f.carryLeft - stepM;
-    // in aria si vola sopra acqua e paletti: conta solo dove si tocca terra
-    if (carryLeft > 0) return moving({ ...player, ball, flight: { ...next, carryLeft } });
-    const hazard = hazardAt(hole, ball);
-    if (hazard) return penalize(hole, player, hazard, ball, events);
-    lie = lieAt(hole, ball);
-    next = touchdown(hole, next, lie);
-    events.push({ kind: 'touchdown', playerId: player.id, lie, at: ball, hop: f.hops });
-    if (f.hops === 0) events.push({ kind: 'landed', playerId: player.id, lie });
-    // un rimbalzo è in aria: niente buca né arresto finché non ritocca terra
-    if (next.airborne) return moving({ ...player, ball, lie, flight: next });
-  } else {
-    const hazard = hazardAt(hole, ball);
-    if (hazard) return penalize(hole, player, hazard, ball, events);
-    // la frenata è quella del terreno sotto la palla adesso, non di dove è atterrata
-    const under = lieAt(hole, ball);
-    const decel = f.isPutt && under === 'green' ? PUTT_DECEL : SURFACE[under].friction;
-    next = { ...next, decel, curveDegPerM: under === 'green' ? hole.slopeDegPerM : 0, speed: Math.max(0, f.speed - decel * h) };
+  const o = r.outcome;
+  switch (o.kind) {
+    case 'hazard':
+      return penalize(hole, player, o.hazard, o.at, events);
+    case 'holed':
+      return { player: { ...player, ball: pinOf(hole), lie: 'green', flight: null }, events, rested: true, holed: true, conceded: false, penalty: null };
+    case 'rested': {
+      const restLie = lieAt(hole, r.ball);
+      const conceded = restLie === 'green' && distanceToPin(hole, r.ball) <= GIMME_RADIUS_M;
+      const rested: GolfPlayer = {
+        ...player,
+        ball: conceded ? pinOf(hole) : r.ball,
+        lie: restLie,
+        flight: null,
+        strokes: conceded ? player.strokes + 1 : player.strokes,
+      };
+      return { player: rested, events, rested: true, holed: conceded, conceded, penalty: null };
+    }
+    case 'contact':
+      events.push({ kind: 'touchdown', playerId: player.id, lie: o.lie, at: o.at, hop: o.hop });
+      if (o.hop === 0) events.push({ kind: 'landed', playerId: player.id, lie: o.lie });
+      return { player: { ...player, ball: r.ball, lie: o.lie, flight: r.flight }, events, rested: false, holed: false, conceded: false, penalty: null };
+    default:
+      return { player: { ...player, ball: r.ball, flight: r.flight }, events, rested: false, holed: false, conceded: false, penalty: null };
   }
-
-  const toPin = distanceToPin(hole, ball);
-  if (hole.greenRadiusM > 0 && toPin <= CUP_RADIUS_M && next.speed <= CUP_CAPTURE_SPEED) {
-    return { player: { ...player, ball: pinOf(hole), lie: 'green', flight: null }, events, rested: true, holed: true, conceded: false, penalty: null };
-  }
-  if (next.speed <= 0) {
-    const restLie = lieAt(hole, ball);
-    const conceded = restLie === 'green' && toPin <= GIMME_RADIUS_M;
-    const rested: GolfPlayer = {
-      ...player,
-      ball: conceded ? pinOf(hole) : ball,
-      lie: restLie,
-      flight: null,
-      strokes: conceded ? player.strokes + 1 : player.strokes,
-    };
-    return { player: rested, events, rested: true, holed: conceded, conceded, penalty: null };
-  }
-  return moving({ ...player, ball, lie, flight: next });
 }
 
 function settle(state: GolfState, player: GolfPlayer, holed: boolean, conceded: boolean, penalty: Hazard | null): { player: GolfPlayer; events: GolfEvent[] } {

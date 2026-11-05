@@ -45,7 +45,7 @@ const REFUSED_TEXT: Readonly<Record<RefusedReason, string>> = {
 };
 
 export const PENALTY_TEXT: Readonly<Record<'water' | 'oob', string>> = {
-  water: 'In acqua: +1 colpo, si droppa fuori',
+  water: 'In acqua: +1 colpo, si droppa più indietro',
   oob: 'Fuori limite: +1 colpo, si ritira da dove eri',
 };
 
@@ -121,13 +121,7 @@ export function cameraFocusId(state: GolfState, hold: FocusHold | null, now: num
   return state.players[0]?.id ?? null;
 }
 
-/** Altezza visiva della palla (m): parabola sul carry, nulla quando rotola. */
-export function ballHeight(
-  flight: { readonly airborne: boolean; readonly carryLeft: number; readonly carryM: number; readonly apexM?: number } | null,
-): number {
-  if (!flight || !flight.airborne || flight.carryM <= 0) return 0;
-  const p = Math.min(1, Math.max(0, 1 - flight.carryLeft / flight.carryM));
-  // il volo del colpo e ogni rimbalzo hanno la loro altezza
-  const apex = flight.apexM ?? Math.min(40, flight.carryM * 0.15);
-  return 4 * apex * p * (1 - p);
+/** Altezza della palla sopra il terreno (m): la calcola la fisica, 0 quando rotola. */
+export function ballHeight(flight: { readonly heightM: number } | null): number {
+  return flight ? Math.max(0, flight.heightM) : 0;
 }

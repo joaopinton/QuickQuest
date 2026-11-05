@@ -52,11 +52,10 @@ describe('feedback ai telefoni', () => {
     expect(outboxFor([], state)).toEqual({ cues: [] });
   });
 
-  test('altezza della palla: zero a terra, massima a metà carry', () => {
+  test('altezza della palla: quella della fisica sopra il terreno, mai sotto', () => {
     expect(ballHeight(null)).toBe(0);
-    expect(ballHeight({ airborne: false, carryLeft: 0, carryM: 100 })).toBe(0);
-    const mid = ballHeight({ airborne: true, carryLeft: 50, carryM: 100 });
-    expect(mid).toBeCloseTo(15, 6);
-    expect(ballHeight({ airborne: true, carryLeft: 90, carryM: 100 })).toBeLessThan(mid);
+    expect(ballHeight({ heightM: 0 })).toBe(0);
+    expect(ballHeight({ heightM: 12.5 })).toBe(12.5);
+    expect(ballHeight({ heightM: -0.01 })).toBe(0);
   });
 });
