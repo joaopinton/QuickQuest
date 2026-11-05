@@ -1,6 +1,6 @@
 // Host della stanza: collega un HostTransport al reducer. Oggi gira nella scheda dello schermo.
 
-import type { LobbyPlayer, RoomPhase, ServerMessage, SlotId, ThrowParams } from './messages';
+import type { Cue, GameEvent, LobbyPlayer, RoomPhase, ServerMessage, SlotId, ThrowParams } from './messages';
 import {
   applyDisconnect,
   applyHello,
@@ -15,6 +15,8 @@ import {
   expireStale,
   lobbyPlayers,
   throwerSlot,
+  gameEventSlot,
+  connectionsFor,
   type RoomState,
 } from './room';
 import { randomId, type HostTransport } from './transport';
@@ -35,6 +37,8 @@ export interface RoomHostOptions {
   readonly onState?: (state: RoomState) => void;
   /** Lancio valido del giocatore di turno: va consegnato allo schermo. */
   readonly onThrow?: (slot: SlotId, params: ThrowParams) => void;
+  /** Evento di gioco di un giocatore ammesso: va consegnato allo schermo. */
+  readonly onGameEvent?: (slot: SlotId, gameId: string, e: GameEvent) => void;
   /**
    * La connessione è uno schermo? Solo gli schermi possono cambiare turno o chiudere la partita
    * via messaggio (relay). Con l'host locale lo schermo chiama i metodi direttamente.
@@ -55,12 +59,14 @@ export interface RoomHost {
   returnToLobby(): void;
   /** Lo schermo indica chi può lanciare adesso (`null` = nessuno, es. palla in pista). */
   setTurn(activeSlot: SlotId | null): void;
+  /** Lo schermo chiede un feedback a un telefono (`slot`) o a tutti (`null`). */
+  sendCue(slot: SlotId | null, cue: Cue): void;
   close(): void;
 }
 
 export function createRoomHost(opts: RoomHostOptions): RoomHost {
   const {
-    code, transport, onLobby, now = Date.now, makeToken = randomId, staleMs = STALE_MS, initialState, onState, onThrow,
+    code, transport, onLobby, now = Date.now, makeToken = randomId, staleMs = STALE_MS, initialState, onState, onThrow, onGameEvent,
     isScreen = () => false,
   } = opts;
   let state: RoomState = initialState ?? createRoom(code);
@@ -112,6 +118,11 @@ export function createRoomHost(opts: RoomHostOptions): RoomHost {
     transport.broadcast(turnMsg());
   };
 
+  const sendCue = (slot: SlotId | null, cue: Cue) => {
+    const msg: ServerMessage = { t: 'cue', p: { kind: cue.kind, slot, ...(cue.text === undefined ? {} : { text: cue.text }) } };
+    for (const id of connectionsFor(state, slot)) transport.sendTo(id, msg);
+  };
+
   const unsubscribe = transport.onMessage((from, result) => {
     if (!result.ok) {
       transport.sendTo(from, { t: 'error', p: { code: result.code } });
@@ -141,6 +152,16 @@ export function createRoomHost(opts: RoomHostOptions): RoomHost {
         onThrow?.(slot, { speed: msg.p.speed, spin: msg.p.spin, dir: msg.p.dir });
         break;
       }
+      case 'game-event': {
+        const slot = gameEventSlot(state, from);
+        // l'evento è del gioco in corso: uno vecchio (gioco cambiato) si scarta
+        if (!slot || msg.p.gameId !== state.selectedGame) break;
+        onGameEvent?.(slot, msg.p.gameId, msg.p.e);
+        break;
+      }
+      case 'cue':
+        if (isScreen(from)) sendCue(msg.p.slot, msg.p);
+        break;
       case 'turn':
         if (isScreen(from)) setTurn(msg.p.activeSlot);
         break;
@@ -190,6 +211,7 @@ export function createRoomHost(opts: RoomHostOptions): RoomHost {
     startGame,
     returnToLobby,
     setTurn,
+    sendCue,
     close: () => {
       unsubscribe();
       transport.close();

@@ -70,3 +70,9 @@
   .picker__head { flex-direction: column; align-items: stretch; }
   .picker__head .qq-btn { width: 100%; justify-content: center; }
 }
+
+/* Caricamento della scena di un gioco sul contratto modulo */
+.lobby__loading {
+  position: fixed; inset: 0; display: grid; place-items: center;
+  font: 700 1.5rem/1 var(--font-display); color: var(--ink-900); background: #bfe6ff;
+}

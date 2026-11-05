@@ -3,6 +3,7 @@
 import {
   createLocalClient, createWsClient, HEARTBEAT_MS, relayUrl, type Capabilities, type ClientTransport, type ErrorCode, type LobbyPlayer,
   type Profile, type RoomPhase, type ServerMessage, type WsClientTransport, type SlotId, type ThrowParams,
+  type Cue, type GameEvent,
 } from '@quickquest/protocol';
 
 export const JOIN_TIMEOUT_MS = 1500;
@@ -30,6 +31,10 @@ export interface ControllerConnection {
   sendReady(layoutId: string): void;
   /** Lancio misurato dal gesto: lo schermo lo accetta solo se è il nostro turno. */
   sendThrow(params: ThrowParams): void;
+  /** Evento di un gioco sul contratto modulo (games/contract.ts). */
+  sendGameEvent(gameId: string, e: GameEvent): void;
+  /** Feedback chiesto dallo schermo (vibrazione/click e testo). */
+  onCue(cb: (cue: Cue) => void): () => void;
   onLobby(cb: (players: readonly LobbyPlayer[], phase?: RoomPhase) => void): () => void;
   /** Cambio di turno: `activeSlot` è chi può lanciare adesso (`null` = nessuno). */
   onTurn(cb: (activeSlot: SlotId | null) => void): () => void;
@@ -79,6 +84,7 @@ export function createControllerConnection(code: string, transport: ClientTransp
   const lobbyListeners = new Set<(players: readonly LobbyPlayer[], phase?: RoomPhase) => void>();
   const turnListeners = new Set<(activeSlot: SlotId | null) => void>();
   const rttListeners = new Set<(rttMs: number) => void>();
+  const cueListeners = new Set<(cue: Cue) => void>();
   const layoutListeners = new Set<(layout: ControllerLayoutInfo) => void>();
   const statusListeners = new Set<(s: LinkStatus) => void>();
   let heartbeat: ReturnType<typeof setInterval> | null = null;
@@ -144,6 +150,9 @@ export function createControllerConnection(code: string, transport: ClientTransp
       case 'layout':
         layoutListeners.forEach((cb) => cb(msg.p));
         break;
+      case 'cue':
+        cueListeners.forEach((cb) => cb(msg.p.text === undefined ? { kind: msg.p.kind } : { kind: msg.p.kind, text: msg.p.text }));
+        break;
       case 'pong':
         lastPong = Date.now();
         rttListeners.forEach((cb) => cb(lastPong - msg.p.at));
@@ -182,6 +191,13 @@ export function createControllerConnection(code: string, transport: ClientTransp
     },
     sendReady(layoutId) {
       send({ t: 'ready', p: { layoutId } });
+    },
+    sendGameEvent(gameId, e) {
+      send({ t: 'game-event', p: { gameId, e } });
+    },
+    onCue(cb) {
+      cueListeners.add(cb);
+      return () => cueListeners.delete(cb);
     },
     sendThrow(params) {
       send({ t: 'throw', p: params });

@@ -176,6 +176,50 @@ describe('lancio col gesto dal telefono del giocatore di turno', () => {
     expect(throws).toHaveLength(1);
   });
 
+  test('eventi di gioco: solo del gioco in corso e del giocatore di turno; i cue arrivano al telefono', async () => {
+    const roomCode = `E${String(++code).padStart(3, '0')}`;
+    const events: [string, string, string][] = [];
+    const host = createRoomHost({
+      code: roomCode, transport: createLocalHost(roomCode), onLobby: () => {},
+      onGameEvent: (slot, gameId, e) => events.push([slot, gameId, e.kind]),
+    });
+    cleanups.push(() => host.close());
+    const mk = () => {
+      const t = createLocalClient(roomCode);
+      const inbox: ServerMessage[] = [];
+      t.onMessage((m) => inbox.push(m));
+      cleanups.push(() => t.close());
+      return { t, inbox };
+    };
+    const a = mk();
+    const b = mk();
+    await ready(a);
+    await ready(b);
+    await until(() => host.players().filter((p) => p.state === 'ready').length === 2);
+    a.t.send({ t: 'game-event', p: { gameId: 'golf', e: { kind: 'shot', data: {} } } }); // partita non iniziata
+    await new Promise((r) => setTimeout(r, 30)); // BroadcastChannel consegna in modo asincrono
+    expect(events).toHaveLength(0);
+    expect(host.startGame('golf')).toBe(true);
+    // turno libero: tutti possono mandare eventi
+    b.t.send({ t: 'game-event', p: { gameId: 'golf', e: { kind: 'club', data: { club: 'iron' } } } });
+    await until(() => events.length === 1);
+    host.setTurn('P1');
+    await until(() => b.inbox.some((m) => m.t === 'turn' && m.p.activeSlot === 'P1'));
+    b.t.send({ t: 'game-event', p: { gameId: 'golf', e: { kind: 'shot', data: {} } } }); // non è il suo turno
+    a.t.send({ t: 'game-event', p: { gameId: 'bowling', e: { kind: 'shot', data: {} } } }); // gioco sbagliato
+    a.t.send({ t: 'game-event', p: { gameId: 'golf', e: { kind: 'shot', data: { power: 0.5 } } } });
+    await until(() => events.length === 2);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(events).toEqual([['P2', 'golf', 'club'], ['P1', 'golf', 'shot']]);
+
+    host.sendCue('P2', { kind: 'success', text: 'Birdie!' });
+    host.sendCue(null, { kind: 'tap' });
+    await until(() => a.inbox.some((m) => m.t === 'cue'));
+    await until(() => b.inbox.filter((m) => m.t === 'cue').length === 2);
+    expect(a.inbox.filter((m) => m.t === 'cue')).toEqual([{ t: 'cue', p: { kind: 'tap', slot: null } }]);
+    expect(b.inbox.find((m) => m.t === 'cue')).toEqual({ t: 'cue', p: { kind: 'success', slot: 'P2', text: 'Birdie!' } });
+  });
+
   test('un telefono non può cambiare turno né chiudere la partita', async () => {
     const roomCode = `H${String(++code).padStart(3, '0')}`;
     const host = createRoomHost({ code: roomCode, transport: createLocalHost(roomCode), onLobby: () => {} });

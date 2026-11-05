@@ -1,9 +1,12 @@
 import { GAMES, type GameMeta } from '@quickquest/games';
+import type { ScreenGameProps, ScreenPlayer } from '@quickquest/games/contract';
+import { isPlayable, loadersFor } from '@quickquest/games/loaders';
 import { SLOT_IDS, type LobbyPlayer, type SlotId } from '@quickquest/protocol';
 import type { BowlingPlayer } from '@quickquest/games/bowling/screen/useBowlingGame';
 import { Button, Logo, PlayerSlot, showToast, slotStyle, t, type Accessory, type SlotState } from '@quickquest/ui';
+import type { ComponentType } from 'preact';
 import { lazy, Suspense } from 'preact/compat';
-import { useState } from 'preact/hooks';
+import { useMemo, useState } from 'preact/hooks';
 import { useScreenRoom } from '../../net/useScreenRoom';
 import { GameCard } from '../components/GameCard';
 import { QrCode } from '../components/QrCode';
@@ -27,6 +30,25 @@ function bowlingPlayers(players: readonly LobbyPlayer[]): BowlingPlayer[] {
         symbol: slot.symbol,
       };
     });
+}
+
+/** Giocatori collegati come li vede un gioco sul contratto modulo. */
+function screenPlayers(players: readonly LobbyPlayer[]): ScreenPlayer[] {
+  return bowlingPlayers(players).map((p) => ({ ...p, id: p.id as SlotId }));
+}
+
+/** Scena di un gioco sul contratto modulo, caricata solo quando serve. */
+function ModuleGame({ gameId, ...props }: ScreenGameProps & { gameId: string }) {
+  const Game = useMemo<ComponentType<ScreenGameProps> | null>(() => {
+    const loaders = loadersFor(gameId);
+    return loaders ? lazy(() => loaders.screen().then((m) => m.Screen)) : null;
+  }, [gameId]);
+  if (!Game) return null;
+  return (
+    <Suspense fallback={<div class="lobby__loading">{t('lobby.loadingGame')}</div>}>
+      <Game {...props} />
+    </Suspense>
+  );
 }
 
 const isSlotId = (id: string | null): id is SlotId => id !== null && (SLOT_IDS as readonly string[]).includes(id);
@@ -67,8 +89,8 @@ function JoinPanel({ code, joinUrl }: { code: string; joinUrl: string }) {
 
 function GamePicker({ onBack, onStartGame }: { onBack: () => void; onStartGame: (gameId: string) => void }) {
   const pick = (g: GameMeta) => {
-    if (g.id === 'bowling') {
-      onStartGame('bowling');
+    if (isPlayable(g.id)) {
+      onStartGame(g.id);
     } else {
       showToast(t('lobby.laterToast', { name: g.name }));
     }
@@ -134,7 +156,7 @@ function PlayingScreen({
 }
 
 export function Lobby() {
-  const { code, players, joinUrl, phase, selectedGame, startGame, returnToLobby, setActiveSlot, onThrow } = useScreenRoom();
+  const { code, players, joinUrl, phase, selectedGame, startGame, returnToLobby, setActiveSlot, onThrow, onGameEvent, sendCue } = useScreenRoom();
   const [isChoosing, setChoosing] = useState(false);
   const active = players.filter((p) => p.state !== 'disconnected').length;
   const bySlot = new Map(players.map((p) => [p.slot, p]));
@@ -174,6 +196,15 @@ export function Lobby() {
               onActivePlayerChange={(id) => setActiveSlot(isSlotId(id) ? id : null)}
             />
           </Suspense>
+        ) : loadersFor(selectedGame) ? (
+          <ModuleGame
+            gameId={selectedGame!}
+            players={screenPlayers(players)}
+            subscribeEvents={onGameEvent}
+            setActiveSlot={setActiveSlot}
+            sendCue={sendCue}
+            onEndGame={returnToLobby}
+          />
         ) : (
           <PlayingScreen players={players} gameId={selectedGame} onEndGame={returnToLobby} />
         )

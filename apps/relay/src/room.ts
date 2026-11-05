@@ -67,6 +67,7 @@ export class Room extends DurableObject<Env> {
       onState: (s) => { void this.ctx.storage.put(STATE_KEY, s); },
       // il lancio del giocatore di turno va solo agli schermi, con lo slot timbrato dall'host
       onThrow: (slot, params) => this.toScreens({ t: 'throw', p: { ...params, slot } }),
+      onGameEvent: (slot, gameId, e) => this.toScreens({ t: 'game-event', p: { gameId, e, slot } }),
       isScreen: (id) => this.sockets().some((s) => s.a.id === id && s.a.role === 'screen'),
     });
     return this.host;

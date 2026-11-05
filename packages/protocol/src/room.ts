@@ -152,6 +152,25 @@ export function throwerSlot(state: RoomState, connectionId: string): SlotId | nu
   return player.slot;
 }
 
+/**
+ * Chi può mandare un evento di gioco: un giocatore della partita in corso. Se lo schermo ha
+ * indicato un turno, solo il giocatore di turno; se il turno è libero (`null`), chiunque.
+ */
+export function gameEventSlot(state: RoomState, connectionId: string): SlotId | null {
+  if (state.phase !== 'playing') return null;
+  const player = state.players.find(byConnection(connectionId));
+  if (!player) return null;
+  if (state.activeSlot && player.slot !== state.activeSlot) return null;
+  return player.slot;
+}
+
+/** Connessioni a cui consegnare un messaggio per uno slot (o per tutti i giocatori). */
+export function connectionsFor(state: RoomState, slot: SlotId | null): string[] {
+  return state.players
+    .filter((p) => p.connected && p.connectionId !== null && (slot === null || p.slot === slot))
+    .map((p) => p.connectionId as string);
+}
+
 /** Vista della lobby da mandare allo schermo e ai controller. */
 export function lobbyPlayers(state: RoomState): LobbyPlayer[] {
   return [...state.players]

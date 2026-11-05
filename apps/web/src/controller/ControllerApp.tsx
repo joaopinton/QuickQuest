@@ -3,15 +3,17 @@ import {
   collectMotion, createMotionTracker, detectPlatform, evaluateProbe, keepAwake, releaseWakeLock, requestMotionPermission, simulateHandheld,
   type ProbeResult, type RawSample, type SwingProfile,
 } from '@quickquest/motion';
-import { isValidRoomCode, type LobbyPlayer, type SlotId } from '@quickquest/protocol';
+import { isValidRoomCode, type Cue, type LobbyPlayer, type SlotId } from '@quickquest/protocol';
 import { pupoColor, t } from '@quickquest/ui';
 import { useLocation, useRoute } from 'preact-iso';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { loadersFor } from '@quickquest/games/loaders';
 import { createControllerConnection } from '../net/controllerConnection';
 import { createHaptics } from './haptics';
 import { hasSeenSafety, loadChoice, markSafetySeen, saveChoice } from './prefs';
 import { Calibrate } from './steps/Calibrate';
 import { DebugOverlay } from './steps/DebugOverlay';
+import { ModulePad } from './steps/ModulePad';
 import { TraceRecorder } from './steps/TraceRecorder';
 import { GamePad } from './steps/GamePad';
 import { PickPupo, type PupoChoice } from './steps/PickPupo';
@@ -66,6 +68,7 @@ function RoomFlow({ code }: { code: string }) {
   const [isLost, setLost] = useState(false);
   const [activeSlot, setActiveSlot] = useState<SlotId | null>(null);
   const [profile, setProfile] = useState<SwingProfile | null>(null);
+  const [lastCue, setLastCue] = useState<Cue | null>(null);
   // un solo tracker per tutta la sessione: l'orientamento stimato resta coerente con la taratura
   const tracker = useMemo(() => createMotionTracker(), []);
   useEffect(() => () => tracker.stop(), [tracker]);
@@ -93,6 +96,11 @@ function RoomFlow({ code }: { code: string }) {
       }
     });
     const offTurn = conn.onTurn(setActiveSlot);
+    // feedback dallo schermo: fuori da un tocco su iPhone diventa un click (haptics.cue)
+    const offCue = conn.onCue((cue) => {
+      haptics.cue(cue.kind);
+      if (isMounted.current) setLastCue(cue);
+    });
     const offLayout = conn.onLayout((layout) => {
       conn.sendReady(layout.layoutId);
       const game: GameStep = { k: 'game', gameId: layout.gameId, layoutId: layout.layoutId };
@@ -110,9 +118,10 @@ function RoomFlow({ code }: { code: string }) {
       offLayout();
       offStatus();
       offTurn();
+      offCue();
       conn.close();
     };
-  }, [conn]);
+  }, [conn, haptics]);
 
   const connect = async () => {
     if (isBusy.current) return; // doppio tap su "Connetti" o "Riprova"
@@ -214,6 +223,24 @@ function RoomFlow({ code }: { code: string }) {
           />
         );
       case 'game':
+        if (loadersFor(step.gameId)) {
+          return (
+            <ModulePad
+              gameId={step.gameId}
+              slot={slot}
+              color={pupoColor(choice.colorId).hex}
+              activeSlot={activeSlot}
+              isLost={isLost}
+              isDemo={isDemo}
+              isSimulated={simVariant !== undefined}
+              tracker={tracker}
+              haptics={haptics}
+              lastCue={lastCue}
+              send={(e) => conn.sendGameEvent(step.gameId, e)}
+              onLeave={() => { conn.leave(); releaseWakeLock(); route('/'); }}
+            />
+          );
+        }
         return (
           <GamePad
             slot={slot}

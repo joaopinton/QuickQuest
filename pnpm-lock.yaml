@@ -100,7 +100,17 @@ importers:
         specifier: 0.0.6
         version: 0.0.6
 
-  games: {}
+  games:
+    dependencies:
+      '@quickquest/motion':
+        specifier: workspace:*
+        version: link:../packages/motion
+      '@quickquest/protocol':
+        specifier: workspace:*
+        version: link:../packages/protocol
+      '@quickquest/ui':
+        specifier: workspace:*
+        version: link:../packages/ui
 
   packages/motion:
     dependencies:

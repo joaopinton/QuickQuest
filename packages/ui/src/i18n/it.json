@@ -75,6 +75,7 @@
     "playersExact": "{n} giocatori"
   },
   "lobby": {
+    "loadingGame": "Si prepara il campo…",
     "title": "La tua stanza",
     "creating": "Preparo la stanza…",
     "scan": "Inquadra con il telefono",
@@ -180,6 +181,7 @@
     "recalibrate": "Ricalibra",
     "meterLabel": "Movimento",
     "meterStill": "fermo",
+    "loadingGame": "Carico il gioco…",
     "thrownDetail": "Lanciato! {kmh} km/h · {aim}",
     "aimStraight": "dritto",
     "aimLeft": "{deg}° a sinistra",

@@ -150,3 +150,11 @@ Intro (presentazione, 3 s, saltabile)
 - [ ] Cue aptici e sonori definiti
 - [ ] E2E Playwright: un turno completo con il controller simulato
 - [ ] Playtest con almeno 3 persone su telefoni reali (iOS e Android)
+
+## 6. Implementazione attuale
+
+Versione minima, additiva (2026-11-05): il bowling resta sul suo cablaggio (messaggio `throw`, `GamePad.tsx`, `BowlingSandbox`), i giochi nuovi usano:
+- `games/contract.ts`: `ScreenGameProps` (giocatori, `subscribeEvents`, `setActiveSlot`, `sendCue`, `onEndGame`) e `ControllerPadProps` (slot, turno, tracker, haptics, ultimo cue, `send`);
+- `games/loaders.ts`: `import()` dinamici di `Screen` e `Pad` per ogni gioco, `isPlayable(id)` per la lobby;
+- protocollo: `game-event { gameId, e: { kind, data } }` dal telefono (validato: `data` piatto, ≤ 16 campi, numeri finiti, stringhe ≤ 32), inoltrato allo schermo solo per il gioco in corso e, se c'è un turno, solo dal giocatore di turno; `cue { slot | null, kind, text? }` dallo schermo ai telefoni, che lo trasformano in vibrazione o click.
+La migrazione del bowling su questo contratto è rimandata: richiede di toccare `games/bowling/`.

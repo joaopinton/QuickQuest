@@ -1,0 +1,23 @@
+/* Pad del golf sul telefono: mira, putt, mazza. Token da packages/ui/src/tokens.css. */
+.golf-pad__cue {
+  margin: 0; padding: 10px 16px; border-radius: var(--radius-lg); background: var(--surface);
+  box-shadow: var(--shadow-soft); font-weight: 800; text-align: center;
+}
+
+.golf-pad__aim {
+  position: relative; display: grid; place-items: center; height: 56px; border-radius: var(--radius-pill);
+  background: var(--ink-100); overflow: hidden; opacity: 0.6; transition: opacity 200ms ease;
+}
+.golf-pad__aim.is-ready { opacity: 1; }
+.golf-pad__aim::before {
+  content: ''; position: absolute; inset: 8px auto 8px 50%; width: 2px; background: var(--ink-300);
+}
+.golf-pad__aim-dot {
+  position: absolute; left: calc(50% - 12px); width: 24px; height: 24px; border-radius: 50%;
+  background: var(--slot); box-shadow: var(--shadow-soft); transition: transform 120ms ease-out;
+}
+.golf-pad__aim-label { position: relative; top: 18px; font-size: 0.8rem; font-weight: 700; color: var(--ink-600); }
+
+@media (prefers-reduced-motion: reduce) {
+  .golf-pad__aim, .golf-pad__aim-dot { transition: none; }
+}

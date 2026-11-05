@@ -39,6 +39,24 @@ export interface ThrowParams {
   readonly dir: number; // radianti
 }
 
+/**
+ * Evento di gioco generico, riconosciuto sul telefono (ADR-002) e interpretato dallo schermo.
+ * `kind` dice cosa è successo (es. `shot`), `data` porta i numeri: niente oggetti annidati.
+ */
+export interface GameEvent {
+  readonly kind: string;
+  readonly data: Readonly<Record<string, number | string | boolean>>;
+}
+
+/** Feedback che lo schermo chiede a un telefono (o a tutti): vibrazione o click, e un testo breve. */
+export type CueKind = 'tap' | 'select' | 'success' | 'error';
+export const CUE_KINDS: readonly CueKind[] = ['tap', 'select', 'success', 'error'];
+
+export interface Cue {
+  readonly kind: CueKind;
+  readonly text?: string;
+}
+
 /** Messaggi dal controller. */
 export type ControllerMessage =
   | { t: 'hello'; p: { sessionToken: string | null; capabilities: Capabilities } }
@@ -48,6 +66,9 @@ export type ControllerMessage =
   | { t: 'select-game'; p: { gameId: string } }
   | { t: 'start'; p: { gameId: string } }
   | { t: 'throw'; p: ThrowParams }
+  | { t: 'game-event'; p: { gameId: string; e: GameEvent } }
+  /** Solo dallo schermo (relay): feedback per un telefono (`slot`) o per tutti (`null`). */
+  | { t: 'cue'; p: Cue & { slot: SlotId | null } }
   /** Solo dallo schermo (relay): chi deve tirare adesso, `null` se nessuno. */
   | { t: 'turn'; p: { activeSlot: SlotId | null } }
   /** Solo dallo schermo (relay): fine partita, tutti tornano in lobby. */
@@ -64,6 +85,10 @@ export type ServerMessage =
   | { t: 'turn'; p: { activeSlot: SlotId | null } }
   /** Lancio di un telefono inoltrato allo schermo, con lo slot timbrato dall'host. */
   | { t: 'throw'; p: ThrowParams & { slot?: SlotId } }
+  /** Evento di gioco inoltrato allo schermo, con lo slot timbrato dall'host. */
+  | { t: 'game-event'; p: { gameId: string; e: GameEvent; slot?: SlotId } }
+  /** Feedback dallo schermo, consegnato al telefono. */
+  | { t: 'cue'; p: Cue & { slot: SlotId | null } }
   | { t: 'pong'; p: { at: number } }
   | { t: 'error'; p: { code: ErrorCode } };
 
@@ -97,6 +122,23 @@ export function isProfile(x: unknown): x is Profile {
     && typeof x.accessory === 'string' && ACCESSORY.test(x.accessory);
 }
 
+const MAX_EVENT_FIELDS = 16;
+const MAX_EVENT_TEXT = 32;
+const MAX_CUE_TEXT = 80;
+
+export function isGameEvent(x: unknown): x is GameEvent {
+  if (!isObj(x) || typeof x.kind !== 'string' || !ID_REGEX.test(x.kind) || !isObj(x.data)) return false;
+  const entries = Object.entries(x.data);
+  return entries.length <= MAX_EVENT_FIELDS && entries.every(([k, v]) => /^[a-zA-Z][a-zA-Z0-9]{0,23}$/.test(k)
+    && (isNum(v, -1e6, 1e6) || typeof v === 'boolean' || (typeof v === 'string' && v.length <= MAX_EVENT_TEXT)));
+}
+
+function isCue(x: Obj): boolean {
+  return typeof x.kind === 'string' && (CUE_KINDS as readonly string[]).includes(x.kind)
+    && (x.text === undefined || (typeof x.text === 'string' && x.text.length <= MAX_CUE_TEXT))
+    && (x.slot === null || isSlot(x.slot));
+}
+
 function isLobbyPlayer(x: unknown): x is LobbyPlayer {
   return isObj(x) && isSlot(x.slot)
     && (x.state === 'connecting' || x.state === 'ready' || x.state === 'disconnected')
@@ -120,6 +162,11 @@ function validPayload(t: string, p: unknown): boolean {
     case 'throw':
       return isNum(p.speed, 0, 20) && isNum(p.spin, -1, 1) && isNum(p.dir, -1, 1)
         && (p.slot === undefined || isSlot(p.slot));
+    case 'game-event':
+      return typeof p.gameId === 'string' && ID_REGEX.test(p.gameId) && isGameEvent(p.e)
+        && (p.slot === undefined || isSlot(p.slot));
+    case 'cue':
+      return isCue(p);
     case 'welcome':
       return isSlot(p.slot) && typeof p.sessionToken === 'string' && TOKEN.test(p.sessionToken);
     case 'lobby':

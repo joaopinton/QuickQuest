@@ -26,6 +26,10 @@ describe('codec dei messaggi', () => {
       { t: 'layout', p: { gameId: 'bowling', layoutId: 'aim', params: { difficulty: 'normal' } } },
       { t: 'turn', p: { activeSlot: 'P1' } },
       { t: 'error', p: { code: 'ROOM_FULL' } },
+      { t: 'game-event', p: { gameId: 'golf', e: { kind: 'shot', data: { power: 0.7, faceDeg: -3, kind: 'full', ok: true } } } },
+      { t: 'game-event', p: { gameId: 'golf', e: { kind: 'club', data: {} }, slot: 'P2' } },
+      { t: 'cue', p: { kind: 'success', slot: 'P1', text: 'Birdie!' } },
+      { t: 'cue', p: { kind: 'tap', slot: null } },
     ];
     for (const m of msgs) expect(decode(encode(m))).toEqual({ ok: true, msg: m });
   });
@@ -48,6 +52,14 @@ describe('codec dei messaggi', () => {
     ['layoutId mancante in layout', JSON.stringify({ v: 1, t: 'layout', p: { gameId: 'bowling' } })],
     ['turn con slot non valido', JSON.stringify({ v: 1, t: 'turn', p: { activeSlot: 'P9' } })],
     ['messaggio enorme', 'x'.repeat(MAX_MESSAGE_BYTES + 1)],
+    ['evento senza kind', JSON.stringify({ v: 1, t: 'game-event', p: { gameId: 'golf', e: { data: {} } } })],
+    ['evento con oggetto annidato', JSON.stringify({ v: 1, t: 'game-event', p: { gameId: 'golf', e: { kind: 'shot', data: { a: { b: 1 } } } } })],
+    ['evento con numero infinito', JSON.stringify({ v: 1, t: 'game-event', p: { gameId: 'golf', e: { kind: 'shot', data: { a: 1e9 } } } })],
+    ['evento con troppi campi', JSON.stringify({ v: 1, t: 'game-event', p: { gameId: 'golf', e: { kind: 'shot', data: Object.fromEntries(Array.from({ length: 17 }, (_, i) => [`k${i}`, i])) } } })],
+    ['evento con chiave strana', JSON.stringify({ v: 1, t: 'game-event', p: { gameId: 'golf', e: { kind: 'shot', data: { __proto__x: 1 } } } })],
+    ['cue sconosciuto', JSON.stringify({ v: 1, t: 'cue', p: { kind: 'boom', slot: null } })],
+    ['cue senza slot', JSON.stringify({ v: 1, t: 'cue', p: { kind: 'tap' } })],
+    ['cue con testo lungo', JSON.stringify({ v: 1, t: 'cue', p: { kind: 'tap', slot: null, text: 'x'.repeat(81) } })],
   ])('rifiuta: %s', (_name, raw) => {
     expect(decode(raw)).toEqual({ ok: false, code: 'BAD_MESSAGE' });
   });

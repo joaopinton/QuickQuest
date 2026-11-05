@@ -11,6 +11,8 @@ import {
   type RoomPhase,
   type SlotId,
   type ThrowParams,
+  type Cue,
+  type GameEvent,
   type WsClientTransport,
 } from '@quickquest/protocol';
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
@@ -29,7 +31,13 @@ export interface ScreenRoom {
   setActiveSlot(slot: SlotId | null): void;
   /** Lanci fatti col gesto dal telefono del giocatore di turno. */
   onThrow(cb: ThrowListener): () => void;
+  /** Eventi dei giochi sul contratto modulo (games/contract.ts). */
+  onGameEvent(cb: GameEventListener): () => void;
+  /** Feedback per un telefono (`slot`) o per tutti (`null`). */
+  sendCue(slot: SlotId | null, cue: Cue): void;
 }
+
+export type GameEventListener = (slot: SlotId, e: GameEvent) => void;
 
 export type ThrowListener = (slot: SlotId, params: ThrowParams) => void;
 
@@ -46,6 +54,8 @@ export function useScreenRoom(): ScreenRoom {
   const wsRef = useRef<WsClientTransport | null>(null);
   const throwListeners = useRef(new Set<ThrowListener>());
   const emitThrow: ThrowListener = (slot, params) => throwListeners.current.forEach((cb) => cb(slot, params));
+  const eventListeners = useRef(new Set<GameEventListener>());
+  const emitEvent = (slot: SlotId, e: GameEvent) => eventListeners.current.forEach((cb) => cb(slot, e));
 
   useEffect(() => {
     if (usesRelay) {
@@ -59,6 +69,8 @@ export function useScreenRoom(): ScreenRoom {
           if (m.p.selectedGame !== undefined) setSelectedGame(m.p.selectedGame);
         } else if (m.t === 'throw' && m.p.slot) {
           emitThrow(m.p.slot, { speed: m.p.speed, spin: m.p.spin, dir: m.p.dir });
+        } else if (m.t === 'game-event' && m.p.slot) {
+          emitEvent(m.p.slot, m.p.e);
         }
       });
       return () => {
@@ -76,6 +88,7 @@ export function useScreenRoom(): ScreenRoom {
         if (sg !== undefined) setSelectedGame(sg ?? null);
       },
       onThrow: emitThrow,
+      onGameEvent: (slot, _gameId, e) => emitEvent(slot, e),
     });
     hostRef.current = host;
     const timer = setInterval(() => host.tick(), HEARTBEAT_MS);
@@ -128,6 +141,16 @@ export function useScreenRoom(): ScreenRoom {
     return () => { throwListeners.current.delete(cb); };
   }, []);
 
+  const onGameEvent = useCallback((cb: GameEventListener) => {
+    eventListeners.current.add(cb);
+    return () => { eventListeners.current.delete(cb); };
+  }, []);
+
+  const sendCue = useCallback((slot: SlotId | null, cue: Cue) => {
+    if (hostRef.current) hostRef.current.sendCue(slot, cue);
+    else wsRef.current?.send({ t: 'cue', p: { ...cue, slot } });
+  }, []);
+
   return {
     code,
     players,
@@ -139,5 +162,7 @@ export function useScreenRoom(): ScreenRoom {
     returnToLobby,
     setActiveSlot,
     onThrow,
+    onGameEvent,
+    sendCue,
   };
 }

@@ -57,7 +57,7 @@ export const GAMES: readonly GameMeta[] = [
     players: { min: 1, max: 4 },
     mode: 'turni',
     estMinutes: 15,
-    status: 'later',
+    status: 'soon',
   },
   {
     id: 'barber',

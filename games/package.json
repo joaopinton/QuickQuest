@@ -5,5 +5,10 @@
   "exports": {
     ".": "./registry.ts",
     "./*": "./*"
+  },
+  "dependencies": {
+    "@quickquest/motion": "workspace:*",
+    "@quickquest/protocol": "workspace:*",
+    "@quickquest/ui": "workspace:*"
   }
 }

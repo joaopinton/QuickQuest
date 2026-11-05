@@ -8,6 +8,7 @@ Codice adattato (riscritto sui nostri tipi) e tracce di sensori convertite da
 - `packages/motion/src/axis-check.ts`, `adapter.ts` (ordine degli assi, rotazione dello schermo)
 - `packages/motion/src/gyro-bias.ts`, `stillness.ts`, `one-euro.ts`, `grip.ts`, `pointer.ts`, `burst.ts`
 - `packages/motion/test/traces/*.json` (da `traces/corpus/*.pmtrace`, con `scripts/convert-pmtrace.ts`)
+- `games/golf/screen/rules.ts`, `games/golf/controller/recognizer.ts` e i rispettivi test
 
 ```
 MIT License

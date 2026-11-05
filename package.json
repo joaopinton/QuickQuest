@@ -19,21 +19,38 @@
       "name": "telefono (/c)",
       "path": [
         "apps/web/dist/assets/index-*.js",
+        "apps/web/dist/assets/hooks.module-*.js",
+        "apps/web/dist/assets/components-*.js",
         "apps/web/dist/assets/src-*.js",
-        "apps/web/dist/assets/room-host-*.js",
+        "apps/web/dist/assets/router-*.js",
+        "apps/web/dist/assets/index-*.css",
+        "apps/web/dist/assets/components-*.css",
+        "apps/web/dist/assets/src-*.css",
         "apps/web/dist/assets/ControllerApp-*.js",
         "apps/web/dist/assets/ControllerApp-*.css",
-        "apps/web/dist/assets/index-*.css",
-        "apps/web/dist/assets/src-*.css"
+        "apps/web/dist/assets/burst-*.js",
+        "apps/web/dist/assets/compat.module-*.js"
       ],
       "limit": "100 KB"
+    },
+    {
+      "name": "telefono, pad del golf",
+      "path": [
+        "apps/web/dist/assets/GolfPad-*.js",
+        "apps/web/dist/assets/GolfPad-*.css"
+      ],
+      "limit": "15 KB"
     },
     {
       "name": "home (/)",
       "path": [
         "apps/web/dist/assets/index-*.js",
+        "apps/web/dist/assets/hooks.module-*.js",
+        "apps/web/dist/assets/components-*.js",
         "apps/web/dist/assets/src-*.js",
+        "apps/web/dist/assets/router-*.js",
         "apps/web/dist/assets/index-*.css",
+        "apps/web/dist/assets/components-*.css",
         "apps/web/dist/assets/src-*.css"
       ],
       "limit": "150 KB"
@@ -42,12 +59,16 @@
       "name": "lobby (/stanza)",
       "path": [
         "apps/web/dist/assets/index-*.js",
+        "apps/web/dist/assets/hooks.module-*.js",
+        "apps/web/dist/assets/components-*.js",
         "apps/web/dist/assets/src-*.js",
-        "apps/web/dist/assets/room-host-*.js",
+        "apps/web/dist/assets/router-*.js",
+        "apps/web/dist/assets/index-*.css",
+        "apps/web/dist/assets/components-*.css",
+        "apps/web/dist/assets/src-*.css",
         "apps/web/dist/assets/Lobby-*.js",
         "apps/web/dist/assets/Lobby-*.css",
-        "apps/web/dist/assets/index-*.css",
-        "apps/web/dist/assets/src-*.css"
+        "apps/web/dist/assets/compat.module-*.js"
       ],
       "limit": "150 KB"
     }
