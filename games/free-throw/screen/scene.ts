@@ -33,58 +33,133 @@ export interface FreeThrowScene {
   dispose(): void;
 }
 
-/** Texture procedurale della palla da basket con i classici spicchi arancioni e le righe nere. */
-function createBasketballTexture(): THREE.CanvasTexture {
-  const canvas = document.createElement('canvas');
-  canvas.width = 512;
-  canvas.height = 256;
-  const ctx = canvas.getContext('2d');
-  if (ctx) {
-    const grad = ctx.createLinearGradient(0, 0, 0, 256);
-    grad.addColorStop(0, '#FF8F33');
-    grad.addColorStop(0.5, '#F26B13');
-    grad.addColorStop(1, '#D85608');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, 512, 256);
+/**
+ * Genera le texture procedurali (colore + bump) della palla da basket calcolando
+ * la distanza geodetica direttamente sulla sfera unitaria 3D (nx, ny, nz).
+ * In questo modo gli 8 spicchi classici (equatore, meridiano e i 2 lobi curvi laterali)
+ * hanno spessore uniforme su tutta la sfera senza distorsioni ai poli.
+ */
+function createBasketballTextures(): { map: THREE.CanvasTexture; bumpMap: THREE.CanvasTexture } {
+  const width = 512;
+  const height = 256;
 
-    // Leggera grana "pebbled" della gomma
-    ctx.fillStyle = 'rgba(80, 25, 0, 0.08)';
-    for (let i = 0; i < 600; i++) {
-      const x = ((i * 73) % 512);
-      const y = ((i * 137) % 256);
-      ctx.fillRect(x, y, 2, 2);
+  const colorCanvas = document.createElement('canvas');
+  colorCanvas.width = width;
+  colorCanvas.height = height;
+  const bumpCanvas = document.createElement('canvas');
+  bumpCanvas.width = width;
+  bumpCanvas.height = height;
+
+  const colorCtx = colorCanvas.getContext('2d');
+  const bumpCtx = bumpCanvas.getContext('2d');
+
+  if (colorCtx && bumpCtx && typeof colorCtx.createImageData === 'function') {
+    const colorImg = colorCtx.createImageData(width, height);
+    const bumpImg = bumpCtx.createImageData(width, height);
+    const cData = colorImg.data;
+    const bData = bumpImg.data;
+
+    // Pre-calcolo trigonometrico per mappare (u, v) sulla sfera 3D
+    const cosPhi = new Float32Array(width);
+    const sinPhi = new Float32Array(width);
+    for (let x = 0; x < width; x++) {
+      const phi = ((x + 0.5) / width) * Math.PI * 2;
+      cosPhi[x] = Math.cos(phi);
+      sinPhi[x] = Math.sin(phi);
     }
 
-    // Cuciture nere degli 8 spicchi (ben visibili quando la palla ruota in backspin!)
-    ctx.strokeStyle = '#1E140F';
-    ctx.lineWidth = 7;
-
-    // Equatore
-    ctx.beginPath();
-    ctx.moveTo(0, 128);
-    ctx.lineTo(512, 128);
-    ctx.stroke();
-
-    // Meridiani principali
-    for (const mx of [64, 192, 320, 448]) {
-      ctx.beginPath();
-      ctx.moveTo(mx, 0);
-      ctx.lineTo(mx, 256);
-      ctx.stroke();
+    const cosTheta = new Float32Array(height);
+    const sinTheta = new Float32Array(height);
+    for (let y = 0; y < height; y++) {
+      const theta = ((y + 0.5) / height) * Math.PI;
+      cosTheta[y] = Math.cos(theta);
+      sinTheta[y] = Math.sin(theta);
     }
 
-    // Curve laterali caratteristiche del pallone da basket
-    ctx.beginPath();
-    ctx.arc(128, 128, 76, -Math.PI * 0.42, Math.PI * 0.42);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(384, 128, 76, Math.PI * 0.58, Math.PI * 1.42);
-    ctx.stroke();
+    // Semiasse dei 2 lobi curvi degli 8 spicchi sulla sfera unitaria
+    const lobeA = 0.52;
+    const lobeB = 0.84;
+    const invA2 = 1 / (lobeA * lobeA);
+    const invB2 = 1 / (lobeB * lobeB);
+    const invA4 = invA2 * invA2;
+    const invB4 = invB2 * invB2;
+    const seamHalfWidth = 0.024;
+    const seamSoftEdge = 0.012;
+
+    let idx = 0;
+    for (let y = 0; y < height; y++) {
+      const ny = cosTheta[y]!;
+      const st = sinTheta[y]!;
+      for (let x = 0; x < width; x++) {
+        const nx = -cosPhi[x]! * st;
+        const nz = sinPhi[x]! * st;
+
+        // 1. Due cerchi massimi ortogonali (ny = 0 e nz = 0) -> ruotano attorno a X in backspin
+        const dEq = Math.abs(ny);
+        const dMer = Math.abs(nz);
+
+        // 2. Due cuciture curve a lobo (una nell'emisfero nx > 0, una in nx < 0) per gli 8 spicchi
+        const fLobe = ny * ny * invA2 + nz * nz * invB2 - 1;
+        const gradLen = 2 * Math.sqrt(Math.max(1e-4, ny * ny * invA4 + nz * nz * invB4));
+        const dLobe = Math.abs(fLobe) / gradLen;
+
+        const dSeam = Math.min(dEq, dMer, dLobe);
+
+        // Profilo morbido del solco nero
+        let seamMask = 0;
+        if (dSeam < seamHalfWidth + seamSoftEdge) {
+          const t = Math.max(0, (dSeam - seamHalfWidth) / seamSoftEdge);
+          seamMask = 1 - t * t * (3 - 2 * t);
+        }
+
+        // Grana "pebbled" 3D distribuita uniformemente sulla sfera
+        const pFreq = 115;
+        const pebble =
+          Math.sin(nx * pFreq) * Math.sin(ny * pFreq) * Math.sin(nz * pFreq) +
+          0.5 * Math.cos((nx + ny) * 85) * Math.sin((nz - ny) * 85);
+        const pebbleBump = pebble > 0.15 ? 1 : pebble < -0.2 ? -0.6 : 0;
+
+        // Colore base arancio caldo da pallone da gara + leggera ombreggiatura ai bordi del solco
+        const bevel = dSeam < seamHalfWidth * 2.2 ? 0.92 : 1.0;
+        const orangeR = (238 + pebbleBump * 9) * bevel;
+        const orangeG = (102 + pebbleBump * 6) * bevel;
+        const orangeB = (22 + pebbleBump * 3) * bevel;
+
+        // Colore cucitura nera/antracite
+        const seamR = 26;
+        const seamG = 20;
+        const seamB = 18;
+
+        cData[idx] = Math.round(orangeR * (1 - seamMask) + seamR * seamMask);
+        cData[idx + 1] = Math.round(orangeG * (1 - seamMask) + seamG * seamMask);
+        cData[idx + 2] = Math.round(orangeB * (1 - seamMask) + seamB * seamMask);
+        cData[idx + 3] = 255;
+
+        // Bump map: solco scavato (0) nelle cuciture, rilievo sui pallini della gomma
+        const bumpVal = Math.round((1 - seamMask) * (175 + pebbleBump * 45));
+        bData[idx] = bumpVal;
+        bData[idx + 1] = bumpVal;
+        bData[idx + 2] = bumpVal;
+        bData[idx + 3] = 255;
+
+        idx += 4;
+      }
+    }
+
+    colorCtx.putImageData(colorImg, 0, 0);
+    bumpCtx.putImageData(bumpImg, 0, 0);
   }
 
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  return tex;
+  const map = new THREE.CanvasTexture(colorCanvas);
+  map.colorSpace = THREE.SRGBColorSpace;
+  map.wrapS = THREE.RepeatWrapping;
+  map.wrapT = THREE.ClampToEdgeWrapping;
+
+  const bumpMap = new THREE.CanvasTexture(bumpCanvas);
+  bumpMap.wrapS = THREE.RepeatWrapping;
+  bumpMap.wrapT = THREE.ClampToEdgeWrapping;
+
+  return { map, bumpMap };
 }
 
 export function createFreeThrowScene(
@@ -153,12 +228,14 @@ export function createFreeThrowScene(
   scene.add(netLines);
 
   // ---------- 4. Palla da basket ----------
-  const ballTex = createBasketballTexture();
-  const ballGeo = new THREE.SphereGeometry(BALL_RADIUS, 32, 24);
+  const { map: ballTex, bumpMap: ballBumpTex } = createBasketballTextures();
+  const ballGeo = new THREE.SphereGeometry(BALL_RADIUS, 48, 36);
   const ballMat = new THREE.MeshStandardMaterial({
     map: ballTex,
-    roughness: 0.42,
-    metalness: 0.04,
+    bumpMap: ballBumpTex,
+    bumpScale: 0.0035,
+    roughness: 0.44,
+    metalness: 0.03,
   });
   const ballMesh = new THREE.Mesh(ballGeo, ballMat);
   ballMesh.castShadow = true;
@@ -391,6 +468,7 @@ export function createFreeThrowScene(
       ballGeo.dispose();
       ballMat.dispose();
       ballTex.dispose();
+      ballBumpTex.dispose();
       ballShadowGeo.dispose();
       ballShadowMat.dispose();
       arcGeo.dispose();

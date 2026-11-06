@@ -159,9 +159,9 @@ export function Pad({
   if (feedback) turnText = feedback.text;
   else if (lastCue?.text && !isMyTurn) turnText = lastCue.text;
   else if (isMyTurn) {
-    if (!isPressed) turnText = 'Tocca a te! Tieni premuto, porta sopra la fronte, spingi su e chiudi a gancio';
-    else if (phase === 'pushing') turnText = 'Ora! Rilascia in alto e piega il polso a gancio!';
-    else turnText = 'Caricato sopra la testa… spingi verso l’alto!';
+    if (!isPressed) turnText = 'Tocca a te!';
+    else if (phase === 'pushing') turnText = 'Rilascia a gancio!';
+    else turnText = 'Spingi verso l’alto!';
   } else if (activeSlot) {
     turnText = t('controller.waitTurn', { slot: `${slotStyle(activeSlot).symbol} ${activeSlot}` });
   } else {
@@ -170,8 +170,8 @@ export function Pad({
 
   let buttonText: string;
   if (!isMyTurn) buttonText = t('controller.notYourTurn');
-  else if (isPressed) buttonText = 'RILASCIA IN ALTO A GANCIO!';
-  else buttonText = 'TIENI PREMUTO · CARICA E TIRA';
+  else if (isPressed) buttonText = 'RILASCIA A GANCIO!';
+  else buttonText = 'TIENI PREMUTO E TIRA';
 
   let statusBadge = <span class="ctl-demo">📶 {t('controller.readySent')}</span>;
   if (isLost) {
@@ -215,22 +215,22 @@ export function Pad({
       <div class="ft-pad__guide" aria-label="Gesto scuola basket">
         <div class={`ft-pad__step ${isPressed && phase === 'loading' ? 'is-active' : ''}`}>
           <span class="ft-pad__step-icon" aria-hidden="true">🙆</span>
-          <span>1. Sopra la testa</span>
+          <span>Carica</span>
         </div>
         <div class={`ft-pad__step ${isPressed && phase === 'pushing' ? 'is-active' : ''}`}>
           <span class="ft-pad__step-icon" aria-hidden="true">⬆️</span>
-          <span>2. Spingi in alto</span>
+          <span>Spingi</span>
         </div>
         <div class={`ft-pad__step ${feedback?.kind === 'shot' ? 'is-active' : ''}`}>
           <span class="ft-pad__step-icon" aria-hidden="true">🪝</span>
-          <span>3. Polso a gancio</span>
+          <span>Gancio</span>
         </div>
       </div>
 
       {isPressed && !isSimulated && (
         <div class="ft-pad__meter-wrap" aria-hidden="true">
           <div class="ft-pad__meter-head">
-            <span>Caricamento sopra la fronte</span>
+            <span>Caricamento</span>
             <span>{Math.round(loadLevel * 100)}%</span>
           </div>
           <div class="ft-pad__meter-bar">
