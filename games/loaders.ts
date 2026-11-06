@@ -13,6 +13,10 @@ export const GAME_LOADERS: Partial<Record<GameMeta['id'], GameLoaders>> = {
     screen: () => import('./bowling/screen/BowlingScreen'),
     controller: () => import('./bowling/controller/BowlingPad'),
   },
+  'free-throw': {
+    screen: () => import('./free-throw/screen/FreeThrowScreen'),
+    controller: () => import('./free-throw/controller/FreeThrowPad'),
+  },
   golf: {
     screen: () => import('./golf/screen/GolfScreen'),
     controller: () => import('./golf/controller/GolfPad'),

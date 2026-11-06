@@ -7,7 +7,7 @@ describe('registro dei giochi', () => {
     expect(GAMES).toHaveLength(6);
     expect(new Set(GAMES.map((g) => g.id)).size).toBe(6);
     expect(GAMES[0]?.id).toBe('bowling');
-    expect(GAMES.filter((g) => g.status === 'soon').map((g) => g.id)).toEqual(['bowling', 'golf']);
+    expect(GAMES.filter((g) => g.status === 'soon').map((g) => g.id)).toEqual(['bowling', 'free-throw', 'golf']);
   });
 
   test('accenti validi e giocatori coerenti con il massimo di 4', () => {

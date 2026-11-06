@@ -163,6 +163,7 @@ Eventi per gioco:
 | Gioco | `kind` | `data` | Codec |
 |---|---|---|---|
 | bowling | `throw` | `speed` (m/s), `spin` (−1..1), `dir` (rad) | `games/bowling/shared/events.ts` (`throwEvent` / `parseThrowEvent`) |
+| free-throw | `shoot` | `speed` (m/s), `releaseAngleDeg` (°), `backspin` (0..1), `hookQuality` (0..1), `dir` (rad) | `games/free-throw/shared/events.ts` (`shootEvent` / `parseShootEvent`) |
 | golf | `shot`, `club` | v. `games/golf/controller/GolfPad.tsx` | `games/golf/screen/flow.ts` |
 
 Shell comune a tutti i giochi (`apps/web/src/screen/components/GameStage.tsx`): il gioco occupa tutta la finestra (a schermo intero si vede solo il gioco), con un dock in basso a destra (pausa, schermo intero) e i tasti P/Esc e F. In pausa il gioco riceve `isPaused: true` e deve fermare simulazione e tempo; intanto la shell scarta gli eventi dei telefoni, chiude il turno e alla ripresa ridà il turno chiesto dal gioco (`pause-gate.ts`). La partita va in pausa da sola se la scheda viene nascosta. Dalla lobby lo schermo può togliere un giocatore: messaggio `kick { slot }` (solo dallo schermo), il telefono riceve `error KICKED`, dimentica il token e non rientra da solo.

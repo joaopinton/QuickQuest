@@ -1,0 +1,96 @@
+/* Stili del controller Tiri liberi (docs/07, docs/08, accento #FF8A2B) */
+
+.ft-pad {
+  --ft-accent: #ff8a2b;
+  --ft-accent-dark: #d9650f;
+}
+
+.ft-pad__guide {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 10px;
+  border-radius: 16px;
+  background: color-mix(in oklab, var(--ft-accent) 10%, #ffffff);
+  border: 2px solid color-mix(in oklab, var(--ft-accent) 26%, transparent);
+}
+
+.ft-pad__step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 3px;
+  padding: 6px 4px;
+  border-radius: 12px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--ink-600, #4a5878);
+  transition: transform 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+
+.ft-pad__step.is-active {
+  background: #ffffff;
+  color: var(--ink-900, #1e2a4a);
+  box-shadow: 0 3px 10px rgba(255, 138, 43, 0.22);
+  transform: translateY(-2px);
+}
+
+.ft-pad__step-icon {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.ft-pad__meter-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1.5px solid rgba(30, 42, 74, 0.1);
+}
+
+.ft-pad__meter-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--ink-600, #4a5878);
+}
+
+.ft-pad__meter-bar {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(30, 42, 74, 0.1);
+  overflow: hidden;
+}
+
+.ft-pad__meter-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #ffb347, #ff8a2b, #2fbf71);
+  transition: width 0.08s linear;
+}
+
+.ft-pad__cue {
+  margin: 0;
+  padding: 8px 14px;
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--ft-accent) 16%, #fff);
+  color: var(--ink-900, #1e2a4a);
+  font-weight: 800;
+  font-size: 0.95rem;
+  text-align: center;
+}
+
+.ft-pad__btn {
+  background: linear-gradient(180deg, #ff9a3c 0%, #ff7a14 100%);
+  border-bottom-color: #c95600;
+}
+
+.ft-pad__btn.is-pressed {
+  background: linear-gradient(180deg, #2fbf71 0%, #219a57 100%);
+  border-bottom-color: #16703d;
+}
+

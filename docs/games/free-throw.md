@@ -2,6 +2,8 @@
 
 > Flusso della partita, modalità, assist e premi in discussione: [11 — Brainstorming § Tiri liberi](../11-games-brainstorm.md#4-tiri-liberi).
 
+> **Stato (2026-11-06): prima versione giocabile**, sul contratto modulo ([05 § 6](../05-game-module-contract.md#6-implementazione-attuale)). Riconoscitore del gesto da scuola basket (`games/free-throw/controller/recognizer.ts`): caricamento sopra la fronte, spinta verso l'alto-avanti (accelerazione lineare lungo `up` + rotazione del braccio) e chiusura del polso a gancio (*follow-through*) in cima al rilascio, che determina `hookQuality`, `backspin` e angolo d'uscita ottimale (50°–55°). Simulazione fisica Rapier3D a 240 Hz (`games/free-throw/screen/physics.ts`): misure ufficiali FIBA/NBA (ferro a 3,05 m, Ø 45 cm composto da 24 sfere + staffa, lunetta a 4,60 m dal tabellone, palla Ø 24 cm da 0,62 kg), aerodinamica in volo (drag + portanza Magnus dal backspin), rimbalzo sul quadrato del tabellone ammorbidito dal backspin (*bank shot*), e retina Verlet 3D (6 anelli × 12 nodi) che si gonfia e frusta verso l'alto sullo swish (*"ciuff!"*). Scena 3D della palestra di quartiere (`environment.ts`, `scene.ts`): parquet lucido con linee FIBA, tabellone in plexiglass e LED, spalliere svedesi, striscioni, carrello porta-palloni, Pupi sulle gradinate e Pupo tiratore in lunetta con animazione della chiusura a gancio. Regole (`rules.ts`): modalità Classica (10 tiri), Veloce (5 tiri) e A tempo (60 s con bonus Mano calda ×2), spareggio a morte improvvisa, assist (Facile/Normale/Pro con arco guida e sweet spot) e premi di fine partita.
+
 | Campo | Valore |
 |---|---|
 | ID modulo | `free-throw` |

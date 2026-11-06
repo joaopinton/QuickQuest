@@ -1,0 +1,420 @@
+/* Stili HUD e schermo di Tiri liberi (docs/07, docs/08, accento #FF8A2B) */
+
+.ft-screen {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  background: #141c30;
+  color: #ffffff;
+  font-family: 'Nunito', system-ui, -apple-system, sans-serif;
+  user-select: none;
+}
+
+.ft-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.ft-header {
+  position: absolute;
+  top: 20px;
+  left: 24px;
+  right: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.ft-turn-badge {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px;
+  border-radius: 999px;
+  background: rgba(20, 28, 48, 0.86);
+  border: 2px solid var(--player, #ff8a2b);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(8px);
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.ft-turn-meta {
+  padding-left: 10px;
+  border-left: 1.5px solid rgba(255, 255, 255, 0.22);
+  color: #ffd23f;
+  font-weight: 800;
+}
+
+.ft-streak-pill {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ff8a2b, #ff3b30);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.ft-header-actions {
+  pointer-events: auto;
+  display: flex;
+  gap: 10px;
+}
+
+.ft-btn {
+  cursor: pointer;
+  border: none;
+  border-radius: 14px;
+  padding: 10px 18px;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 800;
+  transition: transform 0.12s ease, filter 0.12s ease;
+}
+
+.ft-btn:hover {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+}
+
+.ft-btn--primary {
+  background: #ff8a2b;
+  color: #1e2a4a;
+  box-shadow: 0 4px 0 #c75b05;
+}
+
+.ft-btn--secondary {
+  background: rgba(255, 255, 255, 0.92);
+  color: #1e2a4a;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.25);
+}
+
+/* Striscia dei tiri del giocatore corrente */
+.ft-shot-strip {
+  position: absolute;
+  top: 84px;
+  left: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: 18px;
+  background: rgba(20, 28, 48, 0.84);
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(8px);
+  z-index: 10;
+}
+
+.ft-dots {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.ft-dot {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.82rem;
+  font-weight: 900;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.22);
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.ft-dot.is-current {
+  border-color: #ffd23f;
+  box-shadow: 0 0 10px rgba(255, 210, 63, 0.55);
+  color: #ffffff;
+}
+
+.ft-dot.is-swish {
+  background: #ffd23f;
+  border-color: #ff8a2b;
+  color: #1e2a4a;
+}
+
+.ft-dot.is-made {
+  background: #2fbf71;
+  border-color: #2fbf71;
+  color: #ffffff;
+}
+
+.ft-dot.is-miss {
+  background: rgba(240, 80, 90, 0.25);
+  border-color: #f0505a;
+  color: #ff9aa0;
+}
+
+.ft-telemetry {
+  font-size: 0.86rem;
+  color: rgba(255, 246, 229, 0.85);
+  font-weight: 700;
+}
+
+/* Classifica laterale */
+.ft-leaderboard {
+  position: absolute;
+  top: 84px;
+  right: 24px;
+  min-width: 230px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(20, 28, 48, 0.84);
+  border: 1.5px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(8px);
+  z-index: 10;
+}
+
+.ft-leaderboard__title {
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.ft-leaderboard__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ft-leaderboard__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border-left: 4px solid var(--player, #ff8a2b);
+  font-weight: 700;
+}
+
+.ft-leaderboard__row.is-active {
+  background: rgba(255, 138, 43, 0.22);
+}
+
+.ft-leaderboard__score {
+  font-weight: 900;
+  font-size: 1.15rem;
+  color: #ffd23f;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Callout grande al centro per CIUFF! / CANESTRO! / FERRO! */
+.ft-toast {
+  position: absolute;
+  top: 24%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 16px 32px;
+  border-radius: 24px;
+  background: rgba(20, 28, 48, 0.92);
+  border: 3px solid var(--accent, #ff8a2b);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+  text-align: center;
+  pointer-events: none;
+  z-index: 20;
+  animation: ftPopIn 0.28s cubic-bezier(0.22, 1.35, 0.36, 1);
+}
+
+.ft-toast--swish {
+  background: linear-gradient(135deg, #ff8a2b 0%, #ffb800 100%);
+  color: #1e2a4a;
+  border-color: #ffffff;
+}
+
+.ft-toast__title {
+  margin: 0;
+  font-size: clamp(2rem, 4.2vw, 3.4rem);
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
+
+.ft-toast__sub {
+  margin: 4px 0 0;
+  font-size: 1.1rem;
+  font-weight: 800;
+  opacity: 0.92;
+}
+
+@keyframes ftPopIn {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -35%) scale(0.7);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+/* Prompt inferiore */
+.ft-prompt {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 680px;
+  width: calc(100% - 48px);
+  padding: 14px 24px;
+  border-radius: 20px;
+  background: rgba(20, 28, 48, 0.88);
+  border: 2px solid var(--player, #ff8a2b);
+  text-align: center;
+  z-index: 10;
+}
+
+.ft-prompt__main {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.ft-prompt__sub {
+  margin: 4px 0 0;
+  font-size: 0.94rem;
+  color: rgba(255, 246, 229, 0.82);
+}
+
+/* Finestra di Setup e Podio finale */
+.ft-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 21, 38, 0.78);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 30;
+}
+
+.ft-modal {
+  max-width: 660px;
+  width: 100%;
+  background: #ffffff;
+  color: #1e2a4a;
+  border-radius: 28px;
+  padding: 28px 32px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+}
+
+.ft-modal__title {
+  margin: 0 0 6px;
+  font-size: 2rem;
+  font-weight: 900;
+  color: #1e2a4a;
+}
+
+.ft-modal__lead {
+  margin: 0 0 18px;
+  color: #4a5878;
+  font-size: 1.02rem;
+  font-weight: 600;
+}
+
+.ft-section-label {
+  display: block;
+  margin: 14px 0 8px;
+  font-size: 0.86rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #4a5878;
+}
+
+.ft-options-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.ft-option-card {
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 2px solid #dce4f2;
+  background: #f8faff;
+  color: #1e2a4a;
+  text-align: left;
+  font-family: inherit;
+}
+
+.ft-option-card.is-selected {
+  border-color: #ff8a2b;
+  background: #fff4eb;
+  box-shadow: 0 4px 12px rgba(255, 138, 43, 0.2);
+}
+
+.ft-option-card strong {
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.ft-option-card small {
+  font-size: 0.82rem;
+  color: #4a5878;
+}
+
+.ft-school-box {
+  margin: 18px 0;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: #fff7ed;
+  border: 1.5px solid #ffd4ad;
+  font-size: 0.92rem;
+  color: #1e2a4a;
+}
+
+.ft-school-box strong {
+  color: #d95b00;
+}
+
+.ft-awards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  margin: 16px 0;
+}
+
+.ft-award-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: #f1f6ff;
+  border: 1.5px solid #d8e4fc;
+}
+
+.ft-award-icon {
+  font-size: 1.65rem;
+}
+
+.ft-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 20px;
+}
+
