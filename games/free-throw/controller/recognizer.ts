@@ -42,13 +42,13 @@ export const IDEAL_RELEASE_ANGLE_DEG = 53;
 export const MIN_RELEASE_ANGLE_DEG = 38;
 export const MAX_RELEASE_ANGLE_DEG = 64;
 
-/** Soglie per distinguere un vero tiro da un tocco involontario. */
-export const MIN_OMEGA_PEAK = 2.2; // rad/s
-export const MIN_UPWARD_ACC = 1.8; // m/s² verso l'alto
+/** Soglie morbide per distinguere un vero tiro da un tocco involontario senza richiedere troppa forza. */
+export const MIN_OMEGA_PEAK = 1.4; // rad/s
+export const MIN_UPWARD_ACC = 1.0; // m/s² verso l'alto
 export const HOOK_WINDOW_MS = 180; // finestra finale (ms) in cui si misura la frustata del polso a gancio
 export const EXTENSION_WINDOW_MS = 450; // finestra (ms) della spinta verso l'alto prima del rilascio
-export const IDEAL_HOOK_DEG = 38; // flessione del polso (gradi) per una chiusura a gancio da manuale
-export const IDEAL_WRIST_SNAP_OMEGA = 6.5; // rad/s di picco del polso nel follow-through
+export const IDEAL_HOOK_DEG = 38; // flessione del polso (gradi) per una chiusura a gancio naturale
+export const IDEAL_WRIST_SNAP_OMEGA = 6.4; // rad/s di picco del polso nel follow-through
 
 export type FreeThrowPhase = 'idle' | 'loading' | 'pushing';
 
@@ -130,9 +130,9 @@ export function createFreeThrowRecognizer(): FreeThrowRecognizer {
       // Durante il caricamento il giocatore piega il gomito e porta il telefono sopra la fronte;
       // appena spinge verso l'alto o ruota il polso in avanti passa in 'pushing'
       const tiltFromStart = angleBetween(initialUp, s.up) * RAD2DEG;
-      loadLevel = clamp(0.3 + tiltFromStart / 45 + Math.max(0, upAcc) / 15, 0, 1);
+      loadLevel = clamp(0.35 + tiltFromStart / 32 + Math.max(0, upAcc) / 9, 0, 1);
 
-      if (phase === 'loading' && (upAcc > 2.2 || norm(s.gyro) > 2.5)) {
+      if (phase === 'loading' && (upAcc > 1.3 || norm(s.gyro) > 1.6)) {
         phase = 'pushing';
       }
 
@@ -212,7 +212,7 @@ export function createFreeThrowRecognizer(): FreeThrowRecognizer {
 
       // Verifica che non sia un movimento verso il basso (es. abbassare il braccio senza spingere su)
       const minUpAcc = Math.min(...tail.map((s) => s.upAcc));
-      if (peakUpAcc < 0.8 && minUpAcc < -5.0 && peakOmega < MIN_OMEGA_PEAK * 1.4) {
+      if (peakUpAcc < 0.4 && minUpAcc < -6.0 && peakOmega < MIN_OMEGA_PEAK * 1.3) {
         return fail('no-upward-push', peakOmega, peakUpAcc, 0);
       }
 
@@ -238,12 +238,12 @@ export function createFreeThrowRecognizer(): FreeThrowRecognizer {
       // 5. Angolo di uscita (Release Angle):
       // Nella scuola basket, spingere verso l'alto sopra la testa + chiudere a gancio dà un arco
       // alto e morbido (51°–55°). Un tiro spinto piatto senza gancio né spinta verticale esce basso (~41°–46°).
-      const upwardRatio = clamp((peakUpAcc + 2.5) / 14.0, 0, 1);
+      const upwardRatio = clamp((peakUpAcc + 2.0) / 10.0, 0, 1);
       // Stimiamo anche l'elevazione dall'orientamento al punto di carico rispetto al rilascio
       const firstLoaded = active[0]!;
       const lastReleased = tail[tail.length - 1]!;
       const verticalSweepDeg = angleBetween(firstLoaded.up, lastReleased.up) * RAD2DEG;
-      const sweepFactor = clamp(verticalSweepDeg / 50, 0, 1);
+      const sweepFactor = clamp(verticalSweepDeg / 45, 0, 1);
 
       const rawAngle =
         43 +
@@ -253,14 +253,19 @@ export function createFreeThrowRecognizer(): FreeThrowRecognizer {
       const releaseAngleDeg = clamp(rawAngle, MIN_RELEASE_ANGLE_DEG, MAX_RELEASE_ANGLE_DEG);
 
       // 6. Potenza / Velocità iniziale della palla (m/s):
-      // Combina l'impulso del braccio (accelerazione lineare + velocità angolare) tarato sul profilo del giocatore
-      const refOmega = profile?.normalPeak ?? 6.8;
-      const omegaNorm = peakOmega / refOmega;
-      const accNorm = clamp((peakUpAcc > 0.5 ? peakUpAcc : peakTotalAcc * 0.6) / 11.0, 0.4, 1.6);
-      const combinedPower = omegaNorm * 0.68 + accNorm * 0.32;
+      // Tarata su un gesto naturale e rilassato da tiro libero (molto più morbido di uno swing a tutto braccio),
+      // così non serve forzare il movimento per arrivare comodamente al canestro.
+      const refOmega = profile ? clamp(profile.normalPeak * 0.56, 3.0, 4.3) : 3.5;
+      const omegaNorm = clamp(peakOmega / refOmega, 0.35, 1.65);
+      const effAcc = peakUpAcc > 0.3 ? peakUpAcc : peakTotalAcc * 0.65;
+      const accNorm = clamp(effAcc / 4.6, 0.55, 1.5);
+      const combinedPower = omegaNorm * 0.65 + accNorm * 0.35;
 
-      // Mappatura morbida attorno a IDEAL_RELEASE_SPEED (7.28 m/s)
-      const rawSpeed = IDEAL_RELEASE_SPEED * (0.72 + 0.28 * combinedPower);
+      // Curva morbida e compressa attorno a IDEAL_RELEASE_SPEED (7.28 m/s):
+      // i gesti normali/rilassati cadono naturalmente nello sweet spot senza richiedere sforzo eccessivo.
+      const deltaPower = combinedPower - 1.0;
+      const compressedDelta = deltaPower * (Math.abs(deltaPower) < 0.38 ? 0.42 : 0.65);
+      const rawSpeed = IDEAL_RELEASE_SPEED * (1.0 + compressedDelta * 0.18);
       const speed = clamp(rawSpeed, MIN_SHOT_SPEED, MAX_SHOT_SPEED);
 
       // 7. Deviazione laterale (dir in radianti, + = destra, - = sinistra)
@@ -269,20 +274,23 @@ export function createFreeThrowRecognizer(): FreeThrowRecognizer {
       let dirFromHeading = 0;
       if (profile && heading !== null) {
         const delta = wrapAngle(heading - profile.heading0);
-        dirFromHeading = -clamp(delta / ((22 * Math.PI) / 180), -1, 1) * 0.14;
+        dirFromHeading = -clamp(delta / ((26 * Math.PI) / 180), -1, 1) * 0.09;
       }
 
-      // Torsione laterale del polso al rilascio (polso che "scappa" a destra o sinistra invece di chiudere dritto)
+      // Torsione laterale del polso al rilascio (con piccola deadzone per ignorare micro-rotazioni naturali)
       const forwardDir = normalize(cross(WORLD_UP, snapAxis));
       let lateralTwist = 0;
       for (const s of tail) {
-        // Rotazione attorno alla verticale (yaw) + rollio attorno alla direzione di tiro
         const yawRate = dot(s.worldOmega, WORLD_UP);
         const rollRate = dot(s.worldOmega, forwardDir);
         lateralTwist += (-yawRate * 0.6 + rollRate * 0.4) * s.dtS;
       }
-      const dirFromTwist = clamp(lateralTwist * 0.35, -0.15, 0.15);
-      const dir = clamp(dirFromHeading + dirFromTwist, -0.22, 0.22);
+      const twistPastDeadzone =
+        Math.abs(lateralTwist) <= 0.04
+          ? 0
+          : Math.sign(lateralTwist) * (Math.abs(lateralTwist) - 0.04);
+      const dirFromTwist = clamp(twistPastDeadzone * 0.26, -0.13, 0.13);
+      const dir = clamp(dirFromHeading + dirFromTwist, -0.2, 0.2);
 
       const shot: FreeThrowShotData = {
         speed,

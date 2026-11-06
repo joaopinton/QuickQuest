@@ -121,8 +121,8 @@ describe('Regole, Punteggio, Assist e Premi dei Tiri liberi (docs/games/free-thr
 
     expect(Math.abs(assistedNormal.speed - ideal)).toBeLessThan(Math.abs(slightlyOff.speed - ideal));
     expect(assistedPro.speed).toBeCloseTo(slightlyOff.speed, 5);
-    expect(assistedNormal.dir).toBeCloseTo(0.05, 5); // ×0.5
-    expect(assistedPro.dir).toBeCloseTo(0.09, 5); // ×0.9
+    expect(assistedNormal.dir).toBeCloseTo(0.04, 5); // ×0.4
+    expect(assistedPro.dir).toBeCloseTo(0.075, 5); // ×0.75
   });
 
   test('premi di fine partita: Solo retina, Mano calda, Freddo come il ghiaccio e Mattoncino', () => {

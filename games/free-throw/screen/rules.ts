@@ -59,9 +59,9 @@ export interface AssistConfig {
 }
 
 export const ASSIST_CONFIG: Readonly<Record<AssistLevel, AssistConfig>> = {
-  easy: { sweetSpotTolerance: 0.12, sweetSpotPull: 0.78, dirScale: 0.3, angleAssist: 0.55 },
-  normal: { sweetSpotTolerance: 0.08, sweetSpotPull: 0.52, dirScale: 0.5, angleAssist: 0.3 },
-  pro: { sweetSpotTolerance: 0.0, sweetSpotPull: 0.0, dirScale: 0.9, angleAssist: 0.0 },
+  easy: { sweetSpotTolerance: 0.16, sweetSpotPull: 0.85, dirScale: 0.25, angleAssist: 0.65 },
+  normal: { sweetSpotTolerance: 0.12, sweetSpotPull: 0.68, dirScale: 0.4, angleAssist: 0.45 },
+  pro: { sweetSpotTolerance: 0.04, sweetSpotPull: 0.25, dirScale: 0.75, angleAssist: 0.15 },
 };
 
 /**

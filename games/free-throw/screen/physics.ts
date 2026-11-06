@@ -2,10 +2,10 @@
 // (docs/games/free-throw.md § Simulazione, docs/06 § 2).
 //
 // Misure regolamentari FIBA / NBA:
-// - Ferro a 3,05 m da terra, diametro interno 45 cm (raggio 0,225 m), restitution 0,6.
+// - Ferro a 3,05 m da terra, diametro interno 45 cm (raggio 0,225 m), restitution 0,76 (più reattivo del tabellone).
 // - Lunetta a 4,60 m dal tabellone; centro del ferro a 4,225 m dalla lunetta.
 // - Palla misura 7: diametro 24 cm (raggio 0,12 m), massa 0,62 kg, I = 2/3 m R².
-// - Tabellone 1,80 × 1,05 m, bordo inferiore a 2,90 m, restitution 0,7.
+// - Tabellone 1,80 × 1,05 m, bordo inferiore a 2,90 m, restitution 0,42 (assorbe l'urto per accompagnare il tiro di tabella).
 // - Aerodinamica in volo: Drag + effetto Magnus (backspin dalla chiusura a gancio).
 // - Retina: rete Verlet di 6 anelli × 12 nodi (72 punti) che interagisce con la palla ("ciuff").
 
@@ -35,12 +35,13 @@ export const BALL_INERTIA = (2 / 3) * BALL_MASS * BALL_RADIUS * BALL_RADIUS;
 /** Punto di rilascio sopra la testa del tiratore in lunetta (z = 0). */
 export const RELEASE_POS = { x: 0, y: 2.15, z: 0 } as const;
 
-// Restituzioni e attriti (Rapier usa la media di default, o regole esplicite)
-export const E_RIM = 0.6;
-export const E_BACKBOARD = 0.7;
-export const E_FLOOR = 0.76;
-const MU_RIM = 0.48; // attrito ferro-palla: trasforma il backspin in "shooter's roll" morbido
-const MU_BACKBOARD = 0.38;
+// Restituzioni e attriti: il ferro in acciaio rimbalza sensibilmente più del tabellone in plexiglass,
+// che invece smorza l'impatto per favorire l'appoggio "di tabella" (bank shot).
+export const E_RIM = 0.76;
+export const E_BACKBOARD = 0.42;
+export const E_FLOOR = 0.78;
+const MU_RIM = 0.52; // attrito ferro-palla: trasforma il backspin in "shooter's roll" morbido verso il centro
+const MU_BACKBOARD = 0.45;
 const MU_FLOOR = 0.65;
 
 // Costanti aerodinamiche (aria a 20°C: ρ = 1.225 kg/m³, A = π R² = 0.04524 m²)
@@ -456,7 +457,7 @@ export interface FreeThrowPhysicsWorld {
   dispose(): void;
 }
 
-const RIM_COLLIDER_SEGMENTS = 24;
+const RIM_COLLIDER_SEGMENTS = 36;
 
 export async function createFreeThrowPhysicsWorld(): Promise<FreeThrowPhysicsWorld> {
   await RAPIER.init();
@@ -535,7 +536,7 @@ export async function createFreeThrowPhysicsWorld(): Promise<FreeThrowPhysicsWor
         { w: 1, x: 0, y: 0, z: 0 },
       )
       .setFriction(0.55)
-      .setRestitution(0.72)
+      .setRestitution(0.8)
       .setRestitutionCombineRule(RAPIER.CoefficientCombineRule.Min),
     ballBody,
   );
@@ -586,49 +587,97 @@ export async function createFreeThrowPhysicsWorld(): Promise<FreeThrowPhysicsWor
     const vel = ballBody.linvel();
     const ang = ballBody.angvel();
 
-    // Contatto col tabellone (faccia anteriore a z = BACKBOARD_Z)
+    // Contatto col tabellone (faccia anteriore a z = BACKBOARD_Z):
+    // il plexiglass assorbe la spinta orizzontale (E_BACKBOARD = 0.42 < E_RIM = 0.76) e, grazie al backspin,
+    // accompagna morbidamente la palla verso il centro del canestro senza schizzare via né spezzare l'arco.
     if (
-      pos.z + BALL_RADIUS >= BACKBOARD_Z - 0.015 &&
-      pos.z - BALL_RADIUS <= BACKBOARD_Z + BACKBOARD_THICKNESS + 0.02 &&
+      pos.z + BALL_RADIUS >= BACKBOARD_Z - 0.02 &&
+      pos.z - BALL_RADIUS <= BACKBOARD_Z + BACKBOARD_THICKNESS + 0.025 &&
       Math.abs(pos.x) <= BACKBOARD_WIDTH / 2 + BALL_RADIUS &&
       pos.y >= BACKBOARD_BOTTOM_Y - BALL_RADIUS &&
       pos.y <= BACKBOARD_BOTTOM_Y + BACKBOARD_HEIGHT + BALL_RADIUS
     ) {
       if (!made) {
         touchedBackboard = true;
-        // Quando Rapier ha invertito vz (rimbalzo dal tabellone verso il campo, vel.z < 0):
-        // se il tiro colpisce il quadrato di mira con backspin (wx < 0), la flessione del plexiglass
-        // e l'attrito del backspin smorzano il rimbalzo indirizzando la palla nel ferro ("di tabella")
         if (!backboardRebounded && vel.z < 0) {
           backboardRebounded = true;
-          const inSquare =
-            Math.abs(pos.x) <= TARGET_SQUARE_WIDTH / 2 &&
-            pos.y >= RIM_HEIGHT + 0.02 &&
-            pos.y <= RIM_HEIGHT + TARGET_SQUARE_HEIGHT + 0.08;
-          if (inSquare && ang.x < -4) {
-            const spinFactor = Math.min(1, Math.abs(ang.x) / (MAX_BACKSPIN_RAD_S * 0.75));
-            const dy = Math.max(0.03, pos.y - RIM_HEIGHT);
-            const vyAfter = Math.min(-1.1, vel.y * 0.65);
+          // L'attrito col tabellone consuma parte del backspin evitando derive Magnus anomale dopo l'impatto
+          ballBody.setAngvel({ x: ang.x * 0.6, y: ang.y * 0.5, z: ang.z * 0.5 }, true);
+
+          const absX = Math.abs(pos.x);
+          const inBankZone =
+            absX <= TARGET_SQUARE_WIDTH * 0.9 &&
+            pos.y >= RIM_HEIGHT - 0.02 &&
+            pos.y <= RIM_HEIGHT + TARGET_SQUARE_HEIGHT + 0.32;
+
+          if (inBankZone) {
+            const inCoreSquare =
+              absX <= TARGET_SQUARE_WIDTH * 0.6 &&
+              pos.y >= RIM_HEIGHT &&
+              pos.y <= RIM_HEIGHT + TARGET_SQUARE_HEIGHT + 0.14;
+            const zoneFactor = inCoreSquare ? 1.0 : 0.65;
+            const spinFactor = Math.min(1, Math.max(0.35, Math.abs(ang.x) / (MAX_BACKSPIN_RAD_S * 0.65)));
+            const assistWeight = Math.min(0.92, zoneFactor * (0.6 + 0.32 * spinFactor));
+
+            const dy = Math.max(0.02, pos.y - RIM_HEIGHT);
+            // Se la palla tocca il vetro mentre sale, il backspin smorza la salita in un appoggio morbido;
+            // se tocca mentre scende, frena la caduta senza strappi improvvisi verso il basso.
+            const vyAfter = vel.y > 0 ? vel.y * 0.22 - 0.18 : Math.max(-1.35, vel.y * 0.62);
             const gMag = Math.abs(GRAVITY_Y);
-            const tDrop = (Math.sqrt(vyAfter * vyAfter + 2 * gMag * dy) + vyAfter) / gMag;
-            const idealBankVz = (HOOP_Z - pos.z) / Math.max(0.05, tDrop);
-            const blendedVz = vel.z * (1 - 0.78 * spinFactor) + idealBankVz * (0.78 * spinFactor);
-            ballBody.setLinvel({ x: vel.x * 0.55, y: vyAfter, z: blendedVz }, true);
+            const tDrop = (vyAfter + Math.sqrt(vyAfter * vyAfter + 2 * gMag * dy)) / gMag;
+            const safeT = Math.max(0.07, tDrop);
+
+            const idealBankVz = (HOOP_Z - 0.01 - pos.z) / safeT;
+            const idealBankVx = -pos.x / safeT;
+            const blendedVx = vel.x * (1 - assistWeight) + idealBankVx * assistWeight;
+            const blendedVz = vel.z * (1 - assistWeight) + idealBankVz * assistWeight;
+            ballBody.setLinvel({ x: blendedVx, y: vyAfter, z: blendedVz }, true);
+          } else {
+            // Fuori dalla zona utile di tabella: il plexiglass smorza comunque il rimbalzo più del ferro
+            ballBody.setLinvel({ x: vel.x * 0.72, y: vel.y * 0.55, z: vel.z * 0.78 }, true);
           }
         }
       }
     }
 
-    // Contatto con l'anello del ferro (distanza toroidale esatta dal cerchio di raggio rimCenterRadius)
+    // Contatto con l'anello del ferro (distanza toroidale dal cerchio di raggio rimCenterRadius):
+    // il ferro ha restituzione più alta della tabella (E_RIM = 0.76) quindi fa rimbalzare la palla
+    // con decisione verso l'alto; se il tiro pizzica la metà interna/superiore dell'anello, lo
+    // "shooter's roll" converte il rimbalzo alto in un lob morbido che cade dentro il canestro.
     const dx = pos.x;
     const dz = pos.z - HOOP_Z;
     const radialDist = Math.hypot(dx, dz);
     const tubeDist = Math.hypot(radialDist - rimCenterRadius, pos.y - RIM_HEIGHT);
-    if (tubeDist <= BALL_RADIUS + RIM_TUBE_RADIUS + 0.005) {
+    if (tubeDist <= BALL_RADIUS + RIM_TUBE_RADIUS + 0.008) {
       if (!made) touchedRim = true;
       if (rimCooldownS <= 0) {
         rimBounces++;
-        rimCooldownS = 0.09;
+        rimCooldownS = 0.085;
+
+        if (!made && pos.y >= RIM_HEIGHT - 0.03 && vel.y > -0.35) {
+          // Rimbalzo verticale vivo sul ferro (più elastico della tabella)
+          const minBounceVy = rimBounces === 1 ? 1.55 : rimBounces === 2 ? 0.95 : 0.55;
+          const bounceVy = Math.max(vel.y * 1.12, minBounceVy);
+
+          // Se il tiro ha colpito il ferro vicino al lume interno, accompagna il rimbalzo verso il centro
+          if (radialDist <= rimCenterRadius + 0.032 && rimBounces <= 3) {
+            const tBounce = Math.max(0.16, (2 * bounceVy) / Math.abs(GRAVITY_Y));
+            const targetVx = -pos.x / tBounce;
+            const targetVz = (HOOP_Z - pos.z) / tBounce;
+            const rollAssist = radialDist <= RIM_RADIUS ? 0.78 : 0.62;
+            ballBody.setLinvel(
+              {
+                x: vel.x * (1 - rollAssist) + targetVx * rollAssist,
+                y: bounceVy,
+                z: vel.z * (1 - rollAssist) + targetVz * rollAssist,
+              },
+              true,
+            );
+          } else {
+            // Ferro esterno: rimbalzo metallico netto e alto
+            ballBody.setLinvel({ x: vel.x, y: bounceVy, z: vel.z }, true);
+          }
+        }
       }
     }
   }
@@ -644,7 +693,7 @@ export async function createFreeThrowPhysicsWorld(): Promise<FreeThrowPhysicsWor
       }
       const distFromHoopCenter = Math.hypot(cx, cz - HOOP_Z);
       // Il centro della palla passa dentro il raggio utile dell'anello
-      if (!made && distFromHoopCenter <= RIM_RADIUS - 0.015) {
+      if (!made && distFromHoopCenter <= RIM_RADIUS - 0.005) {
         made = true;
         // Nello swish la palla rallenta leggermente accarezzando la retina e fa il "ciuff"
         const isCleanSwish = !touchedRim && !touchedBackboard;
