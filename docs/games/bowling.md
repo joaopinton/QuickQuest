@@ -1,5 +1,7 @@
 # Bowling — Game Design Document
 
+> Flusso della partita, modalità, assist e premi in discussione: [11 — Brainstorming § Bowling](../11-games-brainstorm.md#2-bowling).
+
 | Campo | Valore |
 |---|---|
 | ID modulo | `bowling` |

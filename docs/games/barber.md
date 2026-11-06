@@ -1,5 +1,7 @@
 # Barber shop — Brief
 
+> Flusso della partita, modalità, assist e premi in discussione: [11 — Brainstorming § Barber shop](../11-games-brainstorm.md#6-barber-shop).
+
 | Campo | Valore |
 |---|---|
 | ID modulo | `barber` |

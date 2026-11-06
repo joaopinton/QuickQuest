@@ -1,5 +1,7 @@
 # Scherma — Brief
 
+> Flusso della partita, modalità, assist e premi in discussione: [11 — Brainstorming § Scherma](../11-games-brainstorm.md#7-scherma).
+
 | Campo | Valore |
 |---|---|
 | ID modulo | `fencing` |

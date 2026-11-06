@@ -1,5 +1,7 @@
 # Golf — Brief
 
+> Flusso della partita, modalità, assist e premi in discussione: [11 — Brainstorming § Golf](../11-games-brainstorm.md#5-golf).
+
 > **Stato (2026-11-05): prima versione giocabile**, sul contratto modulo minimo ([05 § 6](../05-game-module-contract.md#6-implementazione-attuale)). Regole adattate da [choijunhuk/phonemote](https://github.com/choijunhuk/phonemote) (MIT, `golfState.ts`) in `games/golf/screen/rules.ts`: 3 buche procedurali con seme, mazze driver/ferro/wedge/putter, lie (tee, fairway, rough, bunker, green), faccia del bastone che apre o chiude il colpo, vento, pendenza del green, palla concessa entro 60 cm dal centro, raccolta a par + 5, tira chi è più lontano. Terreno a griglia di quote con colline e avvallamenti (`terrain.ts`) e fisica della palla integrata a passo fisso (`physics.ts`): drag, Magnus, rimbalzi sulla pendenza, rotolamento in discesa, buca vera (30 cm di raggio, la stessa per fisica e scena) con lip-out. Sul telefono (`games/golf/controller/`): presa a telefono fermo, mira dal rollio, colpo pieno riconosciuto da `burst.ts` senza tasto, putt tenendo premuto. Da tarare su telefoni veri: potenza, faccia e ampiezza del putt.
 
 | Campo | Valore |

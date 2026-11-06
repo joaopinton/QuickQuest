@@ -1,5 +1,7 @@
 # Bocce — Brief
 
+> Flusso della partita, modalità, assist e premi in discussione: [11 — Brainstorming § Bocce](../11-games-brainstorm.md#3-bocce).
+
 | Campo | Valore |
 |---|---|
 | ID modulo | `bocce` |

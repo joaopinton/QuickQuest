@@ -1,5 +1,7 @@
 # Tiri liberi — Brief
 
+> Flusso della partita, modalità, assist e premi in discussione: [11 — Brainstorming § Tiri liberi](../11-games-brainstorm.md#4-tiri-liberi).
+
 | Campo | Valore |
 |---|---|
 | ID modulo | `free-throw` |

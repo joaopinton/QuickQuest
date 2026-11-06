@@ -19,6 +19,7 @@ Stato: **Fase 1–2**. Documentazione completa; spike S1 in `spikes/s1-sensor-pr
 | 08 | [UI/UX](08-ui-ux.md) | Flussi schermo e controller, design system, token |
 | 09 | [Roadmap](09-roadmap.md) | Fasi, spike go/no-go, milestone |
 | 10 | [Repository di riferimento](10-references.md) | Repo GitHub da usare come dipendenze o da studiare |
+| 11 | [Brainstorming dei giochi](11-games-brainstorm.md) | Come si svolge una partita in ogni gioco: turni, regole, modalità, assist, premi, decisioni aperte |
 
 ### Giochi
 | Gioco | Documento | Stato |
@@ -26,10 +27,12 @@ Stato: **Fase 1–2**. Documentazione completa; spike S1 in `spikes/s1-sensor-pr
 | Bowling | [games/bowling.md](games/bowling.md) | GDD completo, **primo gioco** |
 | Bocce | [games/bocce.md](games/bocce.md) | Brief |
 | Tiri liberi | [games/free-throw.md](games/free-throw.md) | Brief |
-| Golf | [games/golf.md](games/golf.md) | Brief |
+| Golf | [games/golf.md](games/golf.md) | Brief, prima versione giocabile |
 | Barber shop | [games/barber.md](games/barber.md) | Brief |
 | Scherma | [games/fencing.md](games/fencing.md) | Brief |
 | Template | [games/_template.md](games/_template.md) | Per i GDD futuri |
+
+Flusso di partita, modalità e idee per tutti i giochi: [11 — Brainstorming](11-games-brainstorm.md).
 
 ### Architecture Decision Records
 | ADR | Decisione |
