@@ -4,7 +4,11 @@
 // - acqua: +1 colpo, si droppa dietro il punto da cui si è tirato, più lontano dalla bandiera:
 //   buttarla in acqua non fa mai guadagnare strada;
 // - fuori limite (paletti bianchi): +1 colpo e si ritira da dove si era tirato.
+import { OOB_BEHIND_TEE_M, OOB_HALF_WIDTH_M, OOB_PAST_GREEN_M } from './bounds';
 import type { Bunker, GolfHole, Point } from './rules';
+import { underwater, WATER_SHEET_SCALE } from './terrain';
+
+export { OOB_BEHIND_TEE_M, OOB_HALF_WIDTH_M, OOB_PAST_GREEN_M };
 
 export type Hazard = 'water' | 'oob';
 
@@ -16,11 +20,6 @@ export interface Pond {
   readonly ry: number;
 }
 
-/** Paletti bianchi ai lati: oltre questo |x| si è fuori limite. */
-export const OOB_HALF_WIDTH_M = 48;
-/** Fuori limite dietro il tee e oltre il green. */
-export const OOB_BEHIND_TEE_M = -20;
-export const OOB_PAST_GREEN_M = 35;
 /** Quanto dietro il punto di tiro si droppa dopo l'acqua. */
 export const WATER_DROP_BACK_M = 10;
 const DROP_SEARCH_STEP_M = 0.5;
@@ -33,7 +32,8 @@ export function inPond(w: Pond, p: Point): boolean {
 
 export function hazardAt(hole: GolfHole, p: Point): Hazard | null {
   if (Math.abs(p.x) > OOB_HALF_WIDTH_M || p.y < OOB_BEHIND_TEE_M || p.y > hole.lengthM + OOB_PAST_GREEN_M) return 'oob';
-  if ((hole.water ?? []).some((w) => inPond(w, p))) return 'water';
+  // acqua dove il terreno scende sotto il pelo dell'acqua: la riva che si vede è il confine
+  if (underwater(hole, p)) return 'water';
   return null;
 }
 
@@ -69,7 +69,11 @@ export function dropPoint(hole: GolfHole, hazard: Hazard, entry: Point, from: Po
 }
 
 const overlapsBunker = (w: Pond, bunkers: readonly Bunker[]) =>
-  bunkers.some((b) => Math.hypot(b.x - w.x, b.y - w.y) < b.radiusM + Math.max(w.rx, w.ry) + 2);
+  bunkers.some((b) => Math.hypot(b.x - w.x, b.y - w.y) < b.radiusM + Math.max(w.rx, w.ry) * WATER_SHEET_SCALE + 2);
+/** Due laghetti hanno peli dell'acqua a quote diverse: le loro conche non si toccano. */
+const overlapsPond = (w: Pond, ponds: readonly Pond[]) =>
+  ponds.some((o) => Math.hypot(o.x - w.x, o.y - w.y) < (Math.max(o.rx, o.ry) + Math.max(w.rx, w.ry)) * WATER_SHEET_SCALE + 2);
+const grown = (w: Pond): Pond => ({ ...w, rx: w.rx * WATER_SHEET_SCALE, ry: w.ry * WATER_SHEET_SCALE });
 
 /**
  * Laghetti della buca: uno a lato del fairway (a volte), e sui par 3 a volte uno davanti
@@ -78,17 +82,18 @@ const overlapsBunker = (w: Pond, bunkers: readonly Bunker[]) =>
 export function makeWater(hole: GolfHole, rng: () => number, fairwayHalfWidthM: number): readonly Pond[] {
   const ponds: Pond[] = [];
   const pin = { x: 0, y: hole.lengthM };
-  // il bordo del green (con un metro di margine) non deve finire in acqua
+  // il bordo del green non deve finire nella conca del laghetto (fin dove arriva l'acqua)
   const greenEdge = Array.from({ length: 32 }, (_, i) => {
     const a = (i / 32) * Math.PI * 2;
-    return { x: pin.x + Math.cos(a) * (hole.greenRadiusM + 1), y: pin.y + Math.sin(a) * (hole.greenRadiusM + 1) };
+    return { x: pin.x + Math.cos(a) * hole.greenRadiusM, y: pin.y + Math.sin(a) * hole.greenRadiusM };
   });
   const fits = (w: Pond) =>
     Math.abs(w.x) + w.rx < OOB_HALF_WIDTH_M - 3
     && w.y - w.ry > 40 // lontano dal tee
     && !inPond(w, pin)
-    && !greenEdge.some((p) => inPond(w, p))
-    && !overlapsBunker(w, hole.bunkers);
+    && !greenEdge.some((p) => inPond(grown(w), p))
+    && !overlapsBunker(w, hole.bunkers)
+    && !overlapsPond(w, ponds);
 
   if (rng() < 0.5) {
     const side = rng() < 0.5 ? -1 : 1;

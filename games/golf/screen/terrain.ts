@@ -1,11 +1,12 @@
-// Terreno del golf: una griglia di quote (heightfield) a passo di 1 m, letta con
-// interpolazione bilineare, da cui escono quota e pendenza in ogni punto (docs/games/golf.md
-// § Terreno). Senza Three.js: lo usano la fisica della palla e la scena.
+// Terreno del golf: una griglia di quote (heightfield) a passo di 1 m, letta sugli stessi due
+// triangoli per cella con cui è disegnata (terrain-mesh.ts), così la palla sta esattamente sul
+// prato che si vede (docs/games/golf.md § Terreno). Senza Three.js: lo usano la fisica e la scena.
 //
 // La griglia si ricava dalla buca: colline e avvallamenti (gaussiane), tee piano, green su un
 // piano inclinato, conche dei bunker e dei laghetti. Si calcola una volta per buca (cache).
 import type { GolfHole, Point } from './rules';
-import { OOB_BEHIND_TEE_M, OOB_HALF_WIDTH_M, OOB_PAST_GREEN_M, type Pond } from './hazards';
+import { OOB_BEHIND_TEE_M, OOB_HALF_WIDTH_M, OOB_PAST_GREEN_M } from './bounds';
+import type { Pond } from './hazards';
 
 /** Collina (altezza > 0) o avvallamento (altezza < 0) a campana. */
 export interface Hill {
@@ -38,8 +39,13 @@ const GREEN_BLEND_M = 6;
 /** Pendenza del green (frazione) per ogni grado/m di `slopeDegPerM`. */
 export const GREEN_GRADE_PER_SLOPE = 0.02;
 const POND_DEPTH_M = 1.4;
-/** Il pelo dell'acqua sta sotto il bordo della conca. */
-const POND_WATER_BELOW_M = 0.35;
+/**
+ * Il pelo dell'acqua sta a metà della conca: su terreno piano la riva cade proprio sull'ellisse
+ * del laghetto (dove la conca è scesa a metà).
+ */
+const POND_WATER_BELOW_M = POND_DEPTH_M / 2;
+/** Fin dove (in raggi del laghetto) arriva il piano dell'acqua disegnato, e quindi l'ostacolo. */
+export const WATER_SHEET_SCALE = 1.3;
 const BUNKER_DEPTH_M = 0.75;
 
 const smoothstep = (a: number, b: number, v: number) => {
@@ -135,27 +141,41 @@ function cellAt(f: Heightfield, x: number, y: number): CellSample | null {
   return { h00: f.heights[k]!, h10: f.heights[k + 1]!, h01: f.heights[k + f.cols]!, h11: f.heights[k + f.cols + 1]!, u: gx - i, v: gy - j };
 }
 
+// Ogni cella è divisa lungo la diagonale (1,0)–(0,1), come in terrain-mesh.ts: sotto la
+// diagonale il triangolo (00, 10, 01), sopra (10, 11, 01). Dentro un triangolo il terreno è piano.
+
 /** Quota del terreno (m) nel punto; fuori dalla griglia 0. */
 export function groundHeight(hole: GolfHole, p: Point): number {
   const c = cellAt(terrainOf(hole), p.x, p.y);
   if (!c) return 0;
-  return lerp(lerp(c.h00, c.h10, c.u), lerp(c.h01, c.h11, c.u), c.v);
+  if (c.u + c.v <= 1) return c.h00 + (c.h10 - c.h00) * c.u + (c.h01 - c.h00) * c.v;
+  return c.h11 + (c.h01 - c.h11) * (1 - c.u) + (c.h10 - c.h11) * (1 - c.v);
 }
 
-/** Pendenza del terreno: derivate della quota in x e in y (m/m). */
+/** Pendenza del terreno: derivate della quota in x e in y (m/m), quelle del triangolo sotto il punto. */
 export function groundGradient(hole: GolfHole, p: Point): Point {
   const f = terrainOf(hole);
   const c = cellAt(f, p.x, p.y);
   if (!c) return { x: 0, y: 0 };
-  return {
-    x: lerp(c.h10 - c.h00, c.h11 - c.h01, c.v) / f.cell,
-    y: lerp(c.h01 - c.h00, c.h11 - c.h10, c.u) / f.cell,
-  };
+  if (c.u + c.v <= 1) return { x: (c.h10 - c.h00) / f.cell, y: (c.h01 - c.h00) / f.cell };
+  return { x: (c.h11 - c.h01) / f.cell, y: (c.h11 - c.h10) / f.cell };
 }
 
 /** Quota del pelo dell'acqua di un laghetto. */
 export function waterLevel(hole: GolfHole, w: Pond): number {
   return hillsAt(hole.hills ?? [], w.x, w.y) - POND_WATER_BELOW_M;
+}
+
+/**
+ * Il laghetto in cui il punto è sott'acqua, se c'è: dentro il piano dell'acqua disegnato e con il
+ * terreno sotto il pelo. È la riva che si vede, quindi anche il confine dell'ostacolo.
+ */
+export function underwater(hole: GolfHole, p: Point): Pond | null {
+  for (const w of hole.water ?? []) {
+    if (pondQ(w, p.x, p.y) >= WATER_SHEET_SCALE) continue;
+    if (groundHeight(hole, p) < waterLevel(hole, w)) return w;
+  }
+  return null;
 }
 
 /**

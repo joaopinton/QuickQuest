@@ -128,8 +128,8 @@ export const FAIRWAY_HALF_WIDTH_M = 18;
 const FACE_START_SHARE = 0.35;
 export const FACE_LIMIT_DEG = 12;
 export const AIM_LIMIT_DEG = 15;
-/** Palla ferma così vicina: concessa, con il colpo del tap-in. 55 mm di buca da 5 m chiederebbero 0,6° di linea. */
-export const GIMME_RADIUS_M = 0.45;
+/** Palla ferma così vicina al centro (un palmo oltre il bordo della buca): concessa, con il colpo del tap-in. */
+export const GIMME_RADIUS_M = 0.6;
 const PUTT_M_PER_DEG = 0.09;
 export const PUTT_MIN_DEG = 3;
 const STROKES_OVER_PAR = 5;
@@ -153,18 +153,52 @@ export function seededRng(seed: number): () => number {
   };
 }
 
+const GREEN_RADIUS_M = 14;
+/** Erba tra il bordo del green e quello di un bunker. */
+const BUNKER_GREEN_GAP_M = 2.5;
+const BUNKER_GAP_M = 2;
+
+/**
+ * Un bunker vicino al green, spinto fuori dal green (e lontano dagli altri bunker): due zone non
+ * si sovrappongono mai, così la conca di sabbia non finisce sotto il green.
+ */
+function placeBunker(lengthM: number, rng: () => number, others: readonly Bunker[]): Bunker {
+  const radiusM = 5 + rng() * 4;
+  let x = (rng() * 2 - 1) * 22;
+  let y = lengthM - (8 + rng() * 30);
+  const minFromPin = GREEN_RADIUS_M + BUNKER_GREEN_GAP_M + radiusM;
+  const dx = x;
+  const dy = y - lengthM;
+  const d = Math.hypot(dx, dy);
+  if (d < minFromPin) {
+    // si allontana dalla bandiera lungo la stessa direzione (davanti al green se cade al centro)
+    const ux = d > 1e-6 ? dx / d : 0;
+    const uy = d > 1e-6 ? dy / d : -1;
+    x = ux * minFromPin;
+    y = lengthM + uy * minFromPin;
+  }
+  for (const o of others) {
+    const od = Math.hypot(x - o.x, y - o.y);
+    const need = o.radiusM + radiusM + BUNKER_GAP_M;
+    if (od < need) {
+      // di lato verso il centro del campo (mai oltre i paletti), tenendo la distanza dalla bandiera
+      const side = o.x > 0 ? -1 : 1;
+      x = o.x + side * need;
+      y = Math.min(y, lengthM - Math.sqrt(Math.max(0, minFromPin ** 2 - x * x)));
+    }
+  }
+  return { x, y, radiusM };
+}
+
 function makeHole(par: number, rng: () => number): GolfHole {
   const lengthM = par === 3 ? 130 + rng() * 60 : par === 5 ? 440 + rng() * 90 : 300 + rng() * 100;
   const count = rng() < 0.35 ? 0 : rng() < 0.8 ? 1 : 2;
-  const bunkers = Array.from({ length: count }, () => ({
-    x: (rng() * 2 - 1) * 22,
-    y: lengthM - (8 + rng() * 30),
-    radiusM: 5 + rng() * 4,
-  }));
+  const bunkers: Bunker[] = [];
+  for (let i = 0; i < count; i++) bunkers.push(placeBunker(lengthM, rng, bunkers));
   return {
     par,
     lengthM,
-    greenRadiusM: 14,
+    greenRadiusM: GREEN_RADIUS_M,
     greenSpeed: 2.3 + rng() * 0.6,
     slopeDegPerM: (rng() * 2 - 1) * 1.2,
     wind: (rng() * 2 - 1) * 4,

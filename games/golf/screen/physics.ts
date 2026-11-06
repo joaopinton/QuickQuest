@@ -6,8 +6,10 @@
 //   presa del terreno; il backspin frena la palla, il wedge "morde" e può tornare indietro.
 // - Rotolando: la gravità spinge giù per le pendenze, l'erba frena; la palla si ferma solo se
 //   la pendenza non basta a vincere l'attrito.
-// - La buca è un foro vero: la palla ci cade se resta sopra il foro abbastanza a lungo; troppo
-//   veloce ci salta sopra o sbatte sul bordo ed esce (lip-out).
+// - La buca è un foro vero, largo come quello disegnato (30 cm di raggio, una buca "da gioco"
+//   in scala con la palla ingrandita): se la palla ci passa sopra non troppo veloce ci cade;
+//   troppo veloce ci salta sopra o sbatte sul bordo ed esce (lip-out). In volo: piano dentro,
+//   forte sbatte sulla parete dietro e schizza fuori.
 import type { Club } from '../shared/clubs';
 import { hazardAt, type Hazard } from './hazards';
 import { distanceToPin, lieAt, pinOf, type GolfHole, type Lie, type Point } from './rules';
@@ -35,7 +37,18 @@ export interface Flight {
 
 export const G = 9.81;
 export const BALL_RADIUS_M = 0.0214;
-export const CUP_RADIUS_M = 0.054;
+/** Raggio della buca, uguale per la fisica e per la scena (scene.ts). */
+export const CUP_RADIUS_M = 0.3;
+/**
+ * Quanto deve "cadere" la palla sopra il foro per essere dentro: tarato perché al centro entri
+ * fino a ~1,9 m/s; di striscio la corda è più corta e serve meno velocità.
+ */
+export const CAPTURE_DROP_M = 0.5;
+/** In volo: sotto questa velocità orizzontale la palla che tocca dentro il foro ci resta. */
+const DUNK_MAX_MS = 3;
+/** In volo, troppo forte: quanta velocità resta dopo la parete e quanto schizza in alto. */
+const CUP_WALL_KEEP = 0.45;
+const CUP_WALL_POP = 0.25;
 const AIR_DRAG = 0.0045; // ½ρ·Cd·A/m (1/m)
 const MAGNUS = 0.0004; // ½ρ·A·r/m: a = k·ω×v
 const LIFT_CAP = 0.0055; // portanza massima ≈ ½ρ·Cl,max·A/m · v²
@@ -316,13 +329,41 @@ function airborneStep(hole: GolfHole, ball: Point, f: Flight, h: number): BallSt
   const hazard = hazardAt(hole, at);
   if (hazard) return { ball: at, flight: withBody(f, b, { heightM: 0, timeS }), outcome: { kind: 'hazard', hazard, at } };
   const lie = lieAt(hole, at);
-  if (lie === 'green' && distanceToPin(hole, at) < CUP_RADIUS_M) {
-    return { ball: pinOf(hole), flight: withBody(f, b, { heightM: 0, timeS }), outcome: { kind: 'holed' } };
+  if (hole.greenRadiusM > 0 && distanceToPin(hole, at) < CUP_RADIUS_M) {
+    const hs = Math.hypot(b.vx, b.vy);
+    if (hs <= DUNK_MAX_MS) return { ball: pinOf(hole), flight: withBody(f, b, { heightM: 0, timeS }), outcome: { kind: 'holed' } };
+    return cupWall(hole, f, b, hs, timeS);
   }
   const rolls = bounce(hole, b, lie);
   const hop = f.hops;
   const flight = withBody(f, b, { airborne: !rolls, hops: f.hops + 1, heightM: 0, timeS, vz: rolls ? 0 : b.vz });
   return { ball: at, flight, outcome: { kind: 'contact', lie, at, hop } };
+}
+
+/**
+ * Palla che entra in volo nel foro troppo forte: sbatte sulla parete dietro e schizza fuori in
+ * alto, più lenta, dal bordo opposto a dove è entrata.
+ */
+function cupWall(hole: GolfHole, f: Flight, b: Body, hs: number, timeS: number): BallStep {
+  const pin = pinOf(hole);
+  const ux = b.vx / hs;
+  const uy = b.vy / hs;
+  const out = { x: pin.x + ux * CUP_RADIUS_M * 1.05, y: pin.y + uy * CUP_RADIUS_M * 1.05 };
+  const z = groundHeight(hole, out);
+  const flight: Flight = {
+    ...f,
+    z,
+    vx: b.vx * CUP_WALL_KEEP,
+    vy: b.vy * CUP_WALL_KEEP,
+    vz: hs * CUP_WALL_POP,
+    backspin: 0,
+    sidespin: 0,
+    airborne: true,
+    hops: f.hops + 1,
+    heightM: 0,
+    timeS,
+  };
+  return { ball: out, flight, outcome: { kind: 'contact', lie: 'green', at: out, hop: f.hops } };
 }
 
 /** Lip-out: la palla sbatte sul bordo, gira e perde velocità. */
@@ -366,12 +407,12 @@ function rollingStep(hole: GolfHole, ball: Point, f: Flight, h: number): BallSte
   const pin = pinOf(hole);
   if (hole.greenRadiusM > 0 && distanceToPin(hole, next) < CUP_RADIUS_M) {
     const overCupS = f.overCupS + h;
-    if (0.5 * G * overCupS * overCupS >= BALL_RADIUS_M) return { ball: pin, flight: { ...base, overCupS }, outcome: { kind: 'holed' } };
+    if (0.5 * G * overCupS * overCupS >= CAPTURE_DROP_M) return { ball: pin, flight: { ...base, overCupS }, outcome: { kind: 'holed' } };
     return { ball: next, flight: { ...base, overCupS }, outcome: { kind: 'moving' } };
   }
   if (f.overCupS > 0) {
     const drop = 0.5 * G * f.overCupS * f.overCupS;
-    const out = drop > LIP_DROP_SHARE * BALL_RADIUS_M ? lipOut(next, pin, vx, vy) : { vx, vy };
+    const out = drop > LIP_DROP_SHARE * CAPTURE_DROP_M ? lipOut(next, pin, vx, vy) : { vx, vy };
     return { ball: next, flight: { ...base, ...out, overCupS: 0 }, outcome: { kind: 'moving' } };
   }
   // ferma solo se la pendenza non vince l'attrito dell'erba

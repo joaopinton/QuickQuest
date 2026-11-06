@@ -1,12 +1,13 @@
 // Fisica della palla: volo con drag e Magnus, rimbalzi sul terreno, rotolamento in pendenza,
 // buca vera con lip-out (games/golf/screen/physics.ts) e terreno a griglia (terrain.ts).
 import { describe, expect, test } from 'vitest';
-import { launchPutt, stepBall, FLIGHT_STEP, type Flight } from '../golf/screen/physics';
+import { CUP_RADIUS_M, launchPutt, stepBall, surfaceOf, FLIGHT_STEP, type BallOutcome, type Flight } from '../golf/screen/physics';
 import {
   aimPreview, applyShot, createGolf, makeCourse, stepGolf,
   type Club, type GolfEvent, type GolfHole, type GolfState, type Lie, type Point, type ShotInput,
 } from '../golf/screen/rules';
-import { groundGradient, groundHeight, waterLevel } from '../golf/screen/terrain';
+import { hazardAt } from '../golf/screen/hazards';
+import { groundGradient, groundHeight, terrainOf, underwater, WATER_SHEET_SCALE, waterLevel } from '../golf/screen/terrain';
 
 const HOLE: GolfHole = { par: 4, lengthM: 400, greenRadiusM: 14, greenSpeed: 2.5, slopeDegPerM: 0, wind: 0, bunkers: [] };
 const FULL = (power: number, faceDeg = 0): ShotInput => ({ kind: 'full', power, faceDeg, aimDeg: 0, strokeDeg: 0 });
@@ -165,6 +166,45 @@ describe('terreno', () => {
     expect(end.x).toBeGreaterThan(0.3);
   });
 
+  test('la palla sta sui triangoli disegnati: quota piana dentro ogni triangolo, uguale ai vertici', () => {
+    const hole: GolfHole = { ...HOLE, hills: [{ x: 3, y: 200, heightM: 4, radiusM: 9 }] };
+    const f = terrainOf(hole);
+    const i = Math.round((2 - f.x0) / f.cell);
+    const j = Math.round((198 - f.y0) / f.cell);
+    const at = (di: number, dj: number) => f.heights[(j + dj) * f.cols + i + di]!;
+    const x = f.x0 + i * f.cell;
+    const y = f.y0 + j * f.cell;
+    // ai vertici: la quota della griglia
+    expect(groundHeight(hole, { x, y })).toBeCloseTo(at(0, 0), 5);
+    // triangolo sotto la diagonale (00, 10, 01): piano per i tre vertici
+    expect(groundHeight(hole, { x: x + 0.25, y: y + 0.25 })).toBeCloseTo(at(0, 0) + (at(1, 0) - at(0, 0)) * 0.25 + (at(0, 1) - at(0, 0)) * 0.25, 5);
+    // triangolo sopra (10, 11, 01)
+    expect(groundHeight(hole, { x: x + 0.75, y: y + 0.75 })).toBeCloseTo(at(1, 1) + (at(0, 1) - at(1, 1)) * 0.25 + (at(1, 0) - at(1, 1)) * 0.25, 5);
+    // sulla diagonale i due triangoli si toccano: niente gradini
+    const onDiag = { x: x + 0.5, y: y + 0.5 };
+    expect(groundHeight(hole, { x: onDiag.x - 1e-7, y: onDiag.y - 1e-7 })).toBeCloseTo(groundHeight(hole, { x: onDiag.x + 1e-7, y: onDiag.y + 1e-7 }), 5);
+  });
+
+  test("l'acqua è dove si vede: ostacolo solo col terreno sotto il pelo, su tutte le buche", () => {
+    let wet = 0;
+    for (const hole of makeCourse(9, 21)) {
+      for (const w of hole.water ?? []) {
+        for (let k = 0; k < 400; k++) {
+          const a = (k / 400) * Math.PI * 2 * 7;
+          const q = (k / 400) * 1.6;
+          const p = { x: w.x + Math.cos(a) * w.rx * q, y: w.y + Math.sin(a) * w.ry * q };
+          if (hazardAt(hole, p) === 'oob') continue;
+          // sott'acqua in un laghetto qualsiasi della buca (possono essere due)
+          const wetHere = (hole.water ?? []).some((o) => Math.hypot((p.x - o.x) / o.rx, (p.y - o.y) / o.ry) < WATER_SHEET_SCALE && groundHeight(hole, p) < waterLevel(hole, o));
+          expect(hazardAt(hole, p) === 'water').toBe(wetHere);
+          expect(underwater(hole, p) !== null).toBe(wetHere);
+          if (wetHere) wet++;
+        }
+      }
+    }
+    expect(wet).toBeGreaterThan(50);
+  });
+
   test('i laghetti stanno in una conca: il pelo dell\'acqua è sotto il prato attorno', () => {
     const pond = { x: 0, y: 150, rx: 10, ry: 8 };
     const hole: GolfHole = { ...HOLE, water: [pond] };
@@ -173,7 +213,50 @@ describe('terreno', () => {
   });
 });
 
+/** Palla da `ball` con il volo `f`, passo dopo passo finché non succede qualcosa di finale. */
+function runBall(hole: GolfHole, ball: Point, f: Flight): { kind: BallOutcome['kind']; at: Point } {
+  let p = ball;
+  let fl = f;
+  for (let i = 0; i < 20000; i++) {
+    const r = stepBall(hole, p, fl, FLIGHT_STEP);
+    p = r.ball;
+    fl = r.flight;
+    if (r.outcome.kind === 'holed' || r.outcome.kind === 'rested' || r.outcome.kind === 'hazard') return { kind: r.outcome.kind, at: p };
+  }
+  return { kind: 'moving', at: p };
+}
+
 describe('la buca', () => {
+  /** Palla che rotola dritta alla buca e ci arriva a `speed` m/s. */
+  const rollAt = (speed: number, x = 0) => {
+    const from = { x, y: 398 };
+    const v0 = Math.sqrt(speed * speed + 2 * surfaceOf(HOLE, 'green').roll * (2 - CUP_RADIUS_M));
+    return runBall(HOLE, from, { ...launchPutt(HOLE, from, 0, 0), vy: v0 });
+  };
+
+  test('la buca della fisica è quella disegnata (30 cm di raggio)', () => {
+    expect(CUP_RADIUS_M).toBeCloseTo(0.3, 5);
+  });
+
+  test('rotolando: al centro entra fino a ~1,8 m/s, più forte esce; di striscio entra se è lenta', () => {
+    expect(rollAt(0.5).kind).toBe('holed');
+    expect(rollAt(1.7).kind).toBe('holed');
+    expect(rollAt(2.8).kind).not.toBe('holed');
+    expect(rollAt(0.8, 0.2).kind).toBe('holed');
+    // appena fuori dal bordo passa accanto
+    expect(rollAt(0.8, CUP_RADIUS_M + 0.05).kind).not.toBe('holed');
+  });
+
+  test('al volo: piano nella buca resta dentro, forte sbatte sulla parete ed esce oltre', () => {
+    const z0 = groundHeight(HOLE, { x: 0, y: 400 }) + 0.3;
+    const flying = (vy: number, y: number): Flight => ({ ...launchPutt(HOLE, { x: 0, y }, 0, 0), airborne: true, isPutt: false, hops: 1, z: z0, vy, vz: -1 });
+    // in ~0,16 s scende di 30 cm: si parte in modo da toccare terra al centro della buca
+    expect(runBall(HOLE, { x: 0, y: 400 - 1.5 * 0.16 }, flying(1.5, 400 - 1.5 * 0.16)).kind).toBe('holed');
+    const fast = runBall(HOLE, { x: 0, y: 400 - 9 * 0.16 }, flying(9, 400 - 9 * 0.16));
+    expect(fast.kind).not.toBe('holed');
+    expect(fast.at.y).toBeGreaterThan(400 + CUP_RADIUS_M);
+  });
+
   const putt = (lengthM: number) => shoot(HOLE, 'putter', 'green', { x: 0, y: 396 }, { kind: 'putt', power: 0, faceDeg: 0, aimDeg: 0, strokeDeg: lengthM / (0.09 * 2.5) });
 
   test('dritto alla buca a velocità giusta: dentro', () => {

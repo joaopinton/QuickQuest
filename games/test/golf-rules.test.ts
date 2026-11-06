@@ -1,7 +1,7 @@
 // Regole del golf, adattate da choijunhuk/phonemote (MIT), golfState.ts e golfState.test.ts.
 import { describe, expect, test } from 'vitest';
 import {
-  applyShot, CLUB_CARRY_M, createGolf, currentHole, distanceToPin, findPlayer, GIMME_RADIUS_M, leaderboard, lieAt,
+  applyShot, CLUB_CARRY_M, createGolf, CUP_RADIUS_M, currentHole, distanceToPin, findPlayer, GIMME_RADIUS_M, leaderboard, lieAt,
   makeCourse, nextShooter, removePlayer, setClub, stepGolf, suggestClub, termFor,
   type GolfState, type ShotInput, type Step,
 } from '../golf/screen/rules';
@@ -111,7 +111,8 @@ describe('colpi', () => {
     const flat = { ...base, course: base.course.map((h) => ({ ...h, slopeDegPerM: 0 })) };
     const hole = currentHole(flat);
     const s = playerOn(flat, 'P1', { ball: { x: 0, y: hole.lengthM - 4 }, lie: 'green', club: 'putter', strokes: 2 });
-    const shortBy = (4 - GIMME_RADIUS_M / 2) / (0.09 * hole.greenSpeed);
+    // si ferma tra il bordo della buca e il raggio della palla concessa
+    const shortBy = (4 - (CUP_RADIUS_M + GIMME_RADIUS_M) / 2) / (0.09 * hole.greenSpeed);
     const r = settle(applyShot(s, 'P1', PUTT(shortBy)));
     expect(r.events.find((e) => e.kind === 'holed')).toMatchObject({ strokes: 4, conceded: true });
   });
@@ -123,6 +124,23 @@ describe('colpi', () => {
     const r = settle(applyShot(s, 'P1', FULL(0.1)));
     expect(r.events.find((e) => e.kind === 'picked_up')).toMatchObject({ playerId: 'P1', strokes: par + 5 });
     expect(findPlayer(r.state, 'P1')!.card[0]).toBe(par + 5);
+  });
+});
+
+describe('generazione delle buche', () => {
+  test('i bunker non toccano il green né altri bunker, e stanno dentro i paletti', () => {
+    let bunkers = 0;
+    for (let seed = 1; seed <= 200; seed++) {
+      for (const h of makeCourse(3, seed)) {
+        h.bunkers.forEach((b, i) => {
+          bunkers++;
+          expect(Math.hypot(b.x, b.y - h.lengthM)).toBeGreaterThan(h.greenRadiusM + b.radiusM + 1);
+          expect(Math.abs(b.x) + b.radiusM).toBeLessThan(48);
+          for (const o of h.bunkers.slice(i + 1)) expect(Math.hypot(b.x - o.x, b.y - o.y)).toBeGreaterThan(b.radiusM + o.radiusM);
+        });
+      }
+    }
+    expect(bunkers).toBeGreaterThan(150);
   });
 });
 

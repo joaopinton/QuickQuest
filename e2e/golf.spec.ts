@@ -4,6 +4,11 @@ import { expect, test } from '@playwright/test';
 // del telefono di turno arriva alle regole (game-event) che rispondono col turno (cue).
 test('golf: dalla lobby al primo colpo dal telefono simulato', async ({ context }) => {
   const screen = await context.newPage();
+  // lo shader del prato (colori delle zone, foro della buca) se non compila lo dice solo in console
+  const shaderErrors: string[] = [];
+  screen.on('console', (m) => {
+    if (m.type() === 'error' && /shader|WebGLProgram/i.test(m.text())) shaderErrors.push(m.text());
+  });
   await screen.goto('/stanza');
   const code = (await screen.locator('.code-tiles').getAttribute('data-code')) ?? '';
 
@@ -32,4 +37,5 @@ test('golf: dalla lobby al primo colpo dal telefono simulato', async ({ context 
   await expect(screen.getByText('1 colpi')).toBeVisible({ timeout: 10_000 });
   // con un solo giocatore, a palla ferma il turno torna a lui
   await expect(phone.getByText(/Tocca a te/)).toBeVisible({ timeout: 15_000 });
+  expect(shaderErrors).toEqual([]);
 });
