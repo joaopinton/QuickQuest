@@ -1,13 +1,13 @@
 // Pad del Barber shop sul telefono (docs/05 § Lato controller, docs/games/barber.md § Gesto).
-// Il telefono è il tagliacapelli e si tiene DRITTO, in verticale: si taglia dove guarda il retro
-// (mira assoluta, packages/motion/aim). Stesso orientamento = stesso punto, il tremore non muove
-// il cursore e, mentre la macchinetta è accesa, il telefono conta la metà (mano ferma). Il centro
-// si prende da solo quando il telefono si ferma dritto a inizio turno, oppure col tasto "Centra".
-// La poltrona non ha tasti: gira da sola quando si punta verso il bordo della testa.
-// Si guarda la TV, non il telefono: in alto le cose rare (Centra, Finito, Esci), sotto il
-// pollice gli attrezzi (come le mazze del golf) e il tasto grande, che fa quello che fa
-// l'attrezzo in mano: tenuto premuto accende la macchinetta, con le forbici ogni tocco taglia.
-// Col telefono simulato (`?sim`) compare una superficie per puntare col dito.
+// Il telefono è il tagliacapelli e si tiene dritto, in verticale. Si muove come un mouse: girarlo
+// a destra porta la macchinetta a destra sulla testa, inclinarlo in su la porta verso la cima
+// (packages/motion/aim manda i movimenti del retro, lo schermo li applica al cursore che sta
+// sempre sulla testa). Niente centro da prendere, niente deriva; il tremore non muove niente.
+// La poltrona non ha tasti: segue da sola la macchinetta quando si va sui lati e sulla nuca.
+// Si guarda la TV, non il telefono: in alto le cose rare (Finito, Esci), sotto il pollice gli
+// attrezzi (come le mazze del golf) e il tasto grande, che fa quello che fa l'attrezzo in mano:
+// tenuto premuto accende la macchinetta, con le forbici ogni tocco taglia.
+// Col telefono simulato (`?sim`) compare un trackpad: si trascina col dito, come su un portatile.
 
 import { createAimPointer, type PointerPosition } from '@quickquest/motion';
 import { slotStyle, t } from '@quickquest/ui';
@@ -24,7 +24,6 @@ import {
   type BarberTool,
   type CombLevel,
 } from '../shared/events';
-import { HEAD_SPAN } from '../shared/head';
 import { ToolArt } from '../shared/ToolArt';
 import { createClipperBuzz } from './buzz';
 import './barber-pad.css';
@@ -34,8 +33,6 @@ const HEARTBEAT_MS = 500;
 const MOVE_EPS = 0.002;
 const CLIP_HAPTIC_MS = 140;
 const UI_REFRESH_MS = 90;
-/** Per prendere il centro da solo il telefono deve stare dritto e fermo così a lungo. */
-const AUTO_CENTER_STEADY_MS = 300;
 const CENTER: PointerPosition = { x: 0.5, y: 0.5 };
 
 const combOf = (tool: BarberTool): CombLevel => (tool === 'scissors' ? 1 : TOOL_COMB[tool]);
@@ -98,7 +95,9 @@ export function Pad({
   const [simPos, setSimPos] = useState<PointerPosition>(CENTER);
   const [isUpright, setUpright] = useState(true);
   const live = useRef({ clip: false, tool: 'clip1' as BarberTool, simPos: CENTER, send });
-  const needsCenterRef = useRef(true);
+  // Trackpad del simulatore: la mira accumula i trascinamenti, il dito che si appoggia non sposta
+  const simAimRef = useRef({ ax: 0, ay: 0 });
+  const simFingerRef = useRef<PointerPosition | null>(null);
   const style = slotStyle(slot);
   const isMyTurn = activeSlot === slot && !isLost;
   const isScissors = tool === 'scissors';
@@ -106,14 +105,10 @@ export function Pad({
 
   const position = (): PointerPosition => (isSimulated ? live.current.simPos : aim.reading);
 
-  // Orientamento → mira; a inizio turno il centro si prende quando il telefono si ferma dritto
+  // Orientamento → mira
   useEffect(() => {
     const off = tracker.subscribe((s) => {
-      const r = aim.update(s.q, s.dtMs / 1000);
-      if (needsCenterRef.current && r.isUpright && s.still.isStill && s.still.steadyMs >= AUTO_CENTER_STEADY_MS) {
-        aim.recenter();
-        needsCenterRef.current = false;
-      }
+      aim.update(s.q, s.dtMs / 1000);
     });
     const id = setInterval(() => setUpright(aim.reading.isUpright), UI_REFRESH_MS);
     return () => {
@@ -122,9 +117,8 @@ export function Pad({
     };
   }, [tracker, aim]);
 
-  // A inizio turno si riprende il centro; a fine turno la macchinetta si spegne
+  // A fine turno la macchinetta si spegne
   useEffect(() => {
-    needsCenterRef.current = true;
     setSimPos(CENTER);
     if (!isMyTurn) {
       setClipping(false);
@@ -135,15 +129,18 @@ export function Pad({
   // Streaming dello strumento a ~20 Hz, solo nel proprio turno
   useEffect(() => {
     if (!isMyTurn) return;
-    let last = { x: -1, y: -1, clip: false, tool: '' as string, at: 0 };
+    let last = { ax: Number.NaN, ay: Number.NaN, clip: false, tool: '' as string, at: 0 };
     const id = setInterval(() => {
       const p = isSimulated ? live.current.simPos : aim.reading;
+      const a = isSimulated ? simAimRef.current : aim.reading;
       const { clip, tool: current } = live.current;
       const now = performance.now();
-      const moved = Math.abs(p.x - last.x) > MOVE_EPS || Math.abs(p.y - last.y) > MOVE_EPS;
+      const moved = !(Math.abs(a.ax - last.ax) <= MOVE_EPS && Math.abs(a.ay - last.ay) <= MOVE_EPS);
       if (!moved && clip === last.clip && current === last.tool && now - last.at < HEARTBEAT_MS) return;
-      live.current.send(toolEvent({ x: p.x, y: p.y, clip, comb: combOf(current), scissors: current === 'scissors' }));
-      last = { x: p.x, y: p.y, clip, tool: current, at: now };
+      live.current.send(
+        toolEvent({ x: p.x, y: p.y, ax: a.ax, ay: a.ay, clip, comb: combOf(current), scissors: current === 'scissors' }),
+      );
+      last = { ax: a.ax, ay: a.ay, clip, tool: current, at: now };
     }, SEND_MS);
     return () => clearInterval(id);
   }, [isMyTurn, isSimulated, aim]);
@@ -154,9 +151,6 @@ export function Pad({
     const id = setInterval(() => haptics.impact(0.25), CLIP_HAPTIC_MS);
     return () => clearInterval(id);
   }, [isClipping, haptics]);
-
-  // Mano ferma mentre la macchinetta è accesa: passate corte e precise
-  useEffect(() => aim.setSteady(isClipping), [aim, isClipping]);
 
   useEffect(() => () => buzz.dispose(), [buzz]);
 
@@ -191,26 +185,24 @@ export function Pad({
     haptics.play('select');
   };
 
-  const recenter = () => {
-    aim.recenter();
-    needsCenterRef.current = false;
-    haptics.play('success');
-  };
-
-  const simPoint = (e: PointerEvent) => {
+  /** Il dito sul trackpad del simulatore: una larghezza del trackpad vale un'unità di mira. */
+  const simPoint = (e: PointerEvent, isStart: boolean) => {
     const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    setSimPos({
-      x: Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)),
-      y: Math.min(1, Math.max(0, (e.clientY - r.top) / r.height)),
-    });
+    const finger = { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height };
+    const prev = simFingerRef.current;
+    if (prev && !isStart) {
+      simAimRef.current = { ax: simAimRef.current.ax + finger.x - prev.x, ay: simAimRef.current.ay + finger.y - prev.y };
+    }
+    simFingerRef.current = finger;
+    setSimPos({ x: Math.min(1, Math.max(0, finger.x)), y: Math.min(1, Math.max(0, finger.y)) });
   };
 
   const isTilted = isMyTurn && !isSimulated && !isUpright;
   let turnText: string;
   if (lastCue?.text && !isMyTurn) turnText = lastCue.text;
-  else if (isTilted) turnText = '📱 Tieni il telefono dritto, retro verso la TV';
-  else if (isMyTurn && isClipping) turnText = 'Bzzzz… mano ferma!';
-  else if (isMyTurn) turnText = lastCue?.text ?? 'Tocca a te: punta il retro del telefono sulla testa';
+  else if (isTilted) turnText = '📱 Tieni il telefono più dritto';
+  else if (isMyTurn && isClipping) turnText = 'Bzzzz… taglia!';
+  else if (isMyTurn) turnText = lastCue?.text ?? 'Tocca a te: muovi il telefono sulla testa';
   else if (activeSlot) turnText = t('controller.waitTurn', { slot: `${slotStyle(activeSlot).symbol} ${activeSlot}` });
   else turnText = 'Il cliente si guarda allo specchio…';
 
@@ -241,11 +233,6 @@ export function Pad({
       </p>
 
       <div class="bb-pad__row">
-        {!isSimulated && (
-          <button type="button" class="qq-btn qq-btn--secondary" onClick={recenter}>
-            🎯 Centra
-          </button>
-        )}
         <button type="button" class="qq-btn qq-btn--primary" disabled={!isMyTurn} onClick={() => send(finishEvent())}>
           ✅ Finito!
         </button>
@@ -257,18 +244,21 @@ export function Pad({
           onPointerDown={(e) => {
             e.preventDefault();
             capture(e);
-            simPoint(e);
+            simPoint(e, true);
           }}
           onPointerMove={(e) => {
-            if (e.buttons > 0) simPoint(e);
+            if (e.buttons > 0) simPoint(e, false);
+          }}
+          onPointerUp={() => {
+            simFingerRef.current = null;
           }}
           aria-label="Trascina per puntare"
         >
-          <span class="bb-pad__head" style={{ width: `${HEAD_SPAN * 200}%`, height: `${HEAD_SPAN * 200}%` }} />
+          <span class="bb-pad__hint" aria-hidden="true">trascina come su un trackpad</span>
           <span class="bb-pad__dot" style={{ left: `${simPos.x * 100}%`, top: `${simPos.y * 100}%` }} />
         </div>
       ) : (
-        <p class="bb-pad__tip">Punta oltre il bordo della testa e la poltrona gira da sola.</p>
+        <p class="bb-pad__tip">Muovi il telefono: la macchinetta scorre sulla testa e la poltrona la segue.</p>
       )}
 
       <ToolPicker tool={tool} isEnabled={isMyTurn} onPick={pickTool} />

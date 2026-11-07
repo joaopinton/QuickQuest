@@ -11,7 +11,7 @@ import { createBarberClient, type ClientLook } from './client';
 import { createClippings } from './clippings';
 import { createBarberEnvironment } from './environment';
 import type { HairMap } from './hair-map';
-import { VIEW_TILT, type ViewPoint } from './pointing';
+import { VIEW_TILT } from './pointing';
 import type { Reaction } from './rules';
 import { createToolModel } from './tool-model';
 
@@ -24,10 +24,8 @@ export interface ToolContact {
 }
 
 export interface ToolView {
-  /** Dove punta il telefono, sul piano della vista di lavoro (raggi della testa). */
-  readonly view: ViewPoint;
-  /** Dove tocca i capelli; `null` = l'attrezzo è nel vuoto accanto alla testa. */
-  readonly contact: ToolContact | null;
+  /** Dove appoggia sulla testa (il cursore non la lascia mai). */
+  readonly contact: ToolContact;
   /** Raggio visibile del pennello, in radianti. */
   readonly radius: number;
   /** Macchinetta accesa. */
@@ -56,8 +54,6 @@ export interface BarberScene {
 
 const WORK_DISTANCE = 2.1;
 const MIRROR_DISTANCE = 1.45;
-/** L'attrezzo nel vuoto sta un po' davanti al piano della testa, verso la telecamera. */
-const FLOAT_DEPTH = 0.75;
 /** Quanto in fretta l'attrezzo raggiunge la posa nuova, 1/s. */
 const TOOL_FOLLOW = 22;
 const TOOL_SCALE = 1.5;
@@ -114,7 +110,6 @@ export function createBarberScene(container: HTMLElement): BarberScene {
   const camUp = new THREE.Vector3(0, Math.cos(VIEW_TILT), -Math.sin(VIEW_TILT));
   const camToward = new THREE.Vector3(0, Math.sin(VIEW_TILT), Math.cos(VIEW_TILT));
   const camDown = camUp.clone().negate();
-  const scratch = new THREE.Vector3();
   let hasToolPose = false;
 
   const headCenter = new THREE.Vector3();
@@ -205,7 +200,7 @@ export function createBarberScene(container: HTMLElement): BarberScene {
     },
     setTool(view) {
       tool.group.visible = view !== null;
-      ring.visible = view?.contact != null;
+      ring.visible = view !== null;
       if (!view) {
         hasToolPose = false;
         tool.setOn(false);
@@ -215,25 +210,14 @@ export function createBarberScene(container: HTMLElement): BarberScene {
       tool.setTool(view.tool);
       tool.setOn(view.isOn);
       client.head.getWorldPosition(headCenter);
-      const radius = client.head.getWorldScale(scratch).x;
-      // "Via dalla testa": la direzione in cui sporge l'impugnatura
-      const away = new THREE.Vector3();
-      if (view.contact) {
-        const p = localPoint(view.contact.dir, view.contact.length, 0.01);
-        ring.position.copy(p);
-        ring.lookAt(client.head.localToWorld(p.clone().multiplyScalar(2)));
-        ring.userData.radius = view.radius;
-        toolPos.copy(client.head.localToWorld(localPoint(view.contact.dir, view.contact.length, 0)));
-        const normal = toolPos.clone().sub(headCenter).normalize();
-        away.copy(normal).multiplyScalar(0.4).addScaledVector(camDown, 0.8).addScaledVector(camRight, 0.35).addScaledVector(camToward, 0.15);
-      } else {
-        toolPos
-          .copy(headCenter)
-          .addScaledVector(camRight, view.view.sx * radius)
-          .addScaledVector(camUp, view.view.sy * radius)
-          .addScaledVector(camToward, FLOAT_DEPTH * radius);
-        away.copy(camDown).multiplyScalar(0.85).addScaledVector(camRight, 0.35).addScaledVector(camToward, 0.15);
-      }
+      const p = localPoint(view.contact.dir, view.contact.length, 0.01);
+      ring.position.copy(p);
+      ring.lookAt(client.head.localToWorld(p.clone().multiplyScalar(2)));
+      ring.userData.radius = view.radius;
+      toolPos.copy(client.head.localToWorld(localPoint(view.contact.dir, view.contact.length, 0)));
+      // "Via dalla testa": l'impugnatura sporge in giù e un po' di lato, così si vede di profilo
+      const normal = toolPos.clone().sub(headCenter).normalize();
+      const away = normal.multiplyScalar(0.4).addScaledVector(camDown, 0.8).addScaledVector(camRight, 0.35).addScaledVector(camToward, 0.15);
       // +Y dell'attrezzo verso la testa, il dorso (+Z) verso la telecamera
       axisY.copy(away).normalize().negate();
       axisZ.copy(camToward).addScaledVector(axisY, -camToward.dot(axisY)).normalize();

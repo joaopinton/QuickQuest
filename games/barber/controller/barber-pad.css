@@ -69,10 +69,10 @@
 .bb-tool:disabled { cursor: default; opacity: 0.55; }
 .bb-tool:focus-visible { outline: 3px solid var(--slot); outline-offset: 3px; }
 
-/* Superficie per puntare col dito (solo col telefono simulato) */
+/* Trackpad del telefono simulato: si trascina col dito, come su un portatile */
 .bb-pad__track {
   position: relative;
-  /* quadrato: x e y del puntatore hanno la stessa scala, la testa resta tonda */
+  /* quadrato: il dito si muove uguale in orizzontale e in verticale */
   width: min(100%, 190px, 26vh);
   aspect-ratio: 1;
   margin-inline: auto;
@@ -86,14 +86,13 @@
   cursor: crosshair;
   touch-action: none;
 }
-.bb-pad__head {
+.bb-pad__hint {
   position: absolute;
-  left: 50%;
-  top: 50%;
-  translate: -50% -50%;
-  border-radius: 50%;
-  background: color-mix(in oklab, var(--bb-mint) 22%, #fff);
-  border: 2px dashed color-mix(in oklab, var(--bb-mint-dark) 50%, transparent);
+  inset: auto 8px 10px;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--ink-600, #4a5878);
   pointer-events: none;
 }
 .bb-pad__dot {

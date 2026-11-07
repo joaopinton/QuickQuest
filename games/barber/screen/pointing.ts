@@ -1,37 +1,47 @@
-// Dal puntatore del telefono a un punto della testa (docs/games/barber.md § Gesto).
-// Il telefono manda dove punta il suo retro, 0..1 (mira assoluta, packages/motion/aim). Qui lo si
-// proietta sulla testa vista dalla telecamera (un po' dall'alto) e si tiene conto di quanto è
-// girata la poltrona: è un raycast "logico" su una sfera, senza la scena 3D.
-// Il puntatore è libero: può uscire dalla testa. Taglia solo dove tocca davvero i capelli.
-// La poltrona gira da sola quando si punta verso il bordo della testa (`edgeTurnRate`): con
-// piccoli movimenti del polso si arriva a lati e nuca, senza tasti.
+// Il cursore sulla testa (docs/games/barber.md § Gesto).
+// Il cursore vive SULLA testa, come un punto della cute (longitudine e latitudine), e non la
+// lascia mai. Il telefono manda dove guarda il suo retro (packages/motion/aim); qui contano i
+// suoi MOVIMENTI, come un mouse: girarlo a destra porta la macchinetta a destra sulla testa,
+// inclinarlo in su la porta verso la cima. Non serve un centro e non c'è deriva.
+// Continuando a destra si passa sul lato e poi sulla nuca: la poltrona segue il cursore
+// (`followYaw`) e lo tiene sempre davanti alla telecamera.
 
 import { targetLength, type Haircut } from '../shared/haircuts';
-import { HEAD_SPAN, hairHeight, MAX_HAIR, type Vec3 } from '../shared/head';
+import { hairlineY, type Vec3 } from '../shared/head';
 
 /** La telecamera guarda la testa da sopra di circa 20°. */
 export const VIEW_TILT = 0.36;
-export { HEAD_SPAN };
-/** Rapidità con cui il cursore insegue il telefono, 1/s. */
-export const FOLLOW_RATE = 18;
+/** Radianti percorsi sulla testa per un'unità di mira (60° di rotazione del telefono). */
+export const HEAD_GAIN = 3.3;
+/** Il cursore non va oltre la cima (verso la nuca ci si arriva girando). */
+export const LAT_MAX = 1.35;
+/** Sotto l'attaccatura dei capelli si scende solo di poco: niente macchinetta sugli occhi. */
+const BELOW_HAIRLINE = 0.12;
+/** Vicino alla cima un grado di longitudine è corto: si va più veloci, fino a questo limite. */
+const MIN_LON_SCALE = 0.35;
+/** Un salto più grande di così tra due letture del telefono non è un movimento: si ignora. */
+export const MAX_AIM_JUMP = 0.6;
+/** Rapidità con cui il cursore mostrato raggiunge quello vero, 1/s. */
+export const CURSOR_EASE = 20;
+/** Il cursore si muove libero finché resta entro questo angolo dal centro della vista. */
+export const FOLLOW_DEADBAND = 0.45;
+/** Oltre la zona libera la poltrona gira per riportarlo dentro, 1/s. */
+const FOLLOW_RATE = 3.2;
 /** Distanza (rad) a cui si guarda se si è vicini al bordo di una zona del taglio. */
 const EDGE_PROBE = 0.12;
-const RIM = 0.985;
-/** Oltre questo raggio (in raggi della testa) non c'è nemmeno un capello da toccare. */
-export const HAIR_REACH = 1 + MAX_HAIR;
 
 export type ChairTurn = 0 | 1 | 2 | 3;
 
-export interface Cursor {
-  readonly x: number;
-  readonly y: number;
+/** Punto della cute: longitudine 0 = davanti (+z), > 0 verso destra (+x); latitudine 0 = equatore. */
+export interface HeadCursor {
+  readonly lon: number;
+  readonly lat: number;
 }
 
-export function turnChair(turn: ChairTurn, dir: 1 | -1): ChairTurn {
-  return ((((turn + dir) % 4) + 4) % 4) as ChairTurn;
-}
+/** Dove parte ogni cliente: sopra la fronte, dove c'è già da tagliare. */
+export const START_CURSOR: HeadCursor = { lon: 0, lat: 0.62 };
 
-/** Rotazione della testa attorno alla verticale per un giro della poltrona. */
+/** Rotazione della testa attorno alla verticale per un quarto di giro della poltrona. */
 export function headYaw(turn: ChairTurn): number {
   return (-turn * Math.PI) / 2;
 }
@@ -41,86 +51,47 @@ export const chairViewName = (turn: ChairTurn): string => CHAIR_VIEW_NAMES[turn]
 
 /** Il quarto di giro più vicino a una rotazione qualsiasi della testa. */
 export function nearestTurn(yaw: number): ChairTurn {
-  return ((((Math.round(-yaw / (Math.PI / 2)) % 4) + 4) % 4) as ChairTurn);
+  return (((Math.round(-yaw / (Math.PI / 2)) % 4) + 4) % 4) as ChairTurn;
 }
 
-/** Da qui (in raggi della testa, sul piano della vista) la poltrona inizia a girare. */
-export const EDGE_TURN_START = 0.7;
-/** Qui gira a velocità piena. */
-export const EDGE_TURN_FULL = 1.25;
-/** Velocità piena della poltrona, rad/s: mezzo giro in poco più di due secondi. */
-export const EDGE_TURN_MAX = 1.4;
-/** Puntando molto più in alto o in basso della testa il telefono non sta mirando: niente giro. */
-const EDGE_TURN_MAX_SY = 1.15;
-
-export interface ViewPoint {
-  /** Coordinate sul piano della vista, in raggi della testa (0 = centro, +y in alto). */
-  readonly sx: number;
-  readonly sy: number;
+/** Direzione (riferimento della testa) del punto della cute sotto il cursore. */
+export function headDir(c: HeadCursor): Vec3 {
+  const cl = Math.cos(c.lat);
+  return [Math.sin(c.lon) * cl, Math.sin(c.lat), Math.cos(c.lon) * cl];
 }
 
-/** Il puntatore sul piano della vista di lavoro, centrato sulla testa. */
-export function pointerToView(p: Cursor): ViewPoint {
-  return { sx: (p.x - 0.5) / HEAD_SPAN, sy: (0.5 - p.y) / HEAD_SPAN };
+/** Latitudine più bassa a cui scende il cursore a questa longitudine: poco sotto l'attaccatura. */
+export function latMin(lon: number): number {
+  const equator: Vec3 = [Math.sin(lon), 0, Math.cos(lon)];
+  return Math.asin(Math.min(1, Math.max(-1, hairlineY(equator)))) - BELOW_HAIRLINE;
 }
 
 /**
- * Punto della testa (direzione nel riferimento della testa) sotto il puntatore, `null` se il
- * puntatore è fuori dalla testa e dai capelli. Appena fuori dalla cute si prende il bordo: lì i
- * capelli lunghi sporgono e si possono ancora toccare.
+ * Sposta il cursore sulla testa di un movimento del telefono (`dax`, `day` in unità di mira;
+ * `day` > 0 = verso il basso). `gain` < 1 lo frena (assist vicino ai bordi del taglio).
  */
-export function pointerToDir(p: Cursor, yaw: number): Vec3 | null {
-  let { sx, sy } = pointerToView(p);
-  const r = Math.hypot(sx, sy);
-  if (r > HAIR_REACH) return null;
-  if (r > RIM) {
-    sx *= RIM / r;
-    sy *= RIM / r;
-  }
-  const sz = Math.sqrt(Math.max(0, 1 - sx * sx - sy * sy));
+export function moveOnHead(c: HeadCursor, dax: number, day: number, gain = 1): HeadCursor {
+  const k = HEAD_GAIN * gain;
+  const lon = c.lon + (dax * k) / Math.max(Math.cos(c.lat), MIN_LON_SCALE);
+  const lat = Math.min(LAT_MAX, Math.max(latMin(lon), c.lat - day * k));
+  return { lon, lat };
+}
 
-  // Telecamera dall'alto: il centro del puntatore cade sulla parte alta della fronte
-  const ct = Math.cos(VIEW_TILT);
-  const st = Math.sin(VIEW_TILT);
-  const wy = sy * ct + sz * st;
-  const wz = -sy * st + sz * ct;
-
-  // Si annulla la rotazione della poltrona per tornare nel riferimento della testa
-  const b = -yaw;
-  const cb = Math.cos(b);
-  const sb = Math.sin(b);
-  return [sx * cb + wz * sb, wy, -sx * sb + wz * cb];
+/** Il cursore mostrato raggiunge quello vero (le letture del telefono arrivano a 20 Hz). */
+export function easeCursor(shown: HeadCursor, target: HeadCursor, dt: number): HeadCursor {
+  const k = Math.min(1, Math.max(0, dt) * CURSOR_EASE);
+  return { lon: shown.lon + (target.lon - shown.lon) * k, lat: shown.lat + (target.lat - shown.lat) * k };
 }
 
 /**
- * Dove lo strumento tocca i capelli, `null` se è nel vuoto. Sulla cute tocca sempre; sul bordo
- * della testa tocca solo se i capelli lì sono abbastanza lunghi da arrivare al puntatore.
+ * La poltrona segue il cursore: finché è entro `FOLLOW_DEADBAND` dal centro della vista la testa
+ * sta ferma, oltre gira quel tanto che basta per riportarlo dentro. La longitudine del cursore
+ * vista dalla telecamera è `lon + yaw`.
  */
-export function pointerContact(p: Cursor, yaw: number, lengthAt: (d: Vec3) => number): Vec3 | null {
-  const dir = pointerToDir(p, yaw);
-  if (!dir) return null;
-  const { sx, sy } = pointerToView(p);
-  const r = Math.hypot(sx, sy);
-  return r <= 1 || r <= 1 + hairHeight(lengthAt(dir)) ? dir : null;
-}
-
-/**
- * Velocità di rotazione della testa (rad/s) quando si punta verso il bordo: il lato a cui si
- * punta viene verso il centro. Negativa = il lato destro (x > 0) viene avanti.
- */
-export function edgeTurnRate(p: Cursor): number {
-  const { sx, sy } = pointerToView(p);
-  if (Math.abs(sy) > EDGE_TURN_MAX_SY) return 0;
-  const t = Math.min(1, Math.max(0, (Math.abs(sx) - EDGE_TURN_START) / (EDGE_TURN_FULL - EDGE_TURN_START)));
-  if (t === 0) return 0;
-  const eased = t * t * (3 - 2 * t);
-  return -Math.sign(sx) * EDGE_TURN_MAX * eased;
-}
-
-/** Il cursore insegue il telefono; `slow` < 1 lo frena (assist vicino ai bordi). */
-export function followPointer(cur: Cursor, raw: Cursor, dt: number, slow = 1): Cursor {
-  const k = Math.min(1, Math.max(0, dt) * FOLLOW_RATE * slow);
-  return { x: cur.x + (raw.x - cur.x) * k, y: cur.y + (raw.y - cur.y) * k };
+export function followYaw(yaw: number, lon: number, dt: number): number {
+  const view = lon + yaw;
+  const excess = view - Math.min(FOLLOW_DEADBAND, Math.max(-FOLLOW_DEADBAND, view));
+  return yaw - excess * Math.min(1, Math.max(0, dt) * FOLLOW_RATE);
 }
 
 function normalize(v: Vec3): Vec3 {

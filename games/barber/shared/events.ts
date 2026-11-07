@@ -50,6 +50,12 @@ export interface ToolState {
   readonly comb: CombLevel;
   /** In mano ci sono le forbici (la macchinetta resta spenta, si taglia coi `snip`). */
   readonly scissors: boolean;
+  /**
+   * Mira senza limiti (unità di 60°, packages/motion/aim): lo schermo ne usa i MOVIMENTI per far
+   * scorrere la macchinetta sulla testa. Un telefono vecchio non li manda: valgono `x`, `y`.
+   */
+  readonly ax?: number;
+  readonly ay?: number;
 }
 
 export interface SnipData {
@@ -71,8 +77,24 @@ interface WireEvent {
 const round3 = (v: number): number => Math.round(v * 1000) / 1000;
 const clamp01 = (v: number): number => Math.min(1, Math.max(0, v));
 
+/** Oltre questo valore la mira non è credibile (sono decine di giri del telefono). */
+const AIM_LIMIT = 1000;
+
+const round4 = (v: number): number => Math.round(v * 10000) / 10000;
+
 export function toolEvent(t: ToolState): WireEvent {
-  return { kind: TOOL_EVENT, data: { x: round3(clamp01(t.x)), y: round3(clamp01(t.y)), clip: t.clip, comb: t.comb, scissors: t.scissors } };
+  const data: Record<string, number | boolean> = {
+    x: round3(clamp01(t.x)),
+    y: round3(clamp01(t.y)),
+    clip: t.clip,
+    comb: t.comb,
+    scissors: t.scissors,
+  };
+  if (t.ax !== undefined && t.ay !== undefined) {
+    data.ax = round4(t.ax);
+    data.ay = round4(t.ay);
+  }
+  return { kind: TOOL_EVENT, data };
 }
 
 export function snipEvent(s: SnipData): WireEvent {
@@ -86,6 +108,8 @@ export function rotateEvent(dir: 1 | -1): WireEvent {
 export function finishEvent(): WireEvent {
   return { kind: FINISH_EVENT, data: {} };
 }
+
+const isAim = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v) && Math.abs(v) <= AIM_LIMIT;
 
 const isUnit = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 1;
 
@@ -104,7 +128,19 @@ export function parseBarberEvent(e: {
       if (!isUnit(d.x) || !isUnit(d.y) || typeof d.clip !== 'boolean' || !isCombLevel(d.comb)) return null;
       // `scissors` è arrivato dopo: un telefono vecchio non lo manda, vuol dire macchinetta
       if (d.scissors !== undefined && typeof d.scissors !== 'boolean') return null;
-      return { type: 'tool', tool: { x: d.x, y: d.y, clip: d.clip, comb: d.comb, scissors: d.scissors === true } };
+      if ((d.ax === undefined) !== (d.ay === undefined)) return null;
+      if (d.ax !== undefined && (!isAim(d.ax) || !isAim(d.ay))) return null;
+      return {
+        type: 'tool',
+        tool: {
+          x: d.x,
+          y: d.y,
+          clip: d.clip,
+          comb: d.comb,
+          scissors: d.scissors === true,
+          ...(isAim(d.ax) && isAim(d.ay) ? { ax: d.ax, ay: d.ay } : {}),
+        },
+      };
     case SNIP_EVENT:
       if (!isUnit(d.x) || !isUnit(d.y)) return null;
       return { type: 'snip', snip: { x: d.x, y: d.y } };

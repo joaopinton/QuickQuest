@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { AIM_LEASH, AIM_SPAN_RAD, AIM_STEADY_SCALE, backAngles, createAimPointer } from '../src/aim';
+import { AIM_LEASH, AIM_SPAN_RAD, backAngles, createAimPointer } from '../src/aim';
 import { DEG2RAD, qFromRotationVector, qMul, type Quaternion } from '../src/math';
 
 // Telefono dritto in verticale, schermo verso il giocatore, retro verso il televisore (+Y del mondo)
@@ -88,15 +88,26 @@ describe('mira assoluta col telefono dritto', () => {
     }
   });
 
-  test('con la mano ferma il telefono conta la metà, poi il cursore torna dove si punta', () => {
+  test('i movimenti non hanno limiti: girando molto la mira continua, senza salti a ±180°', () => {
     const aim = createAimPointer();
-    settle(aim, UPRIGHT);
-    aim.setSteady(true);
-    const steady = settle(aim, turnRight(UPRIGHT, 12));
-    const full = (12 * DEG2RAD) / AIM_SPAN_RAD;
-    expect(steady.x - 0.5).toBeCloseTo(full * AIM_STEADY_SCALE, 1);
-    aim.setSteady(false);
-    const back = settle(aim, turnRight(UPRIGHT, 12), 240);
-    expect(back.x - 0.5).toBeCloseTo(full, 1);
+    const start = settle(aim, UPRIGHT);
+    let deg = 0;
+    let prev = start.ax;
+    // un giro intero a destra, a piccoli passi
+    for (let i = 0; i < 72; i++) {
+      deg += 5;
+      const r = settle(aim, turnRight(UPRIGHT, deg), 20);
+      expect(r.ax).toBeGreaterThan(prev);
+      prev = r.ax;
+    }
+    expect(prev - start.ax).toBeCloseTo((2 * Math.PI) / AIM_SPAN_RAD, 1);
+    // x resta dentro 0..1 per chi vuole una posizione
+    expect(aim.reading.x).toBeLessThanOrEqual(1);
+  });
+
+  test('inclinare in su fa diminuire ay (come la y dello schermo)', () => {
+    const aim = createAimPointer();
+    const start = settle(aim, UPRIGHT);
+    expect(settle(aim, tiltUp(UPRIGHT, 15)).ay).toBeLessThan(start.ay);
   });
 });

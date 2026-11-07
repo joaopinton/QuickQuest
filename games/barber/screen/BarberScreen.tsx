@@ -171,13 +171,13 @@ export function Screen({ players, subscribeEvents, setActiveSlot, sendCue, onEnd
           <span key={snap.countdown} class="bb-countdown__num">
             {snap.countdown}
           </span>
-          <small>📱 Tieni il telefono dritto e punta il retro verso la testa del cliente</small>
+          <small>📱 Tieni il telefono dritto: muovendolo, la macchinetta scorre sulla testa</small>
         </div>
       )}
 
       {phase === 'cutting' && barber && (
         <p class="bb-prompt" style={{ '--player': barber.color }}>
-          📱 Tagli dove punti · oltre il bordo la poltrona gira
+          📱 Muovi il telefono: la macchinetta scorre sulla testa
         </p>
       )}
 

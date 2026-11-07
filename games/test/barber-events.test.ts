@@ -16,6 +16,14 @@ describe('eventi del Barber shop', () => {
     expect(parseBarberEvent({ kind: 'tool', data: { x: 0.5, y: 0.5, clip: true, comb: 0, scissors: 1 } })).toBeNull();
   });
 
+  test('tool: la mira senza limiti viaggia insieme, o non viaggia', () => {
+    const wire = toolEvent({ x: 1, y: 0.5, clip: false, comb: 1, scissors: false, ax: 3.21456, ay: -0.5 });
+    expect(isGameEvent(wire)).toBe(true);
+    expect(parseBarberEvent(wire)).toMatchObject({ tool: { ax: 3.2146, ay: -0.5 } });
+    expect(parseBarberEvent({ kind: 'tool', data: { x: 0.5, y: 0.5, clip: true, comb: 0, ax: 1 } })).toBeNull();
+    expect(parseBarberEvent({ kind: 'tool', data: { x: 0.5, y: 0.5, clip: true, comb: 0, ax: Infinity, ay: 0 } })).toBeNull();
+  });
+
   test('ogni rialzo della macchinetta corrisponde a un pettine', () => {
     for (const tool of ['clip0', 'clip1', 'clip2'] as const) expect(toolFromComb(TOOL_COMB[tool])).toBe(tool);
   });

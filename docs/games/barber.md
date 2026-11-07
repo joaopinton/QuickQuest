@@ -20,17 +20,16 @@
 Bottega anni '60: pavimento a scacchi, poltrona da barbiere rossa, specchio con lampadine, barattoli e pettini colorati, insegna rotante a spirale (originale, nei colori dell'accento). Il **cliente** è un Piggy speciale, "peloso": un Piggy con una chioma morbida.
 
 ## Gesto
-Il telefono **è lo strumento** e si tiene **dritto, in verticale**, come una macchinetta: si taglia nel punto in cui guarda il retro del telefono.
+Il telefono **è lo strumento** e si tiene **dritto, in verticale**, come una macchinetta. Si muove come un mouse sulla testa: la macchinetta resta sempre appoggiata sulla cute e scorre nella direzione in cui si muove il telefono.
 | Azione | Gesto | Riconoscimento |
 |---|---|---|
-| Muovere lo strumento | Puntare il retro del telefono sulla testa | **Mira assoluta** (`packages/motion/aim.ts`): l'altezza viene dall'inclinazione rispetto alla gravità (telefono dritto = centro, non deriva mai), il lato dall'imbardata rispetto al centro preso. Stesso orientamento = stesso punto; il rollio nel palmo non sposta niente |
-| Tenere fermo il cursore | Automatico | Un "guinzaglio" di mezzo grado toglie il tremore della mano (dentro, il cursore si assesta piano sul punto vero); **mano ferma** mentre la macchinetta è accesa: il telefono conta la metà, finita la passata il cursore torna dolcemente dove si punta |
-| Puntatore libero | Uscire dalla testa | Il puntatore **non è incollato alla testa**: a schermo l'attrezzo fluttua accanto al cliente e appoggia le lame sui capelli solo quando ci arriva sopra (sulla cute, o sul bordo se i capelli lì sporgono abbastanza) |
+| Muovere lo strumento | Girare (destra/sinistra) e inclinare (su/giù) il telefono | Il telefono manda dove guarda il suo retro (`packages/motion/aim.ts`, angoli dall'orientamento fuso, senza limiti né salti a ±180°); lo schermo ne usa i **movimenti**: 60° di telefono = 3,3 rad sulla testa. Niente centro da prendere e niente deriva; il rollio nel palmo non sposta niente |
+| Cursore attaccato alla testa | Automatico | Il cursore è un punto della cute (longitudine, latitudine, `screen/pointing.ts`): si ferma sulla cima e poco sotto l'attaccatura, e la macchinetta 3D ci sta sempre appoggiata sopra |
+| Tenere fermo il cursore | Automatico | Un "guinzaglio" di mezzo grado toglie il tremore della mano (dentro, la mira si assesta piano); vicino ai bordi del taglio il cursore rallenta (dwell) |
 | Scegliere l'attrezzo | Toccare l'attrezzo sul carrello | Come le mazze del golf: macchinetta col **rialzo 0 / 3 / 6** (a zero, corto, medio) o **forbici**, disegnati in SVG (`shared/ToolArt.tsx`); quello in mano si alza e prende il colore del giocatore |
 | Macchinetta | Tenere premuto il tasto grande | Taglia alla lunghezza del rialzo; **vibrazione continua** su Android (su iOS, ronzio audio) |
 | Forbici | Tap sul tasto grande | Ogni tap è una sforbiciata con piccola area d'effetto |
-| Centro | Automatico, o tasto "🎯 Centra" | A inizio turno il centro si prende da solo quando il telefono si ferma dritto per 0,3 s |
-| Girare la poltrona | Puntare oltre il bordo della testa | **Gira da sola**, continua: da 0,7 raggi dal centro inizia, oltre il bordo va a velocità piena (mezzo giro in ~2 s) e il lato puntato viene davanti. Niente tasti; l'evento `rotate` resta per compatibilità (un quarto di giro morbido) |
+| Girare la poltrona | Continuare a muoversi verso un lato | **Segue la macchinetta**: finché è entro ~26° dal centro della vista la testa sta ferma, oltre gira quel tanto che basta per tenerla davanti. Andando sempre a destra si passa sul lato e poi sulla nuca. Niente tasti; l'evento `rotate` resta per compatibilità (sposta il cursore di un quarto di giro) |
 
 ## Simulazione dei capelli (leggera)
 - Il cuoio capelluto ha una **mappa UV** e una **DataTexture "lunghezze"** (es. 128×128, un byte per texel = lunghezza 0–255).
@@ -50,8 +49,8 @@ Il telefono **è lo strumento** e si tiene **dritto, in verticale**, come una ma
 - **Feedback aptico su iOS** limitato → ronzio audio ritmico come sostituto.
 
 ## Implementazione (MVP)
-- **Input continuo**: il pad manda `tool` {x, y, clip, comb, scissors} a ~20 Hz solo nel proprio turno (più `snip`, `rotate`, `finish`); il relay già scarta gli eventi di chi non è di turno. La mira è `createAimPointer` di `packages/motion`.
+- **Input continuo**: il pad manda `tool` {x, y, ax, ay, clip, comb, scissors} a ~20 Hz solo nel proprio turno (più `snip`, `rotate`, `finish`); il relay già scarta gli eventi di chi non è di turno. La mira è `createAimPointer` di `packages/motion`.
 - **Capelli**: mappa 128×128 (`screen/hair-map.ts`) → `DataTexture` letta da 16 gusci in una sola `InstancedMesh` (`screen/hair-shells.ts`). In Facile/Normale lo shader colora in menta i capelli ancora da tagliare (sagoma dell'assist).
-- **Puntamento**: raycast logico su sfera con la stessa inclinazione della telecamera (`screen/pointing.ts`), `null` fuori dalla testa; il cursore rallenta vicino ai bordi del taglio (dwell). L'attrezzo 3D è in `screen/tool-model.ts`.
+- **Puntamento**: cursore in longitudine/latitudine sulla testa, mosso dalle differenze di `ax`/`ay` (`screen/pointing.ts`); la poltrona lo segue (`followYaw`). L'attrezzo 3D è in `screen/tool-model.ts`.
 - **Voto**: `screen/rules.ts` — errore medio pesato per area e zona, bonus simmetria, malus buchi; stelle × 100 + bonus tempo (da 3★).
 - **Da fare**: prova del puntamento su telefoni veri (frangia), modalità Salone e Corsa del sabato, camera che segue la zona di lavoro.

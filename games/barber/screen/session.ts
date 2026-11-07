@@ -8,8 +8,18 @@ import { toolFromComb, type AssistLevel, type BarberEvent, type BarberTool, type
 import { COMB_LENGTH, HAIRCUTS, targetLength } from '../shared/haircuts';
 import { CLIENT_LOOKS } from './client';
 import { createHairMap, cutAt, initialHairMap, lengthAt, type BrushKind, type HairMap } from './hair-map';
-import type { Vec3 } from '../shared/head';
-import { edgeSlowdown, edgeTurnRate, followPointer, nearestTurn, pointerContact, pointerToView, type ChairTurn, type Cursor } from './pointing';
+import {
+  easeCursor,
+  edgeSlowdown,
+  followYaw,
+  headDir,
+  MAX_AIM_JUMP,
+  moveOnHead,
+  nearestTurn,
+  START_CURSOR,
+  type ChairTurn,
+  type HeadCursor,
+} from './pointing';
 import {
   ASSIST_CONFIG,
   createBarberGame,
@@ -76,9 +86,7 @@ const SNIP_RADIUS = 0.12;
 const TOOL_STALE_MS = 1000;
 /** "Finito!" vale solo dopo qualche secondo di lavoro (niente tocchi per sbaglio). */
 const MIN_FINISH_S = 5;
-const CENTER: Cursor = { x: 0.5, y: 0.5 };
-/** Un quarto di giro chiesto col comando `rotate`, rad/s. */
-const SPIN_RATE = 4;
+
 
 export function createBarberSession(deps: SessionDeps): BarberSession {
   const scene: BarberScene = createBarberScene(deps.container);
@@ -97,16 +105,17 @@ function runSession(deps: SessionDeps, scene: BarberScene): BarberSession {
   let cutT = 0;
   let paused = false;
   let map: HairMap = initialHairMap();
-  let cursor: Cursor = CENTER;
-  let raw: Cursor = CENTER;
+  /** Cursore sulla testa: quello vero (mosso dal telefono) e quello mostrato (ammorbidito). */
+  let aimed: HeadCursor = START_CURSOR;
+  let cursor: HeadCursor = START_CURSOR;
+  /** Ultima mira del telefono: il cursore si muove delle differenze. */
+  let lastAim: { readonly ax: number; readonly ay: number } | null = null;
   let clip = false;
   let comb: CombLevel = 1;
   let scissors = false;
   let lastToolAt = 0;
-  /** Rotazione della testa (rad), continua: la poltrona gira da sola al bordo della testa. */
+  /** Rotazione della testa (rad), continua: la poltrona segue il cursore. */
   let yaw = 0;
-  /** Giro ancora da fare per un comando `rotate` (un quarto alla volta, morbido). */
-  let spin = 0;
   let turn: ChairTurn = 0;
   let result: CutResultView | null = null;
   let lastShownSecond = -1;
@@ -150,10 +159,10 @@ function runSession(deps: SessionDeps, scene: BarberScene): BarberSession {
     scene.setHeadYaw(0);
     scene.setTool(null);
     yaw = 0;
-    spin = 0;
     turn = 0;
-    cursor = CENTER;
-    raw = CENTER;
+    aimed = START_CURSOR;
+    cursor = START_CURSOR;
+    lastAim = null;
     clip = false;
     scissors = false;
     cutT = 0;
@@ -189,12 +198,9 @@ function runSession(deps: SessionDeps, scene: BarberScene): BarberSession {
     setPhase('mirror');
   };
 
-  /** Dove lo strumento tocca i capelli adesso, `null` se è nel vuoto accanto alla testa. */
-  const contact = (): Vec3 | null => pointerContact(cursor, yaw, (d) => lengthAt(map, d));
-
   const applyCut = (kind: BrushKind, radius: number) => {
-    const dir = contact();
-    if (!game || !dir) return;
+    if (!game) return;
+    const dir = headDir(cursor);
     const res = cutAt(map, {
       dir,
       radius: radius * ASSIST_CONFIG[game.assist].brushScale,
@@ -207,11 +213,9 @@ function runSession(deps: SessionDeps, scene: BarberScene): BarberSession {
     }
   };
 
-  /** La poltrona gira: da sola quando si punta al bordo, più gli eventuali quarti chiesti. */
+  /** La poltrona segue il cursore e lo tiene davanti alla telecamera. */
   const turnHead = (dt: number) => {
-    const spinStep = Math.sign(spin) * Math.min(Math.abs(spin), SPIN_RATE * dt);
-    spin -= spinStep;
-    yaw += edgeTurnRate(cursor) * dt + spinStep;
+    yaw = followYaw(yaw, cursor.lon, dt);
     scene.setHeadYawNow(yaw);
     const view = nearestTurn(yaw);
     if (view !== turn) {
@@ -220,22 +224,31 @@ function runSession(deps: SessionDeps, scene: BarberScene): BarberSession {
     }
   };
 
+  /** Il telefono si è mosso: la macchinetta scorre sulla testa della stessa quantità. */
+  const moveCursor = (ax: number, ay: number) => {
+    const prev = lastAim;
+    lastAim = { ax, ay };
+    if (!prev || !game) return;
+    const dx = ax - prev.ax;
+    const dy = ay - prev.ay;
+    // un salto (telefono vecchio che riparte dal centro, ricentrata) non è un movimento
+    if (Math.hypot(dx, dy) > MAX_AIM_JUMP) return;
+    const slow = edgeSlowdown(currentHaircut(game), headDir(aimed), ASSIST_CONFIG[game.assist].dwell);
+    aimed = moveOnHead(aimed, dx, dy, slow);
+  };
+
   const stepCutting = (dt: number) => {
     if (!game) return;
     game = tickTimer(game, dt);
     cutT += dt;
     const cfg = ASSIST_CONFIG[game.assist];
-    const cut = currentHaircut(game);
-    const here = contact();
-    const slow = here ? edgeSlowdown(cut, here, cfg.dwell) : 1;
-    cursor = followPointer(cursor, raw, dt, slow);
+    cursor = easeCursor(cursor, aimed, dt);
     turnHead(dt);
     const isOn = !scissors && clip && performance.now() - lastToolAt < TOOL_STALE_MS;
     if (isOn) applyCut('clip', CLIP_RADIUS);
-    const dir = contact();
+    const dir = headDir(cursor);
     scene.setTool({
-      view: pointerToView(cursor),
-      contact: dir ? { dir, length: lengthAt(map, dir) } : null,
+      contact: { dir, length: lengthAt(map, dir) },
       radius: scissors ? SNIP_RADIUS : CLIP_RADIUS,
       isOn,
       tool: scissors ? 'scissors' : toolFromComb(comb),
@@ -283,7 +296,7 @@ function runSession(deps: SessionDeps, scene: BarberScene): BarberSession {
       if (!game || phase !== 'cutting' || slot !== activeId()) return;
       switch (e.type) {
         case 'tool':
-          raw = { x: e.tool.x, y: e.tool.y };
+          moveCursor(e.tool.ax ?? e.tool.x, e.tool.ay ?? e.tool.y);
           clip = e.tool.clip;
           lastToolAt = performance.now();
           if (e.tool.comb !== comb || e.tool.scissors !== scissors) {
@@ -293,14 +306,14 @@ function runSession(deps: SessionDeps, scene: BarberScene): BarberSession {
           }
           break;
         case 'snip':
-          // la sforbiciata cade dove puntava il telefono al tocco, non dove è rimasto il cursore
-          raw = { x: e.snip.x, y: e.snip.y };
-          cursor = raw;
+          // la sforbiciata cade dove sta la macchinetta adesso
+          cursor = aimed;
           applyCut('snip', SNIP_RADIUS);
           scene.snip();
           break;
         case 'rotate':
-          spin += (-e.dir * Math.PI) / 2;
+          // un quarto di giro: il cursore passa al lato accanto e la poltrona lo segue
+          aimed = { ...aimed, lon: aimed.lon + (e.dir * Math.PI) / 2 };
           break;
         case 'finish':
           if (cutT >= MIN_FINISH_S) finishClient();

@@ -11,6 +11,7 @@
   position: relative;
   width: 100%;
   height: 100vh;
+  height: 100dvh; /* sul telefono host: senza la barra dell'indirizzo */
   overflow: hidden;
   background: var(--bb-cream);
   color: var(--bb-ink);
@@ -562,5 +563,67 @@
   .bb-verdict,
   .bb-timer.is-hurry {
     animation: none;
+  }
+}
+
+/* Telefono orizzontale come host (~390px di altezza): i pannelli si rimpiccioliscono con `scale`
+   (si somma a transform e animazioni) ancorati al loro angolo; la classifica passa in basso a
+   sinistra per non scontrarsi con gli strumenti. */
+@media (orientation: landscape) and (max-height: 540px) {
+  .bb-header {
+    top: max(8px, env(safe-area-inset-top));
+    left: max(12px, env(safe-area-inset-left));
+    right: auto;
+    width: calc((100% - 2 * max(12px, env(safe-area-inset-left))) / 0.7);
+    scale: 0.7;
+    transform-origin: top left;
+  }
+
+  .bb-request {
+    top: 54px;
+    left: max(12px, env(safe-area-inset-left));
+    scale: 0.62;
+    transform-origin: top left;
+  }
+
+  .bb-tools {
+    top: 54px;
+    right: max(12px, env(safe-area-inset-right));
+    scale: 0.6;
+    transform-origin: top right;
+  }
+
+  .bb-board {
+    right: auto;
+    left: max(12px, env(safe-area-inset-left));
+    bottom: 12px;
+    scale: 0.65;
+    transform-origin: bottom left;
+  }
+
+  .bb-prompt {
+    bottom: 12px;
+    max-width: calc((100% - 300px) / 0.8);
+    scale: 0.8;
+    /* centrati con left: 50% + translateX(-50%): l'origine va sul bordo sinistro per restare al centro */
+    transform-origin: 0 100%;
+  }
+
+  .bb-countdown,
+  .bb-verdict {
+    bottom: 64px;
+    scale: 0.62;
+    transform-origin: 0 100%;
+  }
+
+  .bb-modal-backdrop {
+    align-items: flex-start;
+    overflow-y: auto;
+    padding: 10px;
+  }
+
+  .bb-modal {
+    margin: auto;
+    zoom: 0.72;
   }
 }
