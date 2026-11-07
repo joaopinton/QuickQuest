@@ -25,6 +25,16 @@ import {
   TARGET_SQUARE_HEIGHT,
   TARGET_SQUARE_WIDTH,
 } from './physics';
+import {
+  createPiggy3D,
+  createPiggyBodyGeometry,
+  createPiggyDetailsGeometry,
+  createPiggyWingGeometry,
+  createPiggyWingtipGeometry,
+  piggyShoulder,
+  piggySurface,
+  piggyWingRotation,
+} from '../../shared/piggy-3d';
 
 export interface GymScoreboardInfo {
   readonly playerName: string;
@@ -550,63 +560,103 @@ export function createFreeThrowEnvironment(): FreeThrowEnvironment {
     }
   }
 
-  const piggyBodyGeo = own(new THREE.CapsuleGeometry(0.19, 0.26, 8, 16));
-  const piggyMat = own(new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.45 }));
-  const crowdMesh = new THREE.InstancedMesh(piggyBodyGeo, piggyMat, crowdPositions.length);
+  // Ogni spettatore è un Piggy in tre InstancedMesh: corpo e ali col colore d'istanza, viso/collo/zampe
+  // con i colori propri. Le ali sono due istanze per spettatore, imperniate alla spalla.
+  const CROWD_SCALE = 0.62;
+  const crowdBodyGeo = own(createPiggyBodyGeometry());
+  const crowdDetailsGeo = own(createPiggyDetailsGeometry());
+  const crowdWingGeo = own(createPiggyWingGeometry());
+  const crowdBodyMat = own(new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.35, vertexColors: true }));
+  const crowdDetailsMat = own(new THREE.MeshStandardMaterial({ roughness: 0.45, vertexColors: true }));
+  const crowdMesh = new THREE.InstancedMesh(crowdBodyGeo, crowdBodyMat, crowdPositions.length);
+  const crowdDetails = new THREE.InstancedMesh(crowdDetailsGeo, crowdDetailsMat, crowdPositions.length);
+  const crowdWings = new THREE.InstancedMesh(crowdWingGeo, crowdBodyMat, crowdPositions.length * 2);
   crowdMesh.castShadow = true;
+  crowdDetails.castShadow = true;
+  crowdWings.castShadow = true;
   const dummy = new THREE.Object3D();
   const tmpColor = new THREE.Color();
-  crowdPositions.forEach((p, i) => {
-    dummy.position.set(p.x, p.y + 0.32, p.z);
+  const wingLocal = new THREE.Matrix4();
+  const wingMatrix = new THREE.Matrix4();
+  const wingRot = new THREE.Euler();
+  const wingQuat = new THREE.Quaternion();
+  const wingPos = new THREE.Vector3();
+  const unitScale = new THREE.Vector3(1, 1, 1);
+
+  /** Posa uno spettatore: saltello, squash e apertura delle ali (0 ripiegate, 1 aperte). */
+  const placeCrowdPiggy = (i: number, jump: number, squashY: number, wingsOpen: number) => {
+    const p = crowdPositions[i]!;
+    const side = 1 / Math.sqrt(squashY);
+    dummy.position.set(p.x, p.y + jump, p.z);
     dummy.rotation.set(0, p.rotY, 0);
+    dummy.scale.set(CROWD_SCALE * side, CROWD_SCALE * squashY, CROWD_SCALE * side);
     dummy.updateMatrix();
     crowdMesh.setMatrixAt(i, dummy.matrix);
-    crowdMesh.setColorAt(i, tmpColor.set(palette[i % palette.length]!));
+    crowdDetails.setMatrixAt(i, dummy.matrix);
+    for (const s of [-1, 1] as const) {
+      piggyWingRotation(s, wingsOpen, wingRot);
+      wingLocal.compose(piggyShoulder(s, wingPos), wingQuat.setFromEuler(wingRot), unitScale);
+      wingMatrix.multiplyMatrices(dummy.matrix, wingLocal);
+      crowdWings.setMatrixAt(i * 2 + (s > 0 ? 1 : 0), wingMatrix);
+    }
+  };
+
+  crowdPositions.forEach((_, i) => {
+    placeCrowdPiggy(i, 0, 1, 0);
+    tmpColor.set(palette[i % palette.length]!);
+    crowdMesh.setColorAt(i, tmpColor);
+    crowdWings.setColorAt(i * 2, tmpColor);
+    crowdWings.setColorAt(i * 2 + 1, tmpColor);
   });
-  crowdMesh.instanceMatrix.needsUpdate = true;
-  if (crowdMesh.instanceColor) crowdMesh.instanceColor.needsUpdate = true;
-  add(crowdMesh);
+  for (const m of [crowdMesh, crowdDetails, crowdWings]) {
+    m.instanceMatrix.needsUpdate = true;
+    if (m.instanceColor) m.instanceColor.needsUpdate = true;
+    add(m);
+  }
 
   // ---------- 6. Piggy Tiratore in lunetta con Gesto Scuola Basket (Chiusura a Gancio) ----------
+  // L'ala destra fa da braccio: alzata sopra la testa nel "set point", la punta dell'ala è la mano
+  // che si chiude a gancio nel follow-through. L'ala sinistra resta ripiegata e si apre nel salto.
+  const SHOOTER_SCALE = 1.1;
   const shooterGroup = new THREE.Group();
   shooterGroup.position.set(-0.32, 0, -0.38); // leggermente a sinistra per lasciare libera la visuale sul canestro
   shooterGroup.rotation.y = 0.08;
 
-  const shooterBodyMat = own(new THREE.MeshStandardMaterial({ color: '#FF8A2B', roughness: 0.38 }));
-  const shooterBody = new THREE.Mesh(own(new THREE.CapsuleGeometry(0.23, 0.44, 12, 20)), shooterBodyMat);
-  shooterBody.position.y = 0.62;
-  shooterBody.castShadow = true;
-  shooterGroup.add(shooterBody);
+  const shooter = createPiggy3D('#FF8A2B');
+  shooter.group.scale.setScalar(SHOOTER_SCALE);
+  shooterGroup.add(shooter.group);
 
-  // Fascia sportiva bianca e arancione sulla fronte del Piggy
+  // Fascia sportiva bianca sulla fronte del Piggy
+  const HEADBAND_Y = 0.85;
+  const headbandR = piggySurface(0, HEADBAND_Y).z + 0.006;
   const headband = new THREE.Mesh(
-    own(new THREE.CylinderGeometry(0.235, 0.235, 0.07, 20)),
+    own(new THREE.CylinderGeometry(headbandR - 0.012, headbandR, 0.05, 24)),
     own(new THREE.MeshStandardMaterial({ color: '#FFFFFF', roughness: 0.5 })),
   );
-  headband.position.y = 0.86;
-  shooterGroup.add(headband);
+  headband.position.y = HEADBAND_Y;
+  shooter.group.add(headband);
 
-  // Braccio destro articolato (spalla -> gomito -> polso che si chiude a gancio sopra la testa!)
-  const rightShoulder = new THREE.Group();
-  rightShoulder.position.set(0.24, 0.82, 0.05);
-  const upperArmMesh = new THREE.Mesh(own(new THREE.CapsuleGeometry(0.065, 0.24, 8, 12)), shooterBodyMat);
-  upperArmMesh.position.set(0, 0.14, 0);
-  rightShoulder.add(upperArmMesh);
-
+  // Ala destra articolata (spalla -> punta dell'ala che si chiude a gancio sopra la testa!)
+  const WING_RAISED_Z = 2.85; // ala quasi verticale, appena aperta verso l'esterno
+  const rightShoulder = shooter.wings.right;
   const wristPivot = new THREE.Group();
-  wristPivot.position.set(0, 0.3, 0);
-  const handMesh = new THREE.Mesh(own(new THREE.SphereGeometry(0.075, 12, 10)), shooterBodyMat);
-  handMesh.scale.set(0.9, 1.25, 0.7);
-  handMesh.position.set(0, 0.06, 0);
+  wristPivot.position.set(0, -0.36, 0); // in fondo all'ala: con l'ala alzata è in alto
+  const handMesh = new THREE.Mesh(own(createPiggyWingtipGeometry()), shooter.bodyMaterial);
+  handMesh.rotation.z = Math.PI; // la punta continua l'ala, verso l'alto quando l'ala è alzata
+  handMesh.castShadow = true;
   wristPivot.add(handMesh);
   rightShoulder.add(wristPivot);
-  shooterGroup.add(rightShoulder);
+  // Con l'ala ruotata di ~180° l'asse x locale è rovesciato: il polso usa l'angolo col segno opposto
+  const setArm = (tilt: number, wrist: number, roll: number) => {
+    rightShoulder.rotation.set(tilt, 0, WING_RAISED_Z + roll);
+    wristPivot.rotation.set(-wrist, 0, 0);
+  };
 
-  // Posa iniziale: braccio caricato sopra la fronte ("set point" scuola basket)
+  // Posa iniziale: ala caricata sopra la fronte ("set point" scuola basket)
   const resetShooterPose = () => {
     shooterGroup.position.y = 0;
-    rightShoulder.rotation.set(-0.45, 0, -0.15);
-    wristPivot.rotation.set(-0.55, 0, 0); // polso caricato all'indietro
+    shooter.setWingsOpen(0, -1);
+    setArm(-0.45, -0.55, 0.15); // polso caricato all'indietro
   };
   resetShooterPose();
   add(shooterGroup);
@@ -625,7 +675,7 @@ export function createFreeThrowEnvironment(): FreeThrowEnvironment {
     },
 
     setShooterColor(color: string) {
-      shooterBodyMat.color.set(color);
+      shooter.setColor(color);
     },
 
     playShooterRelease() {
@@ -652,14 +702,15 @@ export function createFreeThrowEnvironment(): FreeThrowEnvironment {
         const easeOut = 1 - (1 - ext) * (1 - ext);
         const jumpArc = Math.max(0, Math.sin(Math.min(1, releaseAnimT / 0.42) * Math.PI)) * 0.16;
         shooterGroup.position.y = jumpArc;
-        // Braccio ben alto sopra la fronte
-        rightShoulder.rotation.set(-0.18 * (1 - easeOut) + 0.12 * easeOut, 0, -0.05);
-        // Polso che da caricato indietro (-0.55) si chiude a gancio in avanti (+1.05 rad = ~60° verso il canestro!)
-        wristPivot.rotation.set(-0.55 + 1.6 * easeOut, 0, 0);
+        // Ala ben alta sopra la fronte; polso che da caricato indietro (-0.55) si chiude a gancio
+        // in avanti (+1.05 rad = ~60° verso il canestro!)
+        setArm(-0.18 * (1 - easeOut) + 0.12 * easeOut, -0.55 + 1.6 * easeOut, 0.05);
+        // Nel salto l'ala libera si apre un poco per l'equilibrio
+        shooter.setWingsOpen(jumpArc * 2.5, -1);
       } else {
         // Leggero respiro / concentrazione in lunetta
         shooterGroup.position.y = Math.sin(elapsed * 2.5) * 0.015;
-        rightShoulder.rotation.set(-0.45 + Math.sin(elapsed * 2.5) * 0.04, 0, -0.15);
+        setArm(-0.45 + Math.sin(elapsed * 2.5) * 0.04, -0.55, 0.15);
       }
 
       // 2. Animazione del pubblico di Piggy sulle gradinate
@@ -672,29 +723,33 @@ export function createFreeThrowEnvironment(): FreeThrowEnvironment {
         const p = crowdPositions[i]!;
         let jump = Math.sin(elapsed * 2.2 + p.phase) * 0.02;
         let squashY = 1.0;
+        let wingsOpen = 0;
         if (crowdReaction) {
           if (crowdReaction.kind === 'swish' || crowdReaction.kind === 'make') {
             const freq = crowdReaction.kind === 'swish' ? 12 : 8.5;
             const amp = crowdReaction.kind === 'swish' ? 0.18 : 0.11;
             jump = Math.abs(Math.sin(elapsed * freq + p.phase)) * amp;
             squashY = 1 + jump * 0.5;
+            // Esultanza: ali aperte che battono col saltello
+            wingsOpen = 0.45 + (jump / amp) * 0.55;
           } else {
-            // Sospiro / delusione ("ooooh")
+            // Sospiro / delusione ("ooooh"): ali ben chiuse
             jump = -0.04;
             squashY = 0.88;
           }
         }
-        dummy.position.set(p.x, p.y + 0.32 + jump, p.z);
-        dummy.rotation.set(0, p.rotY, 0);
-        dummy.scale.set(1 / Math.sqrt(squashY), squashY, 1 / Math.sqrt(squashY));
-        dummy.updateMatrix();
-        crowdMesh.setMatrixAt(i, dummy.matrix);
+        placeCrowdPiggy(i, jump, squashY, wingsOpen);
       }
       crowdMesh.instanceMatrix.needsUpdate = true;
+      crowdDetails.instanceMatrix.needsUpdate = true;
+      crowdWings.instanceMatrix.needsUpdate = true;
     },
 
     dispose() {
       crowdMesh.dispose();
+      crowdDetails.dispose();
+      crowdWings.dispose();
+      shooter.dispose();
       for (const d of disposables) d.dispose();
       group.removeFromParent();
     },
