@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { cleanName, DEFAULT_STYLE, displayName, NAME_MAX, normalizeStyle, typingName } from '../src/look';
 
-describe('aspetto del Bubù', () => {
+describe('aspetto del Piggy', () => {
   test('dati sbagliati tornano al default campo per campo', () => {
     expect(normalizeStyle(null)).toEqual(DEFAULT_STYLE);
     const s = normalizeStyle({ color2: 'rosso', pattern: 'stars', eyes: '<script>', hat: 'crown', neck: 42 });
@@ -13,7 +13,7 @@ describe('aspetto del Bubù', () => {
   });
 });
 
-describe('nome del Bubù', () => {
+describe('nome del Piggy', () => {
   test('tiene lettere accentate, cifre e poca punteggiatura; toglie il resto', () => {
     expect(cleanName('  Zoë   la  Bella ')).toBe('Zoë la Bella');
     expect(cleanName('<b>Ugo</b>')).toBe('bUgob');
@@ -31,9 +31,9 @@ describe('nome del Bubù', () => {
     expect(cleanName('Mario ')).toBe('Mario');
   });
 
-  test('senza nome lo schermo mostra "Bubù N"', () => {
-    expect(displayName('', 'P3')).toBe('Bubù 3');
-    expect(displayName(undefined, 'P1')).toBe('Bubù 1');
+  test('senza nome lo schermo mostra "Piggy N"', () => {
+    expect(displayName('', 'P3')).toBe('Piggy 3');
+    expect(displayName(undefined, 'P1')).toBe('Piggy 1');
     expect(displayName(' Leo ', 'P2')).toBe('Leo');
   });
 });

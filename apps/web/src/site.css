@@ -53,15 +53,15 @@ body.is-controller { background-image: none; }
 .site-footer { position: relative; background: var(--ink-900); color: #dfe6f7; margin-top: calc(var(--space-16) + 90px); }
 .site-footer__edge { position: absolute; left: 0; right: 0; bottom: 100%; height: 90px; pointer-events: none; }
 .site-footer__edge svg { position: absolute; inset: 0; width: 100%; height: 100%; }
-.site-footer__bubu {
+.site-footer__piggy {
   position: absolute; left: clamp(1rem, 10vw, 12rem); bottom: 30px; z-index: 1;
   width: 250px; height: 120px;
 }
-/* posizioni esplicite: i Bubù siedono sul bordo della collina */
-.site-footer__bubu .qq-bubu { position: absolute; bottom: -22px; max-width: none; }
-.site-footer__bubu .qq-bubu:nth-child(1) { left: 0; }
-.site-footer__bubu .qq-bubu:nth-child(2) { left: 74px; bottom: -14px; }
-.site-footer__bubu .qq-bubu:nth-child(3) { left: 168px; }
+/* posizioni esplicite: i Piggy siedono sul bordo della collina */
+.site-footer__piggy .qq-piggy { position: absolute; bottom: -22px; max-width: none; }
+.site-footer__piggy .qq-piggy:nth-child(1) { left: 0; }
+.site-footer__piggy .qq-piggy:nth-child(2) { left: 74px; bottom: -14px; }
+.site-footer__piggy .qq-piggy:nth-child(3) { left: 168px; }
 .site-footer__inner {
   max-width: var(--page-max); margin: 0 auto; padding: var(--space-12) clamp(1rem, 3vw, 2.5rem);
   display: grid; gap: var(--space-3); font-size: var(--text-small);
@@ -160,10 +160,10 @@ body.is-controller { background-image: none; }
 .scene__hills { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 72%; }
 .scene__pins { position: absolute; right: 9%; bottom: 31%; width: 15%; }
 .scene__cast { position: absolute; inset: 0; }
-.scene__bubu { position: absolute; bottom: 12%; filter: drop-shadow(0 10px 0 rgb(var(--shadow-tint) / 0.08)); }
-.scene__bubu--left { left: 10%; width: 22%; bottom: 20%; }
-.scene__bubu--center { left: 37%; width: 28%; bottom: 9%; }
-.scene__bubu--right { left: 66%; width: 20%; bottom: 18%; }
+.scene__piggy { position: absolute; bottom: 12%; filter: drop-shadow(0 10px 0 rgb(var(--shadow-tint) / 0.08)); }
+.scene__piggy--left { left: 10%; width: 22%; bottom: 20%; }
+.scene__piggy--center { left: 37%; width: 28%; bottom: 9%; }
+.scene__piggy--right { left: 66%; width: 20%; bottom: 18%; }
 
 /* ---------- passi ---------- */
 .steps__list { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-6); counter-reset: step; }
@@ -280,7 +280,7 @@ button.game-card { cursor: pointer; }
 }
 .requirement__art { position: relative; display: grid; place-items: center; width: 220px; height: 220px; }
 .gyro { position: absolute; inset: 0; z-index: 0; }
-.requirement__art .qq-bubu { position: relative; z-index: 1; }
+.requirement__art .qq-piggy { position: relative; z-index: 1; }
 .gyro__ring { position: absolute; inset: 4%; border-radius: 50%; border: 4px dashed var(--sky-300); opacity: 0.85; }
 .gyro__ring--a { animation: gyro-a 6s linear infinite; }
 .gyro__ring--b { border-color: var(--accent-400); animation: gyro-b 7s linear infinite; }
@@ -311,7 +311,7 @@ button.game-card { cursor: pointer; }
 .phone-duo__tv { position: absolute; left: 0; top: 4%; width: 68%; filter: drop-shadow(0 10px 0 rgb(var(--shadow-tint) / 0.12)); }
 .phone-duo__phone { position: absolute; right: 4%; bottom: 0; width: 20%; transform: rotate(10deg); animation: ctl-tilt-soft 3s ease-in-out infinite; }
 @keyframes ctl-tilt-soft { 0%, 100% { transform: rotate(10deg); } 50% { transform: rotate(-6deg) translateY(-6px); } }
-.phone-duo__bubu { position: absolute; left: 44%; bottom: -2%; width: 26%; }
+.phone-duo__piggy { position: absolute; left: 44%; bottom: -2%; width: 26%; }
 .phone-duo__waves { position: absolute; right: 22%; top: 30%; width: 70px; height: 70px; }
 .phone-duo__waves i { position: absolute; inset: 0; border-radius: 50%; border: 4px solid var(--accent-400); border-left-color: transparent; border-bottom-color: transparent; transform: rotate(-45deg); animation: duo-wave 1.6s var(--ease-out) infinite; opacity: 0; }
 .phone-duo__waves i:nth-child(2) { animation-delay: 0.4s; }
@@ -362,8 +362,8 @@ button.game-card { cursor: pointer; }
   clip-path: polygon(38% 0, 62% 0, 100% 100%, 0 100%); border-radius: var(--radius-md);
   opacity: 0.9;
 }
-.gesture__bubu { position: relative; }
-.gesture__bubu .qq-bubu__arm--right { animation: bowl-swing 2.6s var(--ease-out) infinite; }
+.gesture__piggy { position: relative; }
+.gesture__piggy .qq-piggy__wing--right { animation: bowl-swing 2.6s var(--ease-out) infinite; }
 @keyframes bowl-swing {
   0%, 100% { transform: rotate(0deg); }
   35% { transform: rotate(70deg); }
@@ -401,7 +401,7 @@ button.game-card { cursor: pointer; }
 
 .not-found__inner { display: grid; justify-items: center; text-align: center; gap: var(--space-4); padding-top: var(--space-16); }
 .not-found__cta { width: min(100%, 360px); justify-content: center; }
-.not-found__bubu { position: relative; }
+.not-found__piggy { position: relative; }
 .not-found__q { position: absolute; top: -10px; right: -24px; font-family: var(--font-display); font-weight: 700; font-size: 4rem; color: var(--accent-400); -webkit-text-stroke: 3px var(--ink-900); paint-order: stroke fill; animation: wiggle 2.4s ease-in-out infinite; }
 
 .join-code { display: grid; gap: var(--space-4); }
@@ -425,7 +425,7 @@ button.game-card { cursor: pointer; }
 @media (max-width: 720px) {
   .confetti { display: none; }
   .site-nav__link { display: none; }
-  .site-footer__bubu { left: 1rem; }
+  .site-footer__piggy { left: 1rem; }
   .site-nav__cta { display: none; }
   .hero { grid-template-columns: 1fr; min-height: 0; padding-top: 0; }
   .hero__art { order: -1; margin-inline: -1rem; }

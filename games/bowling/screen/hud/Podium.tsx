@@ -19,7 +19,7 @@ export function Podium({ game, players, onRematch, onNewGame, onExit }: PodiumPr
   const maxStrikes = Math.max(...rows.map((r) => r.strikes));
   const strikeKing = maxStrikes > 0 ? rows.find((r) => r.strikes === maxStrikes) : undefined;
   const playerAt = (idx: number): BowlingPlayer =>
-    players[idx] ?? { id: `P${idx + 1}`, name: `Bubù ${idx + 1}`, color: '#8E5BFF', symbol: '●' };
+    players[idx] ?? { id: `P${idx + 1}`, name: `Piggy ${idx + 1}`, color: '#8E5BFF', symbol: '●' };
   const winner = rows[0];
 
   return (

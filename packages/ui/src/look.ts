@@ -1,4 +1,4 @@
-// Aspetto di un Bubù (docs/07 § 6): colore, secondo colore, motivo, occhi, bocca e tre posti per
+// Aspetto di un Piggy (docs/07 § 6): colore, secondo colore, motivo, occhi, bocca e tre posti per
 // gli accessori (testa, viso, collo). È quello che il telefono manda allo schermo nel profilo.
 
 export const PATTERNS = ['none', 'belly', 'stripes', 'dots', 'stars', 'spots', 'split'] as const;
@@ -15,7 +15,7 @@ export type Hat = (typeof HATS)[number];
 export type FaceItem = (typeof FACE_ITEMS)[number];
 export type NeckItem = (typeof NECK_ITEMS)[number];
 
-export interface BubuLook {
+export interface PiggyLook {
   /** Colore del corpo. */
   readonly color: string;
   /** Mani, piedi e motivo. */
@@ -29,9 +29,9 @@ export interface BubuLook {
 }
 
 /** Tutto tranne il colore principale: quello che si sceglie oltre al colore. */
-export type BubuStyle = Omit<BubuLook, 'color'>;
+export type PiggyStyle = Omit<PiggyLook, 'color'>;
 
-export const DEFAULT_STYLE: BubuStyle = {
+export const DEFAULT_STYLE: PiggyStyle = {
   color2: '#FFF6E8',
   pattern: 'none',
   eyes: 'round',
@@ -51,7 +51,7 @@ function pick<T extends string>(list: readonly T[], value: unknown, fallback: T)
 }
 
 /** Legge un aspetto da dati non fidati (profilo di rete, localStorage): ogni campo sbagliato torna al default. */
-export function normalizeStyle(raw: Readonly<Record<string, unknown>> | null | undefined): BubuStyle {
+export function normalizeStyle(raw: Readonly<Record<string, unknown>> | null | undefined): PiggyStyle {
   const r = raw ?? {};
   return {
     color2: typeof r.color2 === 'string' && HEX.test(r.color2) ? r.color2 : DEFAULT_STYLE.color2,
@@ -79,8 +79,8 @@ export function typingName(raw: unknown): string {
   return chars.slice(0, NAME_MAX).join('');
 }
 
-/** Nome da mostrare: quello scelto o "Bubù N" come ripiego. */
+/** Nome da mostrare: quello scelto o "Piggy N" come ripiego. */
 export function displayName(name: string | null | undefined, slot: string): string {
   const clean = cleanName(name ?? '');
-  return clean.length > 0 ? clean : `Bubù ${slot.replace(/^P/, '')}`;
+  return clean.length > 0 ? clean : `Piggy ${slot.replace(/^P/, '')}`;
 }

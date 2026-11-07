@@ -2,7 +2,7 @@ import { decode, encode } from '@quickquest/protocol';
 import { describe, expect, test } from 'vitest';
 import { choiceProfile, normalizeChoice, randomChoice } from './prefs';
 
-describe('scelta del Bubù salvata sul telefono', () => {
+describe('scelta del Piggy salvata sul telefono', () => {
   test('una scelta salvata vecchia o rotta diventa una scelta valida', () => {
     const c = normalizeChoice({ colorId: 'grape', accessory: 'cap' });
     expect(c.colorId).toBe('grape');

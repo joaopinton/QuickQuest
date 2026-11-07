@@ -1,21 +1,21 @@
-// Flusso del telefono (docs/08 § 1.2): codice → benvenuto → sonda → Bubù → sicurezza → attesa → gioco.
+// Flusso del telefono (docs/08 § 1.2): codice → benvenuto → sonda → Piggy → sicurezza → attesa → gioco.
 // Niente tiri di prova: la taratura del lancio si impara dai primi tiri veri (motion `learnFromSwing`).
 import {
   collectMotion, createMotionTracker, detectPlatform, evaluateProbe, keepAwake, learnFromSwing, releaseWakeLock, requestMotionPermission,
   simulateHandheld, type ProbeResult, type RawSample, type SwingAnalysis, type SwingProfile,
 } from '@quickquest/motion';
 import { isValidRoomCode, type Cue, type LobbyPlayer, type SlotId } from '@quickquest/protocol';
-import { bubuColor, showToast, t } from '@quickquest/ui';
+import { piggyColor, showToast, t } from '@quickquest/ui';
 import { useLocation, useRoute } from 'preact-iso';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { loadersFor } from '@quickquest/games/loaders';
 import { createControllerConnection } from '../net/controllerConnection';
 import { createHaptics } from './haptics';
-import { choiceProfile, choiceStyle, hasSeenSafety, loadChoice, markSafetySeen, saveChoice, type BubuChoice } from './prefs';
+import { choiceProfile, choiceStyle, hasSeenSafety, loadChoice, markSafetySeen, saveChoice, type PiggyChoice } from './prefs';
 import { DebugOverlay } from './steps/DebugOverlay';
 import { ModulePad } from './steps/ModulePad';
 import { TraceRecorder } from './steps/TraceRecorder';
-import { PickBubu } from './steps/PickBubu';
+import { PickPiggy } from './steps/PickPiggy';
 import { Blocked, EnterCode, Incompatible, Probing, Safety, Welcome } from './steps/Screens';
 import { Waiting } from './steps/Waiting';
 import './controller.css';
@@ -67,7 +67,7 @@ function RoomFlow({ code }: { code: string }) {
   const [step, setStep] = useState<Step>({ k: 'welcome', error: null });
   const [slot, setSlot] = useState<SlotId>('P1');
   const [isDemo, setDemo] = useState(false);
-  const [choice, setChoice] = useState<BubuChoice>(loadChoice);
+  const [choice, setChoice] = useState<PiggyChoice>(loadChoice);
   const [players, setPlayers] = useState<readonly LobbyPlayer[]>([]);
   const [isLost, setLost] = useState(false);
   const [activeSlot, setActiveSlot] = useState<SlotId | null>(null);
@@ -194,7 +194,7 @@ function RoomFlow({ code }: { code: string }) {
     safeStep({ k: 'pick' });
   };
 
-  const confirmBubu = (c: BubuChoice) => {
+  const confirmPiggy = (c: PiggyChoice) => {
     setChoice(c);
     saveChoice(c);
     conn.sendProfile(choiceProfile(c));
@@ -221,7 +221,7 @@ function RoomFlow({ code }: { code: string }) {
       case 'fail':
         return <Incompatible result={step.result} onRetry={connect} />;
       case 'pick':
-        return <PickBubu slot={slot} initial={choice} onConfirm={confirmBubu} />;
+        return <PickPiggy slot={slot} initial={choice} onConfirm={confirmPiggy} />;
       case 'safety':
         return <Safety onOk={() => { markSafetySeen(); setStep({ k: 'waiting' }); }} />;
       case 'blocked':
@@ -230,26 +230,26 @@ function RoomFlow({ code }: { code: string }) {
         return (
           <Waiting
             slot={slot}
-            color={bubuColor(choice.colorId).hex}
+            color={piggyColor(choice.colorId).hex}
             look={choiceStyle(choice)}
             name={choice.name}
             isDemo={isDemo}
             isLost={isLost}
             players={players}
-            onChangeBubu={() => setStep({ k: 'pick' })}
+            onChangePiggy={() => setStep({ k: 'pick' })}
             onLeave={() => { conn.leave(); releaseWakeLock(); route('/'); }}
           />
         );
       case 'game':
         // gioco sconosciuto (telefono più vecchio dello schermo): si resta in attesa
         if (!loadersFor(step.gameId)) {
-          return <Waiting slot={slot} color={bubuColor(choice.colorId).hex} look={choiceStyle(choice)} name={choice.name} isDemo={isDemo} isLost={isLost} players={players} onChangeBubu={() => setStep({ k: 'pick' })} onLeave={() => { conn.leave(); releaseWakeLock(); route('/'); }} />;
+          return <Waiting slot={slot} color={piggyColor(choice.colorId).hex} look={choiceStyle(choice)} name={choice.name} isDemo={isDemo} isLost={isLost} players={players} onChangePiggy={() => setStep({ k: 'pick' })} onLeave={() => { conn.leave(); releaseWakeLock(); route('/'); }} />;
         }
         return (
           <ModulePad
             gameId={step.gameId}
             slot={slot}
-            color={bubuColor(choice.colorId).hex}
+            color={piggyColor(choice.colorId).hex}
             activeSlot={activeSlot}
             isLost={isLost}
             isDemo={isDemo}

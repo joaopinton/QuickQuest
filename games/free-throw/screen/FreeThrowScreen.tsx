@@ -32,7 +32,7 @@ import { createFreeThrowScene, type FreeThrowScene } from './scene';
 import './free-throw.css';
 
 const DEFAULT_ROSTER: readonly ScreenPlayer[] = [
-  { id: 'P1', name: 'Bubù 1', color: '#FF8A2B', symbol: '●' },
+  { id: 'P1', name: 'Piggy 1', color: '#FF8A2B', symbol: '●' },
 ];
 
 const HOLD_AFTER_SHOT_MS = 1450;
@@ -138,7 +138,7 @@ export function Screen({
     const { points, multiplier } = pointsForOutcome(telemetry.outcome, current.mode, shooterBefore.streak);
     const fb = feedbackMessageFor(telemetry.outcome, telemetry.hint, points, multiplier);
 
-    // Effetto visivo in scena e reazione dei Bubù sulle gradinate
+    // Effetto visivo in scena e reazione dei Piggy sulle gradinate
     const fxKind = telemetry.outcome === 'swish' ? 'swish' : isShotMade(telemetry.outcome) ? 'make' : 'miss';
     sc.playShotOutcomeFx(fxKind, playerInfo.color);
 

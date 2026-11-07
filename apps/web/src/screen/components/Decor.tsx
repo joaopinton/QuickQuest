@@ -1,6 +1,6 @@
 // Decorazioni del sito: coriandoli a forma di simboli, "adesivi" dei giochi, coppia di telefoni.
 import type { GameMeta } from '@quickquest/games';
-import { GameIcon, PLAYER_SLOTS, Bubu } from '@quickquest/ui';
+import { GameIcon, PLAYER_SLOTS, Piggy } from '@quickquest/ui';
 import type { JSX } from 'preact';
 
 const CONFETTI = [
@@ -41,7 +41,7 @@ export function StickerCluster({ games }: { games: readonly GameMeta[] }) {
   );
 }
 
-/** Schermo e telefono che si "parlano", con un Bubù che saluta. */
+/** Schermo e telefono che si "parlano", con un Piggy che saluta. */
 export function PhoneDuo() {
   return (
     <div class="phone-duo" aria-hidden="true">
@@ -58,7 +58,7 @@ export function PhoneDuo() {
         <rect x="10" y="14" width="50" height="92" rx="10" fill="#F1EBFF" />
         <rect x="18" y="58" width="34" height="34" rx="12" fill="#8E5BFF" />
       </svg>
-      <span class="phone-duo__bubu"><Bubu color="#FF9A3C" look={{ pattern: 'split', color2: '#FFD23F', face: 'glasses' }} wave mood="happy" size="100%" /></span>
+      <span class="phone-duo__piggy"><Piggy color="#FF9A3C" look={{ pattern: 'split', color2: '#FFD23F', face: 'glasses' }} wave mood="happy" size="100%" /></span>
     </div>
   );
 }

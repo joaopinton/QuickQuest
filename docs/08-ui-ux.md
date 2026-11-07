@@ -11,10 +11,10 @@ Due superfici molto diverse, un solo design system:
 ### 1.0 Sito pubblico (implementato in `apps/web/src/screen`)
 | Pagina | Contenuto |
 |---|---|
-| `/` Home | Hero allineato a sinistra con la scena SVG (cielo, colline a strati di carta, 3 Bubù, parallasse leggero), poi i "3 passi", la vetrina bento dei giochi e il requisito del giroscopio. **Sul telefono** in primo piano c'è l'inserimento del codice. |
-| `/come-si-gioca` | 3 passi illustrati e animati, il gesto del bowling con un Bubù che fa lo swing, consigli di sicurezza, requisiti, invito a creare la stanza |
+| `/` Home | Hero allineato a sinistra con la scena SVG (cielo, colline a strati di carta, 3 Piggy, parallasse leggero), poi i "3 passi", la vetrina bento dei giochi e il requisito del giroscopio. **Sul telefono** in primo piano c'è l'inserimento del codice. |
+| `/come-si-gioca` | 3 passi illustrati e animati, il gesto del bowling con un Piggy che fa lo swing, consigli di sicurezza, requisiti, invito a creare la stanza |
 | `/giochi` | Catalogo bento; il dettaglio di ogni gioco si apre in un dialog |
-| `*` | 404 con un Bubù perso |
+| `*` | 404 con un Piggy perso |
 
 - **Logo**: "quickquest" in Fredoka 700 minuscolo. Il puntino della i è una pallina gialla che rimbalza al caricamento; la seconda q ha una scia.
 - **Tagline**: «Lo sport vero, col telefono in mano.»
@@ -23,7 +23,7 @@ Due superfici molto diverse, un solo design system:
 ### 1.1 Schermo
 ```
 ┌ Home ──────────────────────────┐
-│  Logo + Bubù che saltellano     │
+│  Logo + Piggy che saltellano     │
 │  [ Crea stanza ]  (primario)    │
 │  Impostazioni · Crediti         │
 └────────────────────────────────┘
@@ -32,7 +32,7 @@ Due superfici molto diverse, un solo design system:
 │  QR GRANDE         Codice: K7RM                     │
 │  "Inquadra con il telefono"                         │
 │  ┌P1 ●┐ ┌P2 ▲┐ ┌P3 ■┐ ┌P4 ◆┐  ← slot: vuoto (tratteggio)│
-│  │Bubù│ │ …  │ │    │ │    │     / in connessione   │
+│  │Piggy│ │ …  │ │    │ │    │     / in connessione   │
 │  └────┘ └────┘ └────┘ └────┘     / pronto (rimbalzo)│
 │  [ Scegli il gioco ] (attivo con ≥1 giocatore)      │
 └────────────────────────────────────────────────────┘
@@ -45,13 +45,13 @@ Due superfici molto diverse, un solo design system:
 │  (swipe/tap: il telefono di P1 fa da telecomando). │
 └────────────────────────────────────────────────────┘
         ▼
-  Caricamento (Bubù che palleggia + suggerimento sul gesto)
+  Caricamento (Piggy che palleggia + suggerimento sul gesto)
         ▼
-  Tutorial al primo avvio del gioco (gesto mostrato da un Bubù, 10 s, saltabile)
+  Tutorial al primo avvio del gioco (gesto mostrato da un Piggy, 10 s, saltabile)
         ▼
   Partita (HUD minimo: di chi è il turno, punteggio compatto)
         ▼
-  Risultati (podio dei Bubù, premi divertenti: "Braccio d'oro", "Re dell'effetto"…)
+  Risultati (podio dei Piggy, premi divertenti: "Braccio d'oro", "Re dell'effetto"…)
   [ Rigioca ]  [ Cambia gioco ]  [ Torna alla lobby ]
 ```
 
@@ -63,7 +63,7 @@ Due superfici molto diverse, un solo design system:
 Benvenuto ("Ti stai unendo alla stanza K7RM")  →  [ Connetti ]
    → permessi (iOS)  →  "Muovi un po' il telefono…" (sonda sensori)
    → ✖ Non compatibile   (schermata finale, spiega cosa manca)
-   → ✔ Scegli il tuo Bubù (colore + accessorio; anteprima che salta)
+   → ✔ Scegli il tuo Piggy (colore + accessorio; anteprima che salta)
    → Avviso di sicurezza (solo la prima volta)
    → Calibrazione ("Punta il telefono verso lo schermo e premi")
    → Attesa ("Guarda lo schermo!")  ⇄  Layout di gioco quando è il tuo turno
@@ -107,7 +107,7 @@ Benvenuto ("Ti stai unendo alla stanza K7RM")  →  [ Connetti ]
 ### Libreria di layout del core (`packages/ui/controller`)
 | Layout | Componenti |
 |---|---|
-| `wait` | Bubù animato, "Tocca a P2", ultima giocata |
+| `wait` | Piggy animato, "Tocca a P2", ultima giocata |
 | `menu` | Frecce su/giù/sinistra/destra + OK + Indietro |
 | `action` | Solo tasto azione (giochi senza mira) |
 | `aim-action` | Trackpad orizzontale + tasto azione (bowling, bocce) |
@@ -126,7 +126,7 @@ I giochi compongono questi blocchi; layout nuovi solo se servono davvero.
 - Feedback aptico: vedi [04 § 8](04-motion-input.md#8-feedback-sul-telefono). Su iPhone vibra solo dentro un tocco.
 
 ## 3. HUD sullo schermo
-- **Minimo durante il gesto.** In alto a sinistra solo il turno (simbolo, colore, Bubù), in alto a destra il punteggio compatto.
+- **Minimo durante il gesto.** In alto a sinistra solo il turno (simbolo, colore, Piggy), in alto a destra il punteggio compatto.
 - **Informazioni dopo il gesto**: velocità, effetto, distanza, in un pannello che compare e scompare.
 - **Tabellone completo** (es. 10 frame del bowling) tra un turno e l'altro, con animazione d'ingresso dal basso.
 - Indicatore "telefono disconnesso" sullo slot del giocatore, con un pulse rosso morbido.
@@ -174,7 +174,7 @@ Colori e tipografia sono in [07](07-art-direction.md#4-palette). In più:
 | **Bottone primario** | Pillola, `--primary-500`, testo bianco Nunito 800, bordo inferiore "3D" (`--edge-3d`) | *hover*: sale di 2 px, ombra `lift` · *focus*: anello giallo `--accent-400` di 4 px con offset · *press*: scende di 6 px (il bordo 3D sparisce), `--ease-squish` al rilascio · *disabled*: `--ink-300`, niente bordo 3D |
 | **Bottone secondario** | Pillola bianca, bordo 3D `--ink-300`, testo `--ink-900` | come sopra |
 | **Card gioco** | `--radius-lg`, metà superiore nell'accento del gioco con illustrazione o render del set, metà inferiore bianca | *hover/focus*: si inclina di 2° e sale; *selezionata*: bordo accento di 6 px + rimbalzo |
-| **Slot giocatore** | Cerchio grande con simbolo + Bubù | vuoto (bordo tratteggiato animato), in connessione (spinner a puntini), pronto (Bubù che salta + "ding"), disconnesso (Bubù grigio + pulse rosso) |
+| **Slot giocatore** | Cerchio grande con simbolo + Piggy | vuoto (bordo tratteggiato animato), in connessione (spinner a puntini), pronto (Piggy che salta + "ding"), disconnesso (Piggy grigio + pulse rosso) |
 | **Pannello** | Bianco, `--radius-lg`, `--shadow-soft` | entra con scala da 0,9 a 1 e `--ease-spring` |
 | **Toast** | Pillola in alto, icona + testo breve | entra dall'alto, esce dopo 3 s |
 | **Numero grande** (punteggi) | Fredoka 700, tabular-nums | conta e rimbalza |

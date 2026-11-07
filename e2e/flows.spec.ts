@@ -6,7 +6,7 @@ async function roomCode(page: Page): Promise<string> {
   return code;
 }
 
-test('stanza → telefono simulato → scelta Bubù → lo slot P1 diventa pronto', async ({ context }) => {
+test('stanza → telefono simulato → scelta Piggy → lo slot P1 diventa pronto', async ({ context }) => {
   const screen = await context.newPage();
   await screen.goto('/stanza');
   await expect(screen.getByRole('heading', { name: 'La tua stanza' })).toBeVisible();
@@ -18,18 +18,18 @@ test('stanza → telefono simulato → scelta Bubù → lo slot P1 diventa pront
   await phone.goto(`/c/${code}?sim`);
   await expect(phone.getByText('Ti stai unendo alla stanza')).toBeVisible();
   await phone.getByRole('button', { name: 'Connetti' }).click();
-  await expect(phone.getByRole('heading', { name: 'Scegli il tuo Bubù' })).toBeVisible({ timeout: 10_000 });
+  await expect(phone.getByRole('heading', { name: 'Scegli il tuo Piggy' })).toBeVisible({ timeout: 10_000 });
   await expect(phone.getByText('Giocatore P1')).toBeVisible();
   await expect(screen.locator('[data-slot="P1"]')).toHaveAttribute('data-state', 'connecting');
 
   await phone.getByRole('textbox', { name: 'Nome' }).fill('Zoë <3');
   await phone.getByRole('radio', { name: 'Colore Uva' }).click();
-  await phone.getByRole('radio', { name: 'Mani e piedi Limone' }).click();
-  await phone.getByRole('tab', { name: 'Faccia' }).click();
+  await phone.getByRole('radio', { name: 'Ali Limone' }).click();
+  await phone.getByRole('tab', { name: 'Muso' }).click();
   await phone.getByRole('radio', { name: 'Occhiali tondi' }).click();
   await phone.getByRole('tab', { name: 'Accessori' }).click();
   await phone.getByRole('radio', { name: 'Corona' }).click();
-  await phone.getByRole('button', { name: 'Questo è il mio Bubù' }).click();
+  await phone.getByRole('button', { name: 'Questo è il mio Piggy' }).click();
   await phone.getByRole('button', { name: 'Ho capito' }).click();
   await expect(phone.getByRole('heading', { name: 'Guarda lo schermo!' })).toBeVisible();
   await expect(phone.getByText('Demo: nessuno schermo collegato')).toHaveCount(0);
@@ -57,7 +57,7 @@ test('senza schermo raggiungibile il telefono entra in modalità demo', async ({
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/c/ZZZZ?sim');
   await page.getByRole('button', { name: 'Connetti' }).click();
-  await page.getByRole('button', { name: 'Questo è il mio Bubù' }).click({ timeout: 10_000 });
+  await page.getByRole('button', { name: 'Questo è il mio Piggy' }).click({ timeout: 10_000 });
   await page.getByRole('button', { name: 'Ho capito' }).click();
   await expect(page.getByText('Demo: nessuno schermo collegato')).toBeVisible();
 });

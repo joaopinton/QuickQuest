@@ -37,7 +37,7 @@ Variante semplificata della petanque/bocce:
 - Si lancia il boccino (anche lui con il gesto).
 - A turno tira la squadra più lontana dal boccino.
 - Il punto alla squadra più vicina: 1 punto per ogni boccia più vicina della migliore avversaria. Si gioca fino a 7 (veloce) o 11.
-- **Misurazione** con animazione: un Bubù arbitro arriva con il metro quando due bocce sono quasi alla pari (< 3 cm).
+- **Misurazione** con animazione: un Piggy arbitro arriva con il metro quando due bocce sono quasi alla pari (< 3 cm).
 
 ## Juice
 Vista dall'alto con un cerchio che indica la "boccia vincente"; "BACIO!" quando la boccia tocca il boccino; "BOCCIATA!" con slow-mo sull'impatto; tifo del pubblico seduto ai tavolini.

@@ -70,7 +70,7 @@ interface Envelope<T extends string, P> {
 | `t` | Payload | Note |
 |---|---|---|
 | `hello` | `{ role:'controller', room, sessionToken?, capabilities, ua }` | `capabilities` = esito della verifica sensori ([04](04-motion-input.md)). Senza `gyro && accel` il relay rifiuta. |
-| `profile` | `{ color, avatar }` | Scelta del Bubù |
+| `profile` | `{ color, avatar }` | Scelta del Piggy |
 | `ping` | `{ t0 }` | Clock sync |
 | `ready` | `{ layoutId }` | Layout di gioco caricato |
 | `input.*` | dipende dal gioco | Eventi del trackpad, del tasto e dei gesti (es. `bowling.release`) |
@@ -127,7 +127,7 @@ Serve per (a) interpolare la posa e (b) confrontare i tempi tra controller nei g
 - Per mascherare la latenza, il rilascio della palla a schermo è sincronizzato con l'animazione del braccio: la palla "esce dalla mano" quando arriva l'evento, e la posa è già allineata grazie al buffer.
 
 ### Dead-reckoning della posa (idea presa da Pocket Sports, vedi [10 § 1](10-references.md#1-progetti-telefono--controller-i-più-vicini-al-nostro))
-Il buffer di 50 ms rende il braccio fluido ma lo mostra *in ritardo*. Durante uno swing veloce (fino a 10 rad/s) 50 ms di ritardo sono circa 30° di differenza tra telefono e braccio del Bubù, e si notano. Per compensare, lo schermo **proietta la posa in avanti**:
+Il buffer di 50 ms rende il braccio fluido ma lo mostra *in ritardo*. Durante uno swing veloce (fino a 10 rad/s) 50 ms di ritardo sono circa 30° di differenza tra telefono e braccio del Piggy, e si notano. Per compensare, lo schermo **proietta la posa in avanti**:
 
 1. Il frame di posa porta già il quaternione e il timestamp `ts` nel clock del DO ([§ 3.3](#33-frame-di-posa-binario-24-byte)). Lo schermo ricava la **velocità angolare** ω dalla differenza tra gli ultimi due quaternioni ricevuti (non serve un campo nuovo nel frame).
 2. L'orizzonte di proiezione è il ritardo reale: `h = nowDO − ts`, cioè latenza di rete più buffer, limitato a **80 ms**.

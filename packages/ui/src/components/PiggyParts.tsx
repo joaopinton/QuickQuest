@@ -1,4 +1,4 @@
-// Accessori del Bubù (docs/07 § 6): testa, viso e collo, disegnati sulla stessa griglia
+// Accessori del Piggy (piccione) (docs/07 § 6): testa, viso e collo, disegnati sulla stessa griglia
 // 120×150 del corpo. Il secondo colore del giocatore colora berretti, sciarpe e antenne.
 import type { FaceItem, Hat, NeckItem } from '../look';
 
@@ -6,7 +6,7 @@ const INK = '#1E2A4A';
 const GOLD = '#FFC21A';
 const GOLD_DARK = '#D99A00';
 
-export function BubuHat({ kind, color2 }: { kind: Hat; color2: string }) {
+export function PiggyHat({ kind, color2 }: { kind: Hat; color2: string }) {
   switch (kind) {
     case 'cap':
       return (
@@ -89,7 +89,7 @@ export function BubuHat({ kind, color2 }: { kind: Hat; color2: string }) {
   }
 }
 
-export function BubuFace({ kind }: { kind: FaceItem }) {
+export function PiggyFace({ kind }: { kind: FaceItem }) {
   switch (kind) {
     case 'glasses':
       return (
@@ -113,13 +113,14 @@ export function BubuFace({ kind }: { kind: FaceItem }) {
         </g>
       );
     case 'mustache':
-      return <path d="M60 72 q-6 -6 -14 -2 q-6 4 -12 -2 q4 10 14 8 q8 -1 12 -4 q4 3 12 4 q10 2 14 -8 q-6 6 -12 2 q-8 -4 -14 2 z" fill={INK} />;
+      // sotto il becco, non sopra
+      return <path transform="translate(0 10)" d="M60 72 q-6 -6 -14 -2 q-6 4 -12 -2 q4 10 14 8 q8 -1 12 -4 q4 3 12 4 q10 2 14 -8 q-6 6 -12 2 q-8 -4 -14 2 z" fill={INK} />;
     default:
       return null;
   }
 }
 
-export function BubuNeck({ kind, color2 }: { kind: NeckItem; color2: string }) {
+export function PiggyNeck({ kind, color2 }: { kind: NeckItem; color2: string }) {
   switch (kind) {
     case 'bowtie':
       return (

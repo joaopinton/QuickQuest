@@ -12,7 +12,7 @@ import { GameCard } from '../components/GameCard';
 import { QrCode } from '../components/QrCode';
 import './lobby.css';
 
-/** Giocatori collegati come li vede un gioco: colore del Bubù scelto sul telefono e simbolo dello slot. */
+/** Giocatori collegati come li vede un gioco: colore del Piggy scelto sul telefono e simbolo dello slot. */
 function screenPlayers(players: readonly LobbyPlayer[]): ScreenPlayer[] {
   return players
     .filter((p) => p.state !== 'disconnected')
@@ -140,7 +140,7 @@ function PlayingScreen({
                 <PlayerSlot
                   slot={id}
                   state={slotState(p)}
-                  bubuColor={p.profile?.color}
+                  piggyColor={p.profile?.color}
                   look={normalizeStyle(p.profile as Record<string, unknown> | null)}
                   name={displayName(p.profile?.name, id)}
                 />
@@ -222,7 +222,7 @@ export function Lobby() {
                     <PlayerSlot
                       slot={id}
                       state={slotState(p)}
-                      bubuColor={p?.profile?.color}
+                      piggyColor={p?.profile?.color}
                       look={normalizeStyle(p?.profile as Record<string, unknown> | null | undefined)}
                       name={p ? displayName(p.profile?.name, id) : undefined}
                     />

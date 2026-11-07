@@ -1,22 +1,22 @@
-// Attesa: tinta del giocatore al 12%, simbolo dello slot, il proprio Bubù (docs/08 § 2).
+// Attesa: tinta del giocatore al 12%, simbolo dello slot, il proprio Piggy (docs/08 § 2).
 import type { LobbyPlayer } from '@quickquest/protocol';
-import { Button, Bubu, displayName, slotStyle, t, type BubuStyle, type SlotId } from '@quickquest/ui';
+import { Button, Piggy, displayName, slotStyle, t, type PiggyStyle, type SlotId } from '@quickquest/ui';
 import type { JSX } from 'preact';
 import { useEffect } from 'preact/hooks';
 
 export interface WaitingProps {
   slot: SlotId;
   color: string;
-  look: BubuStyle;
+  look: PiggyStyle;
   name: string;
   isDemo: boolean;
   isLost: boolean;
   players: readonly LobbyPlayer[];
-  onChangeBubu: () => void;
+  onChangePiggy: () => void;
   onLeave: () => void;
 }
 
-export function Waiting({ slot, color, look, name, isDemo, isLost, players, onChangeBubu, onLeave }: WaitingProps) {
+export function Waiting({ slot, color, look, name, isDemo, isLost, players, onChangePiggy, onLeave }: WaitingProps) {
   const s = slotStyle(slot);
   const style = { '--slot': s.hex, '--tint': color } as JSX.CSSProperties;
 
@@ -35,7 +35,7 @@ export function Waiting({ slot, color, look, name, isDemo, isLost, players, onCh
       <div class="ctl-wait__stage">
         <span class="ctl-wait__halo" aria-hidden="true" />
         <span class="ctl-wait__orbit" aria-hidden="true"><i>{s.symbol}</i><i>{s.symbol}</i><i>{s.symbol}</i></span>
-        <Bubu color={color} look={look} mood="wait" motion="breathe" size={210} />
+        <Piggy color={color} look={look} mood="wait" motion="breathe" size={210} />
       </div>
       <p class="ctl-wait__name">{displayName(name, slot)}</p>
       <h1 class="ctl-title">{t('controller.waitTitle')}</h1>
@@ -50,7 +50,7 @@ export function Waiting({ slot, color, look, name, isDemo, isLost, players, onCh
         </ul>
       )}
       <div class="ctl-actions">
-        <Button size="xl" variant="secondary" isBlock onClick={onChangeBubu}>{t('controller.changeBubu')}</Button>
+        <Button size="xl" variant="secondary" isBlock onClick={onChangePiggy}>{t('controller.changePiggy')}</Button>
         <Button size="lg" variant="ghost" isBlock onClick={onLeave}>{t('controller.leave')}</Button>
       </div>
     </section>

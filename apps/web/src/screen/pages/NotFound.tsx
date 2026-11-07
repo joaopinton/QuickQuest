@@ -1,12 +1,12 @@
-import { Button, Bubu, t } from '@quickquest/ui';
+import { Button, Piggy, t } from '@quickquest/ui';
 import { Page } from '../components/SiteChrome';
 
 export function NotFound() {
   return (
     <Page class="not-found">
       <section class="not-found__inner">
-        <div class="not-found__bubu">
-          <Bubu color="#FF9A3C" mood="lost" motion="breathe" size={200} />
+        <div class="not-found__piggy">
+          <Piggy color="#FF9A3C" mood="lost" motion="breathe" size={200} />
           <span class="not-found__q" aria-hidden="true">?</span>
         </div>
         <h1 class="page-hero__title">{t('notFound.title')}</h1>

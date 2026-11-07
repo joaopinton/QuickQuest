@@ -1,8 +1,8 @@
 export { t, setLocale, hasKey } from './i18n';
 export type { Vars } from './i18n';
 export * from './palette';
-export { Bubu } from './components/Bubu';
-export type { BubuFraming, BubuMood, BubuMotion, BubuProps } from './components/Bubu';
+export { Piggy } from './components/Piggy';
+export type { PiggyFraming, PiggyMood, PiggyMotion, PiggyProps } from './components/Piggy';
 export * from './look';
 export { Logo } from './components/Logo';
 export { Button } from './components/Button';

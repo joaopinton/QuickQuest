@@ -1,7 +1,7 @@
 // Messaggi del core (docs/03 § 3). Envelope { v, t, p } con validazione scritta a mano:
 // niente librerie di schema, per tenere leggero il bundle del controller.
 
-/** 2: il profilo porta nome e aspetto completo del Bubù (prima solo colore e accessorio). */
+/** 2: il profilo porta nome e aspetto completo del Piggy (prima solo colore e accessorio). */
 export const PROTOCOL_VERSION = 2;
 
 export type SlotId = 'P1' | 'P2' | 'P3' | 'P4';
@@ -16,9 +16,9 @@ export interface Capabilities {
   readonly platform: Platform;
 }
 
-/** Aspetto e nome del Bubù scelti sul telefono (packages/ui `look.ts`). */
+/** Aspetto e nome del Piggy scelti sul telefono (packages/ui `look.ts`). */
 export interface Profile {
-  /** Nome scelto, 0–12 caratteri (vuoto = "Bubù N" sullo schermo). */
+  /** Nome scelto, 0–12 caratteri (vuoto = "Piggy N" sullo schermo). */
   readonly name: string;
   readonly color: string;
   readonly color2: string;

@@ -1,11 +1,11 @@
-// Colori dei Bubù e degli slot giocatore (docs/07 § 4).
+// Colori dei Piggy e degli slot giocatore (docs/07 § 4).
 
-export interface BubuColor {
+export interface PiggyColor {
   readonly id: string;
   readonly hex: string;
 }
 
-export const BUBU_COLORS: readonly BubuColor[] = [
+export const PIGGY_COLORS: readonly PiggyColor[] = [
   { id: 'cherry', hex: '#EF4E5B' },
   { id: 'ocean', hex: '#3C8CF0' },
   { id: 'lemon', hex: '#F7C531' },
@@ -44,6 +44,6 @@ export function slotStyle(id: SlotId): PlayerSlotStyle {
   return found;
 }
 
-export function bubuColor(id: string): BubuColor {
-  return BUBU_COLORS.find((c) => c.id === id) ?? BUBU_COLORS[0]!;
+export function piggyColor(id: string): PiggyColor {
+  return PIGGY_COLORS.find((c) => c.id === id) ?? PIGGY_COLORS[0]!;
 }

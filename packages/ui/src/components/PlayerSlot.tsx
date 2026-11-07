@@ -1,18 +1,18 @@
 // Slot giocatore della lobby: vuoto, in connessione, pronto, disconnesso (docs/08 § 4).
 import type { JSX } from 'preact';
 import { t } from '../i18n';
-import type { BubuStyle } from '../look';
+import type { PiggyStyle } from '../look';
 import type { SlotId } from '../palette';
 import { slotStyle } from '../palette';
-import { Bubu } from './Bubu';
+import { Piggy } from './Piggy';
 
 export type SlotState = 'empty' | 'connecting' | 'ready' | 'disconnected';
 
 export interface PlayerSlotProps {
   slot: SlotId;
   state: SlotState;
-  bubuColor?: string;
-  look?: Partial<BubuStyle>;
+  piggyColor?: string;
+  look?: Partial<PiggyStyle>;
   /** Nome scelto dal giocatore; senza, si vede solo lo slot. */
   name?: string;
 }
@@ -24,7 +24,7 @@ const STATE_LABEL: Record<SlotState, string> = {
   disconnected: 'lobby.slotDisconnected',
 };
 
-export function PlayerSlot({ slot, state, bubuColor, look, name }: PlayerSlotProps) {
+export function PlayerSlot({ slot, state, piggyColor, look, name }: PlayerSlotProps) {
   const s = slotStyle(slot);
   const style = { '--slot': s.hex } as JSX.CSSProperties;
   const label = t(STATE_LABEL[state]);
@@ -32,8 +32,8 @@ export function PlayerSlot({ slot, state, bubuColor, look, name }: PlayerSlotPro
     <div class={`qq-slot qq-slot--${state}`} style={style} data-slot={slot} data-state={state}>
       <div class="qq-slot__stage">
         {state === 'ready' || state === 'disconnected' ? (
-          <Bubu
-            color={state === 'disconnected' ? '#A9B4CC' : (bubuColor ?? s.hex)}
+          <Piggy
+            color={state === 'disconnected' ? '#A9B4CC' : (piggyColor ?? s.hex)}
             look={look}
             mood={state === 'ready' ? 'happy' : 'lost'}
             motion={state === 'ready' ? 'hop' : 'none'}

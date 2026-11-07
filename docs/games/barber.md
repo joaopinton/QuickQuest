@@ -17,7 +17,7 @@
 *"Ho seguito il modello, ho sfumato la nuca con la macchinetta che vibrava in mano e il cliente si è guardato allo specchio felicissimo."*
 
 ## Set
-Bottega anni '60: pavimento a scacchi, poltrona da barbiere rossa, specchio con lampadine, barattoli e pettini colorati, insegna rotante a spirale (originale, nei colori dell'accento). Il **cliente** è un Bubù speciale, "peloso": un Bubù con una chioma morbida.
+Bottega anni '60: pavimento a scacchi, poltrona da barbiere rossa, specchio con lampadine, barattoli e pettini colorati, insegna rotante a spirale (originale, nei colori dell'accento). Il **cliente** è un Piggy speciale, "peloso": un Piggy con una chioma morbida.
 
 ## Gesto
 Il telefono **è lo strumento**: lo si tiene come una macchinetta o un paio di forbici.

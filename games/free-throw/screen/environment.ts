@@ -5,9 +5,9 @@
 // - Parquet lucido a listoni in acero con linee regolamentari FIBA, area colorata e lunetta;
 // - Struttura del canestro imbottita, tabellone in plexiglass con quadrato di mira, ferro arancione
 //   con 12 gancetti e tabellone LED sopra il canestro;
-// - Bubù tiratore in lunetta che esegue il gesto della scuola basket (caricamento sopra la fronte,
+// - Piggy tiratore in lunetta che esegue il gesto della scuola basket (caricamento sopra la fronte,
 //   estensione verso l'alto e chiusura del polso a gancio "follow-through");
-// - Gradinate in legno con 36 Bubù spettatori (InstancedMesh) che esultano o sospirano;
+// - Gradinate in legno con 36 Piggy spettatori (InstancedMesh) che esultano o sospirano;
 // - Spalliere svedesi, carrello porta-palloni, striscioni da scuola basket e luci calde da palestra.
 
 import * as THREE from 'three';
@@ -39,7 +39,7 @@ export interface FreeThrowEnvironment {
   readonly group: THREE.Group;
   setScoreboard(info: GymScoreboardInfo): void;
   setShooterColor(color: string): void;
-  /** Avvia l'animazione del Bubù: spinta sopra la testa + chiusura del polso a gancio (follow-through). */
+  /** Avvia l'animazione del Piggy: spinta sopra la testa + chiusura del polso a gancio (follow-through). */
   playShooterRelease(): void;
   resetShooterPose(): void;
   /** Reazione del pubblico sulle gradinate: 'swish' | 'make' | 'miss'. */
@@ -524,7 +524,7 @@ export function createFreeThrowEnvironment(): FreeThrowEnvironment {
   rackGroup.rotation.y = -0.25;
   add(rackGroup);
 
-  // ---------- 5. Gradinate in legno e Pubblico di Bubù (InstancedMesh) ----------
+  // ---------- 5. Gradinate in legno e Pubblico di Piggy (InstancedMesh) ----------
   const bleacherMat = own(new THREE.MeshStandardMaterial({ color: '#B87B3E', roughness: 0.65 }));
   const bleacherStepGeo = own(new THREE.BoxGeometry(1.2, 0.35, 8.5));
   for (const side of [-1, 1]) {
@@ -550,9 +550,9 @@ export function createFreeThrowEnvironment(): FreeThrowEnvironment {
     }
   }
 
-  const bubuBodyGeo = own(new THREE.CapsuleGeometry(0.19, 0.26, 8, 16));
-  const bubuMat = own(new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.45 }));
-  const crowdMesh = new THREE.InstancedMesh(bubuBodyGeo, bubuMat, crowdPositions.length);
+  const piggyBodyGeo = own(new THREE.CapsuleGeometry(0.19, 0.26, 8, 16));
+  const piggyMat = own(new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.45 }));
+  const crowdMesh = new THREE.InstancedMesh(piggyBodyGeo, piggyMat, crowdPositions.length);
   crowdMesh.castShadow = true;
   const dummy = new THREE.Object3D();
   const tmpColor = new THREE.Color();
@@ -567,7 +567,7 @@ export function createFreeThrowEnvironment(): FreeThrowEnvironment {
   if (crowdMesh.instanceColor) crowdMesh.instanceColor.needsUpdate = true;
   add(crowdMesh);
 
-  // ---------- 6. Bubù Tiratore in lunetta con Gesto Scuola Basket (Chiusura a Gancio) ----------
+  // ---------- 6. Piggy Tiratore in lunetta con Gesto Scuola Basket (Chiusura a Gancio) ----------
   const shooterGroup = new THREE.Group();
   shooterGroup.position.set(-0.32, 0, -0.38); // leggermente a sinistra per lasciare libera la visuale sul canestro
   shooterGroup.rotation.y = 0.08;
@@ -578,7 +578,7 @@ export function createFreeThrowEnvironment(): FreeThrowEnvironment {
   shooterBody.castShadow = true;
   shooterGroup.add(shooterBody);
 
-  // Fascia sportiva bianca e arancione sulla fronte del Bubù
+  // Fascia sportiva bianca e arancione sulla fronte del Piggy
   const headband = new THREE.Mesh(
     own(new THREE.CylinderGeometry(0.235, 0.235, 0.07, 20)),
     own(new THREE.MeshStandardMaterial({ color: '#FFFFFF', roughness: 0.5 })),
@@ -644,7 +644,7 @@ export function createFreeThrowEnvironment(): FreeThrowEnvironment {
     update(dt: number) {
       elapsed += dt;
 
-      // 1. Animazione del Bubù tiratore: spinta verso l'alto + chiusura del polso a gancio ("collo d'oca")
+      // 1. Animazione del Piggy tiratore: spinta verso l'alto + chiusura del polso a gancio ("collo d'oca")
       if (releaseAnimT >= 0) {
         releaseAnimT += dt;
         // Nei primi 0.18 s il braccio si distende sopra la testa e il polso frusta in avanti a gancio (+1.15 rad)
@@ -662,7 +662,7 @@ export function createFreeThrowEnvironment(): FreeThrowEnvironment {
         rightShoulder.rotation.set(-0.45 + Math.sin(elapsed * 2.5) * 0.04, 0, -0.15);
       }
 
-      // 2. Animazione del pubblico di Bubù sulle gradinate
+      // 2. Animazione del pubblico di Piggy sulle gradinate
       if (crowdReaction) {
         crowdReaction.timer -= dt;
         if (crowdReaction.timer <= 0) crowdReaction = null;

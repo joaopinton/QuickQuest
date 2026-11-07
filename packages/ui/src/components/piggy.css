@@ -1,0 +1,67 @@
+/* aspect-ratio esplicito: in un contenitore flex senza altezza height:auto darebbe 0 */
+.qq-piggy { overflow: visible; height: auto; aspect-ratio: 120 / 150; }
+.qq-piggy__body { transform-origin: 60px 140px; transform-box: view-box; }
+.qq-piggy__eyes { transform-origin: 60px 57px; transform-box: view-box; animation: qq-blink 5.2s infinite; animation-delay: calc(var(--piggy-delay, 0s) * 1.7); }
+/* le ali ruotano attorno alla spalla */
+.qq-piggy__wing { transform-box: view-box; }
+.qq-piggy__wing--left { transform-origin: 26px 74px; }
+.qq-piggy__wing--right { transform-origin: 94px 74px; }
+.qq-piggy__ground { transform-origin: 60px 144px; transform-box: view-box; }
+
+/* da fermo respira solo il corpo: le ali restano chiuse */
+.qq-piggy--breathe .qq-piggy__body { animation: qq-breathe 3.4s ease-in-out infinite; animation-delay: var(--piggy-delay, 0s); }
+
+.qq-piggy--hop .qq-piggy__body { animation: qq-hop 1.1s var(--ease-out) infinite; animation-delay: var(--piggy-delay, 0s); }
+.qq-piggy--hop .qq-piggy__ground { animation: qq-ground 1.1s var(--ease-out) infinite; animation-delay: var(--piggy-delay, 0s); }
+.qq-piggy--hop .qq-piggy__wing--left { animation: qq-wing-left 1.1s ease-in-out infinite; animation-delay: var(--piggy-delay, 0s); }
+.qq-piggy--hop .qq-piggy__wing--right { animation: qq-wing-right 1.1s ease-in-out infinite; animation-delay: var(--piggy-delay, 0s); }
+
+/* saluto: l'ala destra si alza e ondeggia piano */
+.qq-piggy--wave .qq-piggy__wing--right { animation: qq-wing-wave 1.4s ease-in-out infinite; }
+
+@keyframes qq-breathe {
+  0%, 100% { transform: scale(1, 1); }
+  50% { transform: scale(1.03, 0.97); }
+}
+
+@keyframes qq-blink {
+  0%, 93%, 100% { transform: scaleY(1); }
+  95% { transform: scaleY(0.1); }
+}
+
+/* Salto con squash in partenza e all'atterraggio (docs/07 § 6). */
+@keyframes qq-hop {
+  0% { transform: translateY(0) scale(1.08, 0.9); }
+  12% { transform: translateY(0) scale(0.94, 1.08); }
+  40% { transform: translateY(-26px) scale(0.98, 1.03); }
+  70% { transform: translateY(0) scale(1.1, 0.88); }
+  82% { transform: translateY(0) scale(0.98, 1.02); }
+  100% { transform: translateY(0) scale(1, 1); }
+}
+
+@keyframes qq-ground {
+  0%, 100% { transform: scale(1); opacity: 0.18; }
+  40% { transform: scale(0.7); opacity: 0.1; }
+}
+
+/* Ali chiuse a terra, aperte in volo (con un filo di battito), richiuse all'atterraggio. */
+@keyframes qq-wing-left {
+  0%, 10% { transform: rotate(0deg); }
+  24% { transform: rotate(72deg); }
+  38% { transform: rotate(60deg); }
+  52% { transform: rotate(68deg); }
+  68%, 100% { transform: rotate(0deg); }
+}
+
+@keyframes qq-wing-right {
+  0%, 10% { transform: rotate(0deg); }
+  24% { transform: rotate(-72deg); }
+  38% { transform: rotate(-60deg); }
+  52% { transform: rotate(-68deg); }
+  68%, 100% { transform: rotate(0deg); }
+}
+
+@keyframes qq-wing-wave {
+  0%, 100% { transform: rotate(-70deg); }
+  50% { transform: rotate(-98deg); }
+}

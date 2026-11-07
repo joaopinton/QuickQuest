@@ -61,5 +61,5 @@ Flusso di partita, modalità e idee per tutti i giochi: [11 — Brainstorming](1
 | **Cue** | Un comando dallo schermo al telefono: vibrazione, suono o cambio di UI. |
 | **Traccia** (trace) | Una registrazione grezza dei sensori in JSON, usata come fixture di test e per il tuning. |
 | **Assist** | I parametri che rendono il gioco più indulgente del reale senza togliere la sensazione di controllo. |
-| **Bubù / Bubù** | Gli avatar originali del progetto. |
+| **Piggy / Piggy** | Gli avatar originali del progetto. |
 | **Soft Toy** | Il nome dello stile grafico. |

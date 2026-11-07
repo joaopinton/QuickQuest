@@ -8,9 +8,9 @@ Lo stile deve essere "alla Nintendo fatto bene" ma **leggero da caricare** su un
 
 ## Decisione
 - Le forme regolari (birilli, palle, piste, campi, canestri, arredi) sono **geometria procedurale** generata in codice.
-- I modelli necessari (Bubù, oggetti complessi) sono glTF compressi con meshopt, con **colori in vertex color** e **AO bakata in un secondo canale vertex color**.
+- I modelli necessari (Piggy, oggetti complessi) sono glTF compressi con meshopt, con **colori in vertex color** e **AO bakata in un secondo canale vertex color**.
 - Lo shading "Soft Toy" usa una **ramp 1D di 4×1 px**, la hemisphere light e il rim fresnel: non servono texture per ottenere lo stile.
-- Texture ammesse solo per piccoli decal (occhi dei Bubù, loghi, numeri), in un atlas condiviso ≤ 256×256.
+- Texture ammesse solo per piccoli decal (occhi dei Piggy, loghi, numeri), in un atlas condiviso ≤ 256×256.
 
 ## Conseguenze
 - ✅ Download per gioco nell'ordine delle centinaia di KB, non dei MB.

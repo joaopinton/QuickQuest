@@ -15,7 +15,7 @@ pnpm dev
 ```
 
 - Sul PC apri `http://localhost:5173` e premi **Crea una stanza**.
-- Senza telefono, in sviluppo, premi **Aggiungi un telefono di prova**: si apre `/c/CODICE?sim`, un telefono simulato nella stessa finestra del browser. Lo slot sullo schermo diventa "pronto" quando scegli il Bubù.
+- Senza telefono, in sviluppo, premi **Aggiungi un telefono di prova**: si apre `/c/CODICE?sim`, un telefono simulato nella stessa finestra del browser. Lo slot sullo schermo diventa "pronto" quando scegli il Piggy.
 - Con il telefono vero i sensori richiedono HTTPS. Puoi usare `HTTPS=1 pnpm dev`: installa un certificato locale con mkcert, quindi va lanciato a mano. In alternativa usa il tunnel descritto in `spikes/s1-sensor-probe/README.md`.
 - In sviluppo schermo e telefono si parlano via `BroadcastChannel` (stessa finestra del browser). Per provare il relay vero in locale: `pnpm relay:dev`.
 
@@ -36,7 +36,7 @@ pnpm dev
 ```
 apps/relay          Worker Cloudflare + Durable Object `Room` (relay WebSocket)
 apps/web            sito, lobby, flusso del telefono (Preact + Vite)
-packages/ui         design system "Soft Toy": token, componenti, Bubù, testi
+packages/ui         design system "Soft Toy": token, componenti, Piggy, testi
 packages/protocol   messaggi, codici stanza, reducer della stanza, trasporti
 packages/motion     sonda dei sensori
 games/registry.ts   catalogo dei giochi
