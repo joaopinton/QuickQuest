@@ -98,6 +98,12 @@ export function PickPiggy({ slot, initial, onConfirm }: { slot: SlotId; initial:
   const placeholder = t('controller.namePlaceholder', { n: slot.slice(1) });
   const tint = { '--tint': color.hex, '--tint-2': color2.hex, '--slot': s.hex } as JSX.CSSProperties;
 
+  // Scheda nuova: si riparte dall'inizio delle opzioni, non da metà della lista di prima
+  const selectTab = (id: Tab) => {
+    setTab(id);
+    if (window.scrollY > 0) window.scrollTo({ top: 0 });
+  };
+
   const update = (next: Partial<PiggyChoice>) => {
     setChoice((c) => ({ ...c, ...next }));
     setBump((b) => b + 1);
@@ -162,7 +168,7 @@ export function PickPiggy({ slot, initial, onConfirm }: { slot: SlotId; initial:
               role="tab"
               aria-selected={tab === id}
               class="ctl-tab"
-              onClick={() => setTab(id)}
+              onClick={() => selectTab(id)}
             >
               <span class="ctl-tab__icon" aria-hidden="true">{TAB_ICON[id]}</span>
               <span class="ctl-tab__label">{t(TAB_LABEL[id])}</span>

@@ -96,7 +96,8 @@ body.is-controller input { -webkit-user-select: text; user-select: text; }
 .ctl-pick__top {
   position: sticky; top: 0; z-index: 3; display: grid; gap: 12px;
   margin: calc(-1 * env(safe-area-inset-top) - 24px) -24px 0;
-  padding: calc(env(safe-area-inset-top) + 14px) 16px 10px;
+  /* stessi 24px di margine del resto della schermata: palco, schede, opzioni e conferma allineati */
+  padding: calc(env(safe-area-inset-top) + 14px) 24px 10px;
   background: var(--cream-100);
   box-shadow: 0 10px 18px -14px rgb(var(--shadow-tint) / 0.35);
 }
@@ -233,9 +234,16 @@ body.is-controller input { -webkit-user-select: text; user-select: text; }
 
 /* conferma sempre a portata di pollice */
 .ctl-pick__confirm {
-  position: sticky; bottom: 0; z-index: 3; margin: 0 -24px calc(-1 * env(safe-area-inset-bottom) - 24px);
+  /* width:auto: con il 100% di .ctl-actions i margini negativi la spostavano a sinistra senza allargarla */
+  position: sticky; bottom: 0; z-index: 3; width: auto; margin: 0 -24px calc(-1 * env(safe-area-inset-bottom) - 24px);
   padding: 18px 24px calc(env(safe-area-inset-bottom) + 16px);
   background: linear-gradient(180deg, transparent, var(--cream-100) 32%);
+}
+
+/* telefoni bassi: meno aria tra i blocchi, così le azioni restano dentro lo schermo */
+@media (max-height: 760px) {
+  .ctl-screen { gap: 14px; }
+  .ctl-wait .ctl-actions { gap: 6px; }
 }
 
 @media (max-width: 360px) {
@@ -255,15 +263,15 @@ body.is-controller input { -webkit-user-select: text; user-select: text; }
 body.is-controller { transition: background-color var(--dur-slow) var(--ease-out); }
 .ctl-wait__bar { display: flex; justify-content: center; align-items: center; gap: 10px; flex-wrap: wrap; width: 100%; }
 .ctl-demo { padding: 6px 12px; border-radius: var(--radius-sm); background: rgb(255 255 255 / 0.8); font-size: 0.8rem; font-weight: 800; color: var(--ink-600); }
-.ctl-wait__stage { position: relative; display: grid; place-items: center; margin: 24px 0 8px; }
+.ctl-wait__stage { position: relative; display: grid; place-items: center; margin: clamp(4px, 2.5dvh, 24px) 0 clamp(0px, 1dvh, 8px); }
 .ctl-wait__stage .qq-piggy { position: relative; z-index: 1; }
 .ctl-wait__halo {
-  position: absolute; width: 250px; aspect-ratio: 1; border-radius: 50%; z-index: 0;
+  position: absolute; width: min(250px, 32dvh); aspect-ratio: 1; border-radius: 50%; z-index: 0;
   background: radial-gradient(circle, color-mix(in oklab, var(--slot) 30%, #fff) 0 58%, transparent 60%);
   animation: wait-pulse 2.8s ease-in-out infinite;
 }
 @keyframes wait-pulse { 50% { transform: scale(1.06); } }
-.ctl-wait__orbit { position: absolute; width: 290px; aspect-ratio: 1; z-index: 2; animation: qq-spin 14s linear infinite; }
+.ctl-wait__orbit { position: absolute; width: min(290px, 37dvh); aspect-ratio: 1; z-index: 2; animation: qq-spin 14s linear infinite; }
 .ctl-wait__orbit i {
   position: absolute; left: 50%; top: 0; translate: -50% -50%; font-style: normal;
   display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%;

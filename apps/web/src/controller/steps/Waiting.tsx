@@ -35,7 +35,8 @@ export function Waiting({ slot, color, look, name, isDemo, isLost, players, onCh
       <div class="ctl-wait__stage">
         <span class="ctl-wait__halo" aria-hidden="true" />
         <span class="ctl-wait__orbit" aria-hidden="true"><i>{s.symbol}</i><i>{s.symbol}</i><i>{s.symbol}</i></span>
-        <Piggy color={color} look={look} mood="wait" motion="breathe" size={210} />
+        {/* si rimpicciolisce sui telefoni bassi: "Cambia Piggy" ed "Esci" restano a portata */}
+        <Piggy color={color} look={look} mood="wait" motion="breathe" size="min(210px, 27dvh)" />
       </div>
       <p class="ctl-wait__name">{displayName(name, slot)}</p>
       <h1 class="ctl-title">{t('controller.waitTitle')}</h1>
