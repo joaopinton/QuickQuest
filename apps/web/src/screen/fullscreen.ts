@@ -22,6 +22,16 @@ export interface FullscreenDoc {
 
 const CHANGE_EVENTS = ['fullscreenchange', 'webkitfullscreenchange'] as const;
 
+/** `screen.orientation`: il blocco esiste solo a schermo intero e solo su Android. */
+export interface OrientationControl {
+  lock?: (orientation: 'landscape') => Promise<void>;
+  unlock?: () => void;
+}
+
+function browserOrientation(): OrientationControl | undefined {
+  return typeof screen === 'undefined' ? undefined : (screen.orientation as OrientationControl | undefined);
+}
+
 /** Il browser lo permette (su iPhone Safari non esiste per le pagine). */
 export function isFullscreenSupported(doc: FullscreenDoc): boolean {
   return Boolean(doc.fullscreenEnabled ?? doc.webkitFullscreenEnabled)
@@ -35,21 +45,36 @@ export function isFullscreen(doc: FullscreenDoc): boolean {
 /**
  * Entra o esce dallo schermo intero. Va chiamato dentro un gesto (click o tasto): fuori il
  * browser rifiuta, e il rifiuto non è un errore da mostrare. Restituisce se ha funzionato.
+ * Entrando prova anche a bloccare lo schermo in orizzontale (telefono Android che fa da host);
+ * dove non si può (PC, iPhone) il rifiuto si ignora.
  */
-export async function toggleFullscreen(doc: FullscreenDoc): Promise<boolean> {
+export async function toggleFullscreen(
+  doc: FullscreenDoc,
+  orientation: OrientationControl | undefined = browserOrientation(),
+): Promise<boolean> {
   try {
     if (isFullscreen(doc)) {
       const exit = doc.exitFullscreen ?? doc.webkitExitFullscreen;
+      try { orientation?.unlock?.(); } catch { /* niente blocco da togliere */ }
       await exit?.call(doc);
     } else {
       const el = doc.documentElement;
       const request = el.requestFullscreen ?? el.webkitRequestFullscreen;
       if (!request) return false;
       await request.call(el);
+      lockLandscape(orientation);
     }
     return true;
   } catch {
     return false; // rifiutato dal browser (niente gesto, iframe senza permesso…)
+  }
+}
+
+function lockLandscape(orientation: OrientationControl | undefined): void {
+  try {
+    void orientation?.lock?.('landscape')?.catch(() => undefined);
+  } catch {
+    // alcuni browser lanciano subito invece di rifiutare la promessa
   }
 }
 

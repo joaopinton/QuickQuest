@@ -4,6 +4,7 @@
   position: relative;
   width: 100%;
   height: 100vh;
+  height: 100dvh; /* sul telefono host: senza la barra dell'indirizzo */
   overflow: hidden;
   background: #141c30;
   color: #ffffff;
@@ -537,3 +538,54 @@
   margin-top: 4px;
 }
 
+
+/* Telefono orizzontale come host (~390px di altezza): pannelli ridotti con `scale` ancorati al loro
+   angolo (si somma a transform e animazioni). Per quelli centrati con translate(-50%) l'origine va
+   sul bordo sinistro/alto, così restano al centro. */
+@media (orientation: landscape) and (max-height: 540px) {
+  .ft-header {
+    top: max(8px, env(safe-area-inset-top));
+    left: max(12px, env(safe-area-inset-left));
+    right: auto;
+    width: calc((100% - 2 * max(12px, env(safe-area-inset-left))) / 0.72);
+    scale: 0.72;
+    transform-origin: top left;
+  }
+
+  .ft-shot-strip {
+    top: 54px;
+    left: max(12px, env(safe-area-inset-left));
+    scale: 0.65;
+    transform-origin: top left;
+  }
+
+  .ft-leaderboard {
+    top: 54px;
+    right: max(12px, env(safe-area-inset-right));
+    scale: 0.62;
+    transform-origin: top right;
+  }
+
+  .ft-toast {
+    top: 30%;
+    scale: 0.7;
+    transform-origin: 0 0;
+  }
+
+  .ft-prompt {
+    bottom: 12px;
+    scale: 0.8;
+    transform-origin: 0 100%;
+  }
+
+  .ft-modal-backdrop {
+    align-items: flex-start;
+    overflow-y: auto;
+    padding: 10px;
+  }
+
+  .ft-modal {
+    margin: auto;
+    zoom: 0.72;
+  }
+}

@@ -1,6 +1,7 @@
 import { findGame, GAMES, type GameMeta } from '@quickquest/games';
 import type { ScreenPlayer } from '@quickquest/games/contract';
 import { isPlayable, loadersFor } from '@quickquest/games/loaders';
+import { keepAwake, releaseWakeLock } from '@quickquest/motion';
 import { SLOT_IDS, type LobbyPlayer, type SlotId } from '@quickquest/protocol';
 import { Button, displayName, Logo, normalizeStyle, PlayerSlot, showToast, slotStyle, t, type SlotState } from '@quickquest/ui';
 import { useLocation } from 'preact-iso';
@@ -165,6 +166,12 @@ export function Lobby() {
   const [isChoosing, setChoosing] = useState(false);
   const active = players.filter((p) => p.state !== 'disconnected').length;
   const bySlot = new Map(players.map((p) => [p.slot, p]));
+
+  // un telefono che fa da schermo non viene toccato durante la partita: non deve spegnersi
+  useEffect(() => {
+    void keepAwake();
+    return releaseWakeLock;
+  }, []);
 
   const handleStartGame = (gameId: string) => {
     startGame(gameId);

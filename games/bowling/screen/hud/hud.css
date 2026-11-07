@@ -867,3 +867,76 @@
     animation: bw-fade 0.2s ease both;
   }
 }
+
+/* Telefono orizzontale come host (~390px di altezza). Pannelli ridotti con `scale` ancorati al loro
+   angolo (si somma a transform e animazioni); per quelli centrati con translate(-50%) l'origine va sul
+   bordo sinistro, così restano al centro. Viene dopo le regole per larghezza e le sovrascrive. */
+@media (orientation: landscape) and (max-height: 540px) {
+  .bowling-hud-header {
+    top: max(8px, env(safe-area-inset-top));
+    left: max(12px, env(safe-area-inset-left));
+    right: auto;
+    width: calc((100% - 2 * max(12px, env(safe-area-inset-left))) / 0.78);
+    scale: 0.78;
+    transform-origin: top left;
+  }
+
+  .bowling-pin-rack {
+    top: 54px;
+    right: max(12px, env(safe-area-inset-right));
+    scale: 0.6;
+    transform-origin: top right;
+  }
+
+  .bw-strip,
+  .bw-fullboard {
+    top: 54px;
+    max-width: calc((100% - 240px) / 0.7);
+    scale: 0.7;
+    transform-origin: 0 0;
+  }
+
+  .bw-side {
+    display: block;
+    top: auto;
+    bottom: 12px;
+    left: max(12px, env(safe-area-inset-left));
+    width: 220px;
+    scale: 0.62;
+    transform-origin: bottom left;
+  }
+
+  .bowling-controls-panel {
+    bottom: 12px;
+    scale: 0.78;
+    transform-origin: 0 100%;
+  }
+
+  .bw-toast {
+    top: 34%;
+    scale: 0.7;
+    transform-origin: 0 0;
+  }
+
+  .bw-strike__card {
+    margin-top: -6vh;
+    scale: 0.7;
+  }
+
+  .bw-overlay {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    overflow-y: auto;
+    padding: 10px;
+  }
+
+  .bw-overlay > * {
+    margin: auto;
+    zoom: 0.72;
+  }
+
+  .bw-setup__modes {
+    grid-template-columns: 1fr 1fr;
+  }
+}

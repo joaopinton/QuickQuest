@@ -449,3 +449,15 @@ button.game-card { cursor: pointer; }
   .scene__cloud { animation: none; transform: translate3d(40cqw, 0, 0); }
   .hero__title-hl::after { transform: rotate(-1.2deg) scaleX(1); }
 }
+
+/* Scelta del gioco su un telefono orizzontale: card basse, tre per riga, senza sottotitolo. */
+@media (orientation: landscape) and (max-height: 540px) {
+  .bento { grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .game-card__art { aspect-ratio: 4 / 1; }
+  .game-card__icon .qq-game-icon { width: 24%; }
+  .game-card__badge { top: 6px; left: 6px; font-size: 0.72rem; }
+  .game-card__body { padding: 8px 12px 10px; gap: 0; }
+  .game-card__name { font-size: 1.1rem; }
+  .game-card__tagline { display: none; }
+  .game-card__meta { font-size: 0.78rem; margin-top: 2px; }
+}

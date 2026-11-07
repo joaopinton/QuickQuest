@@ -28,6 +28,26 @@ function PauseIcon() {
   );
 }
 
+function RotateIcon() {
+  return (
+    <svg viewBox="0 0 64 64" aria-hidden="true">
+      <rect x="22" y="8" width="20" height="36" rx="4" />
+      <path d="M14 50c6 6 16 8 26 4M40 54l2-6-6-1" />
+    </svg>
+  );
+}
+
+/** Telefono host tenuto in verticale: lo copre un invito a girarlo (lo mostra solo il CSS). */
+function RotateHint() {
+  return (
+    <div class="rotate-hint" role="status">
+      <RotateIcon />
+      <p class="rotate-hint__title">{t('stage.rotateTitle')}</p>
+      <p class="rotate-hint__lead">{t('stage.rotateLead')}</p>
+    </div>
+  );
+}
+
 function PauseMenu({ gameName, onResume, onToLobby, onLeaveRoom }: {
   gameName: string;
   onResume: () => void;
@@ -122,6 +142,7 @@ export function GameStage({ gameId, gameName, players, subscribeEvents, setActiv
         </button>
         <FullscreenToggle />
       </div>
+      <RotateHint />
       {isPaused && <PauseMenu gameName={gameName} onResume={resume} onToLobby={onEndGame} onLeaveRoom={onLeaveRoom} />}
     </div>
   );

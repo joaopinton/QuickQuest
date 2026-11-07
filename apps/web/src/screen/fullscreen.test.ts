@@ -42,6 +42,26 @@ describe('schermo intero', () => {
     expect(request).toHaveBeenCalledTimes(1);
   });
 
+  test('entrando blocca in orizzontale, uscendo sblocca', async () => {
+    const doc = fakeDoc();
+    const orientation = { lock: vi.fn(async () => undefined), unlock: vi.fn() };
+    expect(await toggleFullscreen(doc, orientation)).toBe(true);
+    expect(orientation.lock).toHaveBeenCalledWith('landscape');
+    expect(await toggleFullscreen(doc, orientation)).toBe(true);
+    expect(orientation.unlock).toHaveBeenCalledTimes(1);
+  });
+
+  test("se il blocco dell'orientamento è rifiutato (PC) lo schermo intero resta", async () => {
+    const doc = fakeDoc();
+    const rejecting = { lock: vi.fn(() => Promise.reject(new Error('NotSupportedError'))) };
+    const throwing = { lock: vi.fn(() => { throw new Error('NotSupportedError'); }) };
+    expect(await toggleFullscreen(doc, rejecting)).toBe(true);
+    expect(isFullscreen(doc)).toBe(true);
+    await toggleFullscreen(doc, {});
+    expect(await toggleFullscreen(doc, throwing)).toBe(true);
+    expect(isFullscreen(doc)).toBe(true);
+  });
+
   test('non supportato (iPhone): niente pulsante', () => {
     expect(isFullscreenSupported(fakeDoc({ fullscreenEnabled: false }))).toBe(false);
     expect(isFullscreenSupported(fakeDoc({ documentElement: {} }))).toBe(false);

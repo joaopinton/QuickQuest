@@ -88,3 +88,43 @@
 .lobby__kick:focus-visible { outline: 3px solid var(--primary-500); outline-offset: 2px; }
 .lobby__kick.is-armed { background: color-mix(in oklab, var(--danger-500) 14%, #fff); color: color-mix(in oklab, var(--danger-500) 70%, var(--ink-900)); border-color: var(--danger-500); }
 @media (prefers-reduced-motion: reduce) { .lobby__kick { transition: none; } .lobby__kick:hover { transform: none; } }
+
+/* Schermo basso e orizzontale (telefono girato che fa da host): tutto in una schermata alta ~390px.
+   Viene dopo le regole per larghezza così le sovrascrive. Su TV e PC non scatta mai. */
+@media (orientation: landscape) and (max-height: 540px) {
+  .lobby {
+    overflow-y: auto;
+    padding: max(10px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 10px max(16px, env(safe-area-inset-left));
+    gap: 8px;
+  }
+  .lobby__backdrop { height: 22vh; }
+  .lobby__bar .qq-logo { font-size: 1.4rem; }
+  .lobby__badge { display: none; }
+
+  .lobby__main { grid-template-columns: auto minmax(0, 1fr); gap: 20px; align-items: center; }
+  .join-panel {
+    transform: rotate(-1deg); gap: 6px; padding: 12px 16px;
+    box-shadow: 0 6px 0 var(--primary-700), var(--shadow-lift);
+  }
+  .join-panel__title { font-size: 1.05rem; }
+  .join-panel__qr { width: min(36vh, 140px); padding: 5px; }
+  .join-panel__or { font-size: 0.8rem; max-width: 26ch; }
+  .join-panel .qq-btn { padding-block: 4px; min-height: 0; font-size: 0.85rem; }
+  .code-tiles { gap: 6px; }
+  .code-tiles__tile { width: 34px; font-size: 1.6rem; box-shadow: 0 4px 0 var(--accent-600); }
+
+  .lobby__players { gap: 4px; }
+  .lobby__title { font-size: var(--text-h2); }
+  .lobby__count { font-size: 0.95rem; }
+  .lobby__slots { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 6px 0 10px; }
+  .lobby__slots li:nth-child(n) { margin-top: 0; }
+  .lobby__slots .qq-slot { zoom: 0.62; }
+  .lobby__kick { font-size: 0.75rem; padding: 2px 10px; }
+  .lobby__actions { flex-direction: row; width: auto; gap: 10px; }
+  .lobby__actions .qq-btn { width: auto; }
+  .lobby__actions .qq-btn--xl { min-height: 52px; font-size: 1.15rem; padding: 0 var(--space-8); }
+
+  .picker { gap: 12px; }
+  .picker__head { flex-direction: row; align-items: center; }
+  .picker__head .qq-btn { width: auto; }
+}

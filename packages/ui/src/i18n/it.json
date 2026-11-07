@@ -122,6 +122,10 @@
     "cuePaused": "Pausa",
     "cueResumed": "Si riprende!"
   },
+  "stage": {
+    "rotateTitle": "Gira il telefono",
+    "rotateLead": "Lo schermo dei giochi si tiene in orizzontale."
+  },
   "code": {
     "title": "Inserisci il codice",
     "lead": "Sono le 4 lettere che vedi sullo schermo grande.",

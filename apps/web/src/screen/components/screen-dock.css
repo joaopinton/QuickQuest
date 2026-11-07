@@ -73,3 +73,23 @@
 .screen-dock--game .dock-btn:focus-visible {
   opacity: 1;
 }
+
+/* Telefono orizzontale: pulsanti più piccoli, fuori dalla tacca e dagli angoli arrotondati. */
+@media (orientation: landscape) and (max-height: 540px) {
+  .screen-dock {
+    right: max(10px, env(safe-area-inset-right));
+    bottom: max(10px, env(safe-area-inset-bottom));
+    gap: 8px;
+  }
+
+  .dock-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+  }
+
+  .dock-btn svg {
+    width: 22px;
+    height: 22px;
+  }
+}

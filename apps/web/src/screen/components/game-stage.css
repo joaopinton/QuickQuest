@@ -90,3 +90,83 @@
     animation: none;
   }
 }
+
+/* Telefono orizzontale come host: il menù di pausa deve stare in ~390px di altezza. */
+@media (orientation: landscape) and (max-height: 540px) {
+  .pause { padding: 12px; }
+  .pause__card {
+    width: min(560px, 100%);
+    max-height: calc(100dvh - 24px);
+    overflow-y: auto;
+    padding: 16px 20px 18px;
+    border-radius: 22px;
+  }
+  .pause__title { font-size: 2rem; margin: 2px 0 4px !important; }
+  .pause__lead { font-size: 0.85rem; }
+  .pause__actions { grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+  .pause__primary { grid-column: 1 / -1; }
+  .pause__actions .qq-btn--xl { min-height: 56px; font-size: 1.2rem; }
+  .pause__actions .qq-btn--lg { min-height: 48px; font-size: 1rem; padding: 0 var(--space-4); }
+  .pause__actions > .qq-btn:last-child:nth-child(even) { grid-column: 1 / -1; }
+}
+
+/* Telefono host in verticale durante una partita: un invito a girarlo copre la scena. */
+.rotate-hint {
+  display: none;
+}
+
+@media (orientation: portrait) and (max-width: 600px) {
+  .rotate-hint {
+    position: absolute;
+    inset: 0;
+    z-index: 1200;
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: 8px;
+    padding: 24px;
+    text-align: center;
+    background: #161224;
+    color: #fff;
+  }
+
+  .rotate-hint svg {
+    width: 96px;
+    height: 96px;
+    fill: none;
+    stroke: #ffd84d;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    animation: rotate-hint-turn 2.4s ease-in-out infinite;
+  }
+
+  .rotate-hint p {
+    margin: 0;
+  }
+
+  .rotate-hint__title {
+    font: 800 1.8rem/1.1 var(--font-display, inherit);
+  }
+
+  .rotate-hint__lead {
+    max-width: 26ch;
+    color: rgba(255, 255, 255, 0.75);
+  }
+
+  /* sopra l'invito restano solo i tasti pausa e schermo intero */
+  .game-stage .screen-dock {
+    z-index: 1300;
+  }
+}
+
+@keyframes rotate-hint-turn {
+  0%, 30% { transform: rotate(0deg); }
+  60%, 100% { transform: rotate(-90deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rotate-hint svg {
+    animation: none;
+  }
+}

@@ -86,3 +86,21 @@
 @media (prefers-reduced-motion: reduce) {
   .golf__shot { animation: none; }
 }
+
+/* Telefono orizzontale come host (~390px di altezza): pannelli ridotti con `scale` ancorati al loro
+   angolo (si somma a transform e animazioni). Per quelli centrati con translate(-50%) l'origine va
+   sul bordo sinistro/alto, così restano al centro. */
+@media (orientation: landscape) and (max-height: 540px) {
+  .golf__bar { top: max(8px, env(safe-area-inset-top)); width: max-content; scale: 0.72; transform-origin: 0 0; flex-wrap: nowrap; }
+  .golf__board {
+    top: 54px; right: max(12px, env(safe-area-inset-right)); min-width: 200px;
+    scale: 0.62; transform-origin: top right;
+  }
+  .golf__turn { bottom: 12px; scale: 0.7; transform-origin: 0 100%; white-space: nowrap; }
+  .golf__shot { left: max(12px, env(safe-area-inset-left)); bottom: 60px; scale: 0.65; transform-origin: bottom left; }
+  .golf__quit { left: max(12px, env(safe-area-inset-left)); bottom: 12px; scale: 0.7; transform-origin: bottom left; }
+  .golf__toast { top: 40%; scale: 0.7; transform-origin: 0 0; white-space: nowrap; }
+  .golf__over { gap: 10px; }
+  .golf__over h2 { font-size: 2.2rem; }
+  .golf__over p { font-size: 1.05rem; }
+}
