@@ -4,8 +4,11 @@ import {
   edgeSlowdown,
   followPointer,
   HEAD_SPAN,
+  edgeTurnRate,
+  EDGE_TURN_MAX,
   headYaw,
   isNearCutEdge,
+  nearestTurn,
   pointerContact,
   pointerToDir,
   turnChair,
@@ -26,8 +29,8 @@ describe('puntamento sulla testa', () => {
   });
 
   test('girando la poltrona il centro punta il lato e poi la nuca', () => {
-    expect(pointerToDir({ x: 0.5, y: 0.5 }, 1)![0]).toBeCloseTo(Math.cos(VIEW_TILT));
-    expect(pointerToDir({ x: 0.5, y: 0.5 }, 2)![2]).toBeCloseTo(-Math.cos(VIEW_TILT));
+    expect(pointerToDir({ x: 0.5, y: 0.5 }, headYaw(1))![0]).toBeCloseTo(Math.cos(VIEW_TILT));
+    expect(pointerToDir({ x: 0.5, y: 0.5 }, headYaw(2))![2]).toBeCloseTo(-Math.cos(VIEW_TILT));
     expect(turnChair(0, -1)).toBe(3);
     expect(turnChair(3, 1)).toBe(0);
     expect(headYaw(2)).toBeCloseTo(-Math.PI);
@@ -64,5 +67,22 @@ describe('puntamento sulla testa', () => {
     expect(isNearCutEdge(mohawk, [0, 1, 0])).toBe(false);
     expect(edgeSlowdown(mohawk, edge, 0.4)).toBe(0.4);
     expect(edgeSlowdown(mohawk, edge, 1)).toBe(1);
+  });
+
+  test('la poltrona gira da sola solo puntando verso il bordo, dalla parte giusta', () => {
+    expect(edgeTurnRate({ x: 0.5, y: 0.5 })).toBe(0);
+    expect(edgeTurnRate({ x: 0.5 + HEAD_SPAN * 0.4, y: 0.5 })).toBe(0);
+    // a destra il lato destro viene avanti: la testa gira in negativo, come headYaw(1)
+    expect(edgeTurnRate({ x: 0.5 + HEAD_SPAN * 1.3, y: 0.5 })).toBeCloseTo(-EDGE_TURN_MAX);
+    expect(edgeTurnRate({ x: 0.5 - HEAD_SPAN * 0.9, y: 0.5 })).toBeGreaterThan(0);
+    // molto sopra la testa il telefono non sta mirando
+    expect(edgeTurnRate({ x: 1, y: 0 })).toBe(0);
+  });
+
+  test('il nome della vista è il quarto di giro più vicino', () => {
+    expect(nearestTurn(0)).toBe(0);
+    expect(nearestTurn(headYaw(1) + 0.3)).toBe(1);
+    expect(nearestTurn(headYaw(2))).toBe(2);
+    expect(nearestTurn(Math.PI / 2)).toBe(3);
   });
 });

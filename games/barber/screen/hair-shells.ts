@@ -188,7 +188,7 @@ const fragmentShader = /* glsl */ `
     }
     // Sagoma dell'assist: in menta i capelli ancora da tagliare
     float toCut = step(want + 0.06, len) * step(0.01, len);
-    color = mix(color, uGhostColor * 0.9, 0.42 * uGhost * toCut);
+    color = mix(color, uGhostColor * 0.9, 0.34 * uGhost * toCut);
     gl_FragColor = vec4(color, alpha);
     #include <tonemapping_fragment>
     #include <colorspace_fragment>

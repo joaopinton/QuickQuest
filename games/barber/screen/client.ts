@@ -30,7 +30,10 @@ export interface BarberClient {
   readonly head: THREE.Group;
   readonly hair: HairShells;
   setLook(look: ClientLook): void;
+  /** La poltrona gira con una molla morbida verso questa rotazione (dalla parte più corta). */
   setYawTarget(yaw: number): void;
+  /** Rotazione immediata, senza molla: mentre si taglia testa e puntamento devono coincidere. */
+  setYawNow(yaw: number): void;
   setReaction(r: Reaction | null): void;
   walkIn(): void;
   update(dt: number): void;
@@ -143,6 +146,13 @@ export function createBarberClient(seat: THREE.Vector3): BarberClient {
     },
     setYawTarget(yaw) {
       yawTarget = yaw;
+      // dopo tanti giri della poltrona si torna indietro dalla parte più corta
+      const d = head.rotation.y - yaw;
+      head.rotation.y = yaw + Math.atan2(Math.sin(d), Math.cos(d));
+    },
+    setYawNow(yaw) {
+      yawTarget = yaw;
+      head.rotation.y = yaw;
     },
     setReaction(r) {
       reaction = r;

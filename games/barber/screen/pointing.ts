@@ -3,6 +3,8 @@
 // proietta sulla testa vista dalla telecamera (un po' dall'alto) e si tiene conto di quanto è
 // girata la poltrona: è un raycast "logico" su una sfera, senza la scena 3D.
 // Il puntatore è libero: può uscire dalla testa. Taglia solo dove tocca davvero i capelli.
+// La poltrona gira da sola quando si punta verso il bordo della testa (`edgeTurnRate`): con
+// piccoli movimenti del polso si arriva a lati e nuca, senza tasti.
 
 import { targetLength, type Haircut } from '../shared/haircuts';
 import { HEAD_SPAN, hairHeight, MAX_HAIR, type Vec3 } from '../shared/head';
@@ -37,6 +39,20 @@ export function headYaw(turn: ChairTurn): number {
 const CHAIR_VIEW_NAMES: Readonly<Record<ChairTurn, string>> = { 0: 'Fronte', 1: 'Lato destro', 2: 'Nuca', 3: 'Lato sinistro' };
 export const chairViewName = (turn: ChairTurn): string => CHAIR_VIEW_NAMES[turn];
 
+/** Il quarto di giro più vicino a una rotazione qualsiasi della testa. */
+export function nearestTurn(yaw: number): ChairTurn {
+  return ((((Math.round(-yaw / (Math.PI / 2)) % 4) + 4) % 4) as ChairTurn);
+}
+
+/** Da qui (in raggi della testa, sul piano della vista) la poltrona inizia a girare. */
+export const EDGE_TURN_START = 0.7;
+/** Qui gira a velocità piena. */
+export const EDGE_TURN_FULL = 1.25;
+/** Velocità piena della poltrona, rad/s: mezzo giro in poco più di due secondi. */
+export const EDGE_TURN_MAX = 1.4;
+/** Puntando molto più in alto o in basso della testa il telefono non sta mirando: niente giro. */
+const EDGE_TURN_MAX_SY = 1.15;
+
 export interface ViewPoint {
   /** Coordinate sul piano della vista, in raggi della testa (0 = centro, +y in alto). */
   readonly sx: number;
@@ -53,7 +69,7 @@ export function pointerToView(p: Cursor): ViewPoint {
  * puntatore è fuori dalla testa e dai capelli. Appena fuori dalla cute si prende il bordo: lì i
  * capelli lunghi sporgono e si possono ancora toccare.
  */
-export function pointerToDir(p: Cursor, turn: ChairTurn): Vec3 | null {
+export function pointerToDir(p: Cursor, yaw: number): Vec3 | null {
   let { sx, sy } = pointerToView(p);
   const r = Math.hypot(sx, sy);
   if (r > HAIR_REACH) return null;
@@ -70,7 +86,7 @@ export function pointerToDir(p: Cursor, turn: ChairTurn): Vec3 | null {
   const wz = -sy * st + sz * ct;
 
   // Si annulla la rotazione della poltrona per tornare nel riferimento della testa
-  const b = -headYaw(turn);
+  const b = -yaw;
   const cb = Math.cos(b);
   const sb = Math.sin(b);
   return [sx * cb + wz * sb, wy, -sx * sb + wz * cb];
@@ -80,12 +96,25 @@ export function pointerToDir(p: Cursor, turn: ChairTurn): Vec3 | null {
  * Dove lo strumento tocca i capelli, `null` se è nel vuoto. Sulla cute tocca sempre; sul bordo
  * della testa tocca solo se i capelli lì sono abbastanza lunghi da arrivare al puntatore.
  */
-export function pointerContact(p: Cursor, turn: ChairTurn, lengthAt: (d: Vec3) => number): Vec3 | null {
-  const dir = pointerToDir(p, turn);
+export function pointerContact(p: Cursor, yaw: number, lengthAt: (d: Vec3) => number): Vec3 | null {
+  const dir = pointerToDir(p, yaw);
   if (!dir) return null;
   const { sx, sy } = pointerToView(p);
   const r = Math.hypot(sx, sy);
   return r <= 1 || r <= 1 + hairHeight(lengthAt(dir)) ? dir : null;
+}
+
+/**
+ * Velocità di rotazione della testa (rad/s) quando si punta verso il bordo: il lato a cui si
+ * punta viene verso il centro. Negativa = il lato destro (x > 0) viene avanti.
+ */
+export function edgeTurnRate(p: Cursor): number {
+  const { sx, sy } = pointerToView(p);
+  if (Math.abs(sy) > EDGE_TURN_MAX_SY) return 0;
+  const t = Math.min(1, Math.max(0, (Math.abs(sx) - EDGE_TURN_START) / (EDGE_TURN_FULL - EDGE_TURN_START)));
+  if (t === 0) return 0;
+  const eased = t * t * (3 - 2 * t);
+  return -Math.sign(sx) * EDGE_TURN_MAX * eased;
 }
 
 /** Il cursore insegue il telefono; `slow` < 1 lo frena (assist vicino ai bordi). */

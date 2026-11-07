@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import type { ScreenGameProps, ScreenPlayer } from '../../contract';
 import { parseBarberEvent, TOOL_NAME, type AssistLevel } from '../shared/events';
 import { findHaircut } from '../shared/haircuts';
+import { ToolArt } from '../shared/ToolArt';
 import { HaircutFigure, Podium, Stars } from './hud';
 import { chairViewName } from './pointing';
 import { computeAwards, currentBarber, currentHaircut, standings } from './rules';
@@ -133,10 +134,16 @@ export function Screen({ players, subscribeEvents, setActiveSlot, sendCue, onEnd
       )}
 
       {phase === 'cutting' && (
-        <div class="bb-tools" aria-live="polite">
+        <div class="bb-tools" aria-live="polite" style={barber ? { '--player': barber.color } : undefined}>
           <span class={`bb-timer ${isHurry ? 'is-hurry' : ''}`}>⏱ {snap.timeLeft}s</span>
-          <span class="bb-chip">{snap.tool === 'scissors' ? '✂️' : '💈'} {TOOL_NAME[snap.tool]}</span>
-          <span class="bb-chip">Vista: {chairViewName(snap.turn)}</span>
+          <div class="bb-tools__tool">
+            <ToolArt tool={snap.tool} class="bb-tools__art" />
+            <span>
+              <small>In mano</small>
+              <strong>{TOOL_NAME[snap.tool]}</strong>
+            </span>
+          </div>
+          <span class="bb-tools__view">🪑 {chairViewName(snap.turn)}</span>
         </div>
       )}
 
@@ -170,7 +177,7 @@ export function Screen({ players, subscribeEvents, setActiveSlot, sendCue, onEnd
 
       {phase === 'cutting' && barber && (
         <p class="bb-prompt" style={{ '--player': barber.color }}>
-          📱 Telefono dritto, retro verso la testa: tagli dove punti · cambia attrezzo sul telefono · gira la poltrona per i lati
+          📱 Tagli dove punti · oltre il bordo la poltrona gira
         </p>
       )}
 

@@ -9,7 +9,7 @@ import { COMB_LENGTH, HAIRCUTS, targetLength } from '../shared/haircuts';
 import { CLIENT_LOOKS } from './client';
 import { createHairMap, cutAt, initialHairMap, lengthAt, type BrushKind, type HairMap } from './hair-map';
 import type { Vec3 } from '../shared/head';
-import { edgeSlowdown, followPointer, headYaw, pointerContact, pointerToView, turnChair, type ChairTurn, type Cursor } from './pointing';
+import { edgeSlowdown, edgeTurnRate, followPointer, nearestTurn, pointerContact, pointerToView, type ChairTurn, type Cursor } from './pointing';
 import {
   ASSIST_CONFIG,
   createBarberGame,
@@ -77,6 +77,8 @@ const TOOL_STALE_MS = 1000;
 /** "Finito!" vale solo dopo qualche secondo di lavoro (niente tocchi per sbaglio). */
 const MIN_FINISH_S = 5;
 const CENTER: Cursor = { x: 0.5, y: 0.5 };
+/** Un quarto di giro chiesto col comando `rotate`, rad/s. */
+const SPIN_RATE = 4;
 
 export function createBarberSession(deps: SessionDeps): BarberSession {
   const scene: BarberScene = createBarberScene(deps.container);
@@ -101,6 +103,10 @@ function runSession(deps: SessionDeps, scene: BarberScene): BarberSession {
   let comb: CombLevel = 1;
   let scissors = false;
   let lastToolAt = 0;
+  /** Rotazione della testa (rad), continua: la poltrona gira da sola al bordo della testa. */
+  let yaw = 0;
+  /** Giro ancora da fare per un comando `rotate` (un quarto alla volta, morbido). */
+  let spin = 0;
   let turn: ChairTurn = 0;
   let result: CutResultView | null = null;
   let lastShownSecond = -1;
@@ -143,6 +149,8 @@ function runSession(deps: SessionDeps, scene: BarberScene): BarberSession {
     scene.setShot('intro');
     scene.setHeadYaw(0);
     scene.setTool(null);
+    yaw = 0;
+    spin = 0;
     turn = 0;
     cursor = CENTER;
     raw = CENTER;
@@ -182,7 +190,7 @@ function runSession(deps: SessionDeps, scene: BarberScene): BarberSession {
   };
 
   /** Dove lo strumento tocca i capelli adesso, `null` se è nel vuoto accanto alla testa. */
-  const contact = (): Vec3 | null => pointerContact(cursor, turn, (d) => lengthAt(map, d));
+  const contact = (): Vec3 | null => pointerContact(cursor, yaw, (d) => lengthAt(map, d));
 
   const applyCut = (kind: BrushKind, radius: number) => {
     const dir = contact();
@@ -199,6 +207,19 @@ function runSession(deps: SessionDeps, scene: BarberScene): BarberSession {
     }
   };
 
+  /** La poltrona gira: da sola quando si punta al bordo, più gli eventuali quarti chiesti. */
+  const turnHead = (dt: number) => {
+    const spinStep = Math.sign(spin) * Math.min(Math.abs(spin), SPIN_RATE * dt);
+    spin -= spinStep;
+    yaw += edgeTurnRate(cursor) * dt + spinStep;
+    scene.setHeadYawNow(yaw);
+    const view = nearestTurn(yaw);
+    if (view !== turn) {
+      turn = view;
+      emit();
+    }
+  };
+
   const stepCutting = (dt: number) => {
     if (!game) return;
     game = tickTimer(game, dt);
@@ -208,6 +229,7 @@ function runSession(deps: SessionDeps, scene: BarberScene): BarberSession {
     const here = contact();
     const slow = here ? edgeSlowdown(cut, here, cfg.dwell) : 1;
     cursor = followPointer(cursor, raw, dt, slow);
+    turnHead(dt);
     const isOn = !scissors && clip && performance.now() - lastToolAt < TOOL_STALE_MS;
     if (isOn) applyCut('clip', CLIP_RADIUS);
     const dir = contact();
@@ -278,9 +300,7 @@ function runSession(deps: SessionDeps, scene: BarberScene): BarberSession {
           scene.snip();
           break;
         case 'rotate':
-          turn = turnChair(turn, e.dir);
-          scene.setHeadYaw(headYaw(turn));
-          emit();
+          spin += (-e.dir * Math.PI) / 2;
           break;
         case 'finish':
           if (cutT >= MIN_FINISH_S) finishClient();

@@ -5,6 +5,22 @@
   --bb-mint-dark: #1b8f85;
 }
 
+.bb-pad { gap: 14px; }
+
+/* Barra in alto su una riga: simbolo, titolo, stato (solo se serve) ed Esci */
+.bb-pad__bar { gap: 8px; }
+.bb-pad__title { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bb-pad__leave { min-height: 40px; padding: 0 12px; font-size: 0.85rem; white-space: nowrap; }
+
+.bb-pad__tilted { background: #ffd23f; color: #1e2a4a; }
+.bb-pad__tip {
+  margin: auto 0 0;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--ink-600, #4a5878);
+}
+
 .bb-pad__lost {
   background: color-mix(in oklab, var(--danger-500) 14%, #fff);
   color: color-mix(in oklab, var(--danger-500) 70%, var(--ink-900));
@@ -15,12 +31,14 @@
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 8px;
-  align-items: end;
+  align-items: stretch;
+  padding-top: 6px; /* spazio per l'attrezzo scelto, che si alza */
 }
 .bb-tool {
   position: relative;
   display: grid;
   justify-items: center;
+  align-content: end;
   gap: 2px;
   padding: 8px 4px 10px;
   border: 0;
@@ -35,7 +53,7 @@
 }
 .bb-tool__art {
   width: auto;
-  height: 70px;
+  height: 64px;
   transform-origin: 50% 90%;
   transition: transform 260ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
@@ -51,69 +69,43 @@
 .bb-tool:disabled { cursor: default; opacity: 0.55; }
 .bb-tool:focus-visible { outline: 3px solid var(--slot); outline-offset: 3px; }
 
-/* Mirino: la testa e dove guarda il retro del telefono. Il punto può uscire dalla testa. */
-.bb-aim,
+/* Superficie per puntare col dito (solo col telefono simulato) */
 .bb-pad__track {
   position: relative;
   /* quadrato: x e y del puntatore hanno la stessa scala, la testa resta tonda */
-  width: min(100%, 210px, 30vh);
+  width: min(100%, 190px, 26vh);
   aspect-ratio: 1;
   margin-inline: auto;
   flex: none;
-  display: grid;
-  place-items: center;
   overflow: hidden;
   border-radius: 20px;
+  border: 2px solid color-mix(in oklab, var(--bb-mint) 55%, transparent);
   background:
     repeating-linear-gradient(45deg, transparent 0 14px, color-mix(in oklab, var(--bb-mint) 7%, transparent) 14px 28px),
     var(--surface, #fff);
-  box-shadow: var(--shadow-soft);
+  cursor: crosshair;
   touch-action: none;
 }
-.bb-pad__track { cursor: crosshair; border: 2px solid color-mix(in oklab, var(--bb-mint) 55%, transparent); }
-
-.bb-aim__head {
+.bb-pad__head {
   position: absolute;
   left: 50%;
   top: 50%;
   translate: -50% -50%;
   border-radius: 50%;
-  background: radial-gradient(circle at 40% 35%, color-mix(in oklab, var(--bb-mint) 18%, #fff), color-mix(in oklab, var(--bb-mint) 30%, #fff));
+  background: color-mix(in oklab, var(--bb-mint) 22%, #fff);
   border: 2px dashed color-mix(in oklab, var(--bb-mint-dark) 50%, transparent);
   pointer-events: none;
 }
-
-.bb-aim__dot,
 .bb-pad__dot {
   position: absolute;
   width: 22px;
   height: 22px;
   margin: -11px 0 0 -11px;
   border-radius: 50%;
-  border: 4px solid var(--ink-300, #a6b0c6);
-  background: color-mix(in oklab, var(--ink-300, #a6b0c6) 25%, transparent);
-  pointer-events: none;
-  transition: left 90ms linear, top 90ms linear, border-color 150ms ease;
-}
-.bb-aim__dot.is-on,
-.bb-pad__dot {
-  border-color: var(--slot, var(--bb-mint));
+  border: 4px solid var(--slot, var(--bb-mint));
   background: color-mix(in oklab, var(--slot, var(--bb-mint)) 25%, transparent);
-}
-
-.bb-aim__label {
-  position: absolute;
-  bottom: 8px;
-  left: 8px;
-  right: 8px;
-  text-align: center;
-  font-size: 0.8rem;
-  font-weight: 800;
-  color: var(--ink-600, #4a5878);
   pointer-events: none;
 }
-.bb-aim.is-tilted { box-shadow: 0 0 0 3px #ffd23f, var(--shadow-soft); }
-.bb-aim.is-tilted .bb-aim__label { color: var(--ink-900, #1e2a4a); }
 
 .bb-pad__row {
   display: flex;
@@ -122,6 +114,7 @@
 }
 .bb-pad__row > * { flex: 1; }
 
+.bb-pad__action { flex: 1 1 200px; min-height: 180px; }
 .bb-pad__action.is-scissors { background: #ffd23f; color: #1e2a4a; }
 .bb-pad__action.is-pressed { animation: bb-pad-buzz 0.07s linear infinite; }
 
@@ -131,5 +124,5 @@
 
 @media (prefers-reduced-motion: reduce) {
   .bb-pad__action.is-pressed { animation: none; }
-  .bb-tool, .bb-tool__art, .bb-aim__dot, .bb-pad__dot { transition: none; }
+  .bb-tool, .bb-tool__art { transition: none; }
 }

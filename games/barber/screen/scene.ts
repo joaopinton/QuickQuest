@@ -41,6 +41,8 @@ export interface BarberScene {
   newClient(map: HairMap, target: Uint8Array, look: ClientLook): void;
   markHairDirty(): void;
   setHeadYaw(yaw: number): void;
+  /** Rotazione della testa senza molla (mentre si taglia). */
+  setHeadYawNow(yaw: number): void;
   setTool(tool: ToolView | null): void;
   /** Le forbici si chiudono (animazione). */
   snip(): void;
@@ -58,7 +60,7 @@ const MIRROR_DISTANCE = 1.45;
 const FLOAT_DEPTH = 0.75;
 /** Quanto in fretta l'attrezzo raggiunge la posa nuova, 1/s. */
 const TOOL_FOLLOW = 22;
-const DOWN = new THREE.Vector3(0, -1, 0);
+const TOOL_SCALE = 1.5;
 /**
  * Qualità adattiva dei capelli: se i frame restano lenti (TV, portatili deboli, WebGL software)
  * si tolgono gusci. Si scende soltanto, a gradini, con una pausa tra un gradino e l'altro.
@@ -99,6 +101,8 @@ export function createBarberScene(container: HTMLElement): BarberScene {
   // L'attrezzo vive nel mondo, non sulla testa: si muove libero col telefono
   const tool = createToolModel();
   tool.group.visible = false;
+  // un po' più grande del vero: dalla TV, a tre metri, si deve leggere subito che attrezzo è
+  tool.group.scale.setScalar(TOOL_SCALE);
   scene.add(tool.group);
   const toolPos = new THREE.Vector3();
   const toolQuat = new THREE.Quaternion();
@@ -109,6 +113,7 @@ export function createBarberScene(container: HTMLElement): BarberScene {
   const camRight = new THREE.Vector3(1, 0, 0);
   const camUp = new THREE.Vector3(0, Math.cos(VIEW_TILT), -Math.sin(VIEW_TILT));
   const camToward = new THREE.Vector3(0, Math.sin(VIEW_TILT), Math.cos(VIEW_TILT));
+  const camDown = camUp.clone().negate();
   const scratch = new THREE.Vector3();
   let hasToolPose = false;
 
@@ -195,6 +200,9 @@ export function createBarberScene(container: HTMLElement): BarberScene {
     setHeadYaw(yaw) {
       client.setYawTarget(yaw);
     },
+    setHeadYawNow(yaw) {
+      client.setYawNow(yaw);
+    },
     setTool(view) {
       tool.group.visible = view !== null;
       ring.visible = view?.contact != null;
@@ -217,14 +225,14 @@ export function createBarberScene(container: HTMLElement): BarberScene {
         ring.userData.radius = view.radius;
         toolPos.copy(client.head.localToWorld(localPoint(view.contact.dir, view.contact.length, 0)));
         const normal = toolPos.clone().sub(headCenter).normalize();
-        away.copy(normal).multiplyScalar(0.55).addScaledVector(camToward, 0.6).addScaledVector(DOWN, 0.35);
+        away.copy(normal).multiplyScalar(0.4).addScaledVector(camDown, 0.8).addScaledVector(camRight, 0.35).addScaledVector(camToward, 0.15);
       } else {
         toolPos
           .copy(headCenter)
           .addScaledVector(camRight, view.view.sx * radius)
           .addScaledVector(camUp, view.view.sy * radius)
           .addScaledVector(camToward, FLOAT_DEPTH * radius);
-        away.copy(camToward).multiplyScalar(0.6).addScaledVector(DOWN, 0.6);
+        away.copy(camDown).multiplyScalar(0.85).addScaledVector(camRight, 0.35).addScaledVector(camToward, 0.15);
       }
       // +Y dell'attrezzo verso la testa, il dorso (+Z) verso la telecamera
       axisY.copy(away).normalize().negate();

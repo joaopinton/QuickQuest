@@ -226,6 +226,42 @@
   font-size: 0.95rem;
 }
 
+/* Il banco di lavoro: timer, attrezzo in mano (disegnato come sul telefono) e lato della testa,
+   tutto in una colonna sola sotto i bottoni in alto a destra, allineata al cartellino a sinistra */
+.bb-tools {
+  width: 200px;
+  padding: 10px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 10px 24px rgba(43, 45, 66, 0.15);
+  align-items: stretch;
+}
+.bb-tools .bb-timer { min-width: 0; }
+.bb-tools__tool {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 8px;
+  color: var(--player, var(--bb-mint));
+}
+.bb-tools__art { width: auto; height: 58px; flex: none; }
+.bb-tools__tool span { display: grid; line-height: 1.15; }
+.bb-tools__tool small {
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--bb-mint-dark);
+}
+.bb-tools__tool strong { font-size: 1.2rem; color: var(--bb-ink); }
+.bb-tools__view {
+  padding: 6px 10px;
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--bb-mint) 14%, #ffffff);
+  font-weight: 800;
+  text-align: center;
+}
+
 /* Classifica */
 .bb-board {
   position: absolute;
@@ -301,7 +337,9 @@
   background: rgba(43, 45, 66, 0.88);
   color: var(--bb-cream);
   font-weight: 700;
-  white-space: nowrap;
+  /* mai sotto i tasti pausa e schermo intero in basso a destra */
+  max-width: calc(100% - 340px);
+  text-align: center;
   border: 2px solid var(--player);
   z-index: 5;
 }

@@ -25,10 +25,10 @@ export const TOOL_NAME: Readonly<Record<BarberTool, string>> = {
   scissors: 'Forbici',
 };
 export const TOOL_HINT: Readonly<Record<BarberTool, string>> = {
-  clip0: 'rasato, per sfumare',
-  clip1: 'corto, lati e nuca',
-  clip2: 'medio, la parte alta',
-  scissors: 'una sforbiciata a tocco',
+  clip0: 'rasato',
+  clip1: 'corto',
+  clip2: 'medio',
+  scissors: 'a tocchi',
 };
 
 export function toolFromComb(comb: CombLevel): BarberTool {

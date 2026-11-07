@@ -24,12 +24,13 @@ Il telefono **è lo strumento** e si tiene **dritto, in verticale**, come una ma
 | Azione | Gesto | Riconoscimento |
 |---|---|---|
 | Muovere lo strumento | Puntare il retro del telefono sulla testa | **Mira assoluta** (`packages/motion/aim.ts`): l'altezza viene dall'inclinazione rispetto alla gravità (telefono dritto = centro, non deriva mai), il lato dall'imbardata rispetto al centro preso. Stesso orientamento = stesso punto; il rollio nel palmo non sposta niente |
+| Tenere fermo il cursore | Automatico | Un "guinzaglio" di mezzo grado toglie il tremore della mano (dentro, il cursore si assesta piano sul punto vero); **mano ferma** mentre la macchinetta è accesa: il telefono conta la metà, finita la passata il cursore torna dolcemente dove si punta |
 | Puntatore libero | Uscire dalla testa | Il puntatore **non è incollato alla testa**: a schermo l'attrezzo fluttua accanto al cliente e appoggia le lame sui capelli solo quando ci arriva sopra (sulla cute, o sul bordo se i capelli lì sporgono abbastanza) |
 | Scegliere l'attrezzo | Toccare l'attrezzo sul carrello | Come le mazze del golf: macchinetta col **rialzo 0 / 3 / 6** (a zero, corto, medio) o **forbici**, disegnati in SVG (`shared/ToolArt.tsx`); quello in mano si alza e prende il colore del giocatore |
 | Macchinetta | Tenere premuto il tasto grande | Taglia alla lunghezza del rialzo; **vibrazione continua** su Android (su iOS, ronzio audio) |
 | Forbici | Tap sul tasto grande | Ogni tap è una sforbiciata con piccola area d'effetto |
 | Centro | Automatico, o tasto "🎯 Centra" | A inizio turno il centro si prende da solo quando il telefono si ferma dritto per 0,3 s |
-| Girare la poltrona | Tasti ↺ / ↻ | Fronte, lato, nuca, altro lato |
+| Girare la poltrona | Puntare oltre il bordo della testa | **Gira da sola**, continua: da 0,7 raggi dal centro inizia, oltre il bordo va a velocità piena (mezzo giro in ~2 s) e il lato puntato viene davanti. Niente tasti; l'evento `rotate` resta per compatibilità (un quarto di giro morbido) |
 
 ## Simulazione dei capelli (leggera)
 - Il cuoio capelluto ha una **mappa UV** e una **DataTexture "lunghezze"** (es. 128×128, un byte per texel = lunghezza 0–255).
