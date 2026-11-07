@@ -68,7 +68,7 @@ interface ScreenContext {
   physics: PhysicsWorld | null;                   // valorizzato se meta.needsPhysics
   quality: QualityTier;                           // 'low' | 'mid' | 'high'
   materials: SoftToyMaterials;                    // libreria di materiali dello stile
-  avatars: AvatarService;                         // crea Pupi per gli slot, IK braccio dalla posa
+  avatars: AvatarService;                         // crea Bubù per gli slot, IK braccio dalla posa
   audio: AudioService;                            // sfx, musica, bus
   hud: HudService;                                // mount di componenti Preact sull'overlay
   fx: FxService;                                  // coriandoli, camera shake, slow-mo, popup testo

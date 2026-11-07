@@ -21,6 +21,8 @@ export interface SwingProfile {
   readonly heading0: number;
   /** Picco di velocità angolare (rad/s) di un tiro "normale" del giocatore. */
   readonly normalPeak: number;
+  /** Tiri usati finora per la taratura automatica (assente = taratura completa). */
+  readonly learned?: number;
 }
 
 export type SwingFailure = 'no-data' | 'too-weak';
@@ -120,6 +122,27 @@ export function profileFromPractice(throws: readonly SwingAnalysis[]): SwingProf
     : 0;
   const normalPeak = valid.reduce((s, t) => s + t.peak, 0) / valid.length;
   return { heading0, normalPeak: clamp(normalPeak, MIN_SWING_PEAK * 1.5, 15) };
+}
+
+/** Quanti tiri veri servono per imparare la forza "normale" del giocatore. */
+export const LEARN_THROWS = 3;
+
+/**
+ * Taratura automatica, senza tiri di prova: il primo tiro valido fissa la direzione dello
+ * schermo (quel tiro va dritto), i primi `LEARN_THROWS` fanno la media della forza. Dopo la
+ * taratura resta ferma, così tirare più forte o mirare di lato conta davvero.
+ */
+export function learnFromSwing(profile: SwingProfile | null, swing: SwingAnalysis): SwingProfile | null {
+  if (!swing.valid) return profile;
+  const peak = clamp(swing.peak, MIN_SWING_PEAK * 1.5, 15);
+  if (!profile) {
+    if (swing.heading === null) return null;
+    return { heading0: swing.heading, normalPeak: peak, learned: 1 };
+  }
+  const learned = profile.learned ?? LEARN_THROWS;
+  if (learned >= LEARN_THROWS) return profile;
+  const normalPeak = (profile.normalPeak * learned + peak) / (learned + 1);
+  return { ...profile, normalPeak, learned: learned + 1 };
 }
 
 /** Converte lo swing nei parametri del tiro, rispetto alla taratura del giocatore. */

@@ -45,10 +45,10 @@ Giochi previsti, in ordine di sviluppo: **Bowling** → Bocce → Tiri liberi �
 
 ## Esperienza tipo
 1. Su un laptop collegato alla TV si apre il sito e si preme **"Crea stanza"**. Compaiono un QR grande e 4 slot vuoti.
-2. Ogni amico inquadra il QR, preme **"Connetti"**, accetta i permessi dei sensori e sceglie il colore del suo Pupo.
+2. Ogni amico inquadra il QR, preme **"Connetti"**, accetta i permessi dei sensori e sceglie il colore del suo Bubù.
 3. Il primo giocatore sceglie **Bowling** sullo schermo.
 4. Sul telefono compare il controller del bowling: un trackpad per mirare e un grande tasto da tenere premuto.
-5. Il giocatore tiene premuto, fa lo swing e rilascia. Il braccio del Pupo a schermo segue il movimento, la palla parte, il telefono fa "tock", i birilli volano e arriva lo **STRIKE!** con i coriandoli.
+5. Il giocatore tiene premuto, fa lo swing e rilascia. Il braccio del Bubù a schermo segue il movimento, la palla parte, il telefono fa "tock", i birilli volano e arriva lo **STRIKE!** con i coriandoli.
 6. Si passa al turno successivo. Dopo 10 frame compare la classifica con le premiazioni.
 
 ## Non-obiettivi (per ora)

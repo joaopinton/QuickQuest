@@ -39,7 +39,7 @@ export interface RollResult {
 }
 
 export const DEFAULT_PLAYERS: readonly BowlingPlayer[] = [
-  { id: 'P1', name: 'Pupo 1', color: '#EF4E5B', symbol: '●' },
+  { id: 'P1', name: 'Bubù 1', color: '#EF4E5B', symbol: '●' },
 ];
 
 /**

@@ -6,7 +6,7 @@ Principio: **prima la piattaforma, poi un gioco eccellente, poi gli altri.** Ogn
 Fase 0  Documentazione            ✅ (questo documento)
 Fase 1  Spike go/no-go            S1 sensori · S2 relay · S3 birilli · S4 shader
 Fase 2  Piattaforma               monorepo · relay · lobby/QR · verifica sensori · calibrazione · strumenti dev
-Fase 3  Bowling vertical slice    1 giocatore · 10 frame · gesto · braccio Pupo · juice
+Fase 3  Bowling vertical slice    1 giocatore · 10 frame · gesto · braccio Bubù · juice
 Fase 4  Bowling completo          4 giocatori · rifinitura · risultati · allenamento · playtest
 Fase 5+ Altri giochi              Bocce → Tiri liberi → Golf → Barber shop → Scherma
 ```
@@ -49,7 +49,7 @@ Gli spike sono prototipi **usa-e-getta** in `spikes/`, fuori dal codice di prodo
   - peso di Rapier misurato e accettabile (≤ 1 MB gzip), confrontando `@dimforge/rapier3d-compat` e `@dimforge/rapier3d` ([ADR-003](adr/ADR-003-threejs-rapier.md)).
 
 ### S4 — Shader Soft Toy
-- **Cosa**: la scena del bowling con i materiali Soft Toy (ramp, hemisphere, rim, AO nei vertex color), un Pupo statico e i tre quality tier.
+- **Cosa**: la scena del bowling con i materiali Soft Toy (ramp, hemisphere, rim, AO nei vertex color), un Bubù statico e i tre quality tier.
 - **Go se**:
   - 60 fps sul tier Mid su iPad 9ª gen e sul laptop iGPU di riferimento;
   - 5 persone, viste le immagini, descrivono lo stile con aggettivi come "morbido", "giocattolo", "amichevole" e nessuna lo scambia per un gioco esistente specifico.
@@ -65,10 +65,10 @@ Gli spike sono prototipi **usa-e-getta** in `spikes/`, fuori dal codice di prodo
 | Protocol | Tipi, codec JSON e binario, validatori, versione | Test round-trip e limiti; copertura ≥ 90% |
 | Relay | Worker + DO Room: creazione, join, slot, token, riconnessione, rate limit, scadenza | Test con `vitest-pool-workers` |
 | Lobby (schermo) | Home, Crea stanza, QR, slot P1–P4, selezione gioco con card | E2E Playwright: crea stanza → 2 controller simulati → selezione |
-| Controller | Benvenuto, permessi, **verifica sensori obbligatoria**, scelta Pupo, calibrazione, attesa, layout `menu` | Su telefono reale: un dispositivo senza giroscopio viene rifiutato con il messaggio corretto (si verifica con il simulatore di sviluppo in modalità "senza giroscopio") |
+| Controller | Benvenuto, permessi, **verifica sensori obbligatoria**, scelta Bubù, calibrazione, attesa, layout `menu` | Su telefono reale: un dispositivo senza giroscopio viene rifiutato con il messaggio corretto (si verifica con il simulatore di sviluppo in modalità "senza giroscopio") |
 | Motion | SensorAdapter, fusione, calibrazione, PoseStreamer, primitive recognizer, trace recorder | Test su tracce S1 |
 | Engine | Loop a passo fisso, scene manager, quality tier, materiali Soft Toy, audio, fx, Rapier lazy | Scena demo a 60 fps |
-| Avatar | Pupo procedurale, 8 colori + accessori, idle, IK del braccio dalla posa | Il braccio segue il telefono in lobby (minigioco "saluta!") |
+| Avatar | Bubù procedurale, 8 colori + accessori, idle, IK del braccio dalla posa | Il braccio segue il telefono in lobby (minigioco "saluta!") |
 | UI | Token, componenti base, i18n `it` | Revisione visiva su 1080p e telefono |
 | Strumenti dev | Simulatore controller, replay delle tracce, overlay di debug, **Controller Lab** (telefono 3D che segue quello reale, grafici dei sensori, tuning dal vivo) | Si gioca un turno senza telefono; nel Lab il telefono 3D segue quello reale senza assi invertiti su iPhone e Android |
 | Deploy | Pages + Worker su un dominio, staging per branch | URL pubblico funzionante in HTTPS |

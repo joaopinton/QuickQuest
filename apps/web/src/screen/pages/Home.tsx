@@ -1,5 +1,5 @@
 import { GAMES } from '@quickquest/games';
-import { Button, Dialog, PLAYER_SLOTS, Pupo, t } from '@quickquest/ui';
+import { Button, Dialog, PLAYER_SLOTS, Bubu, t } from '@quickquest/ui';
 import type { JSX } from 'preact';
 import { useState } from 'preact/hooks';
 import { GameCard } from '../components/GameCard';
@@ -99,7 +99,7 @@ function Requirement() {
             <span class="gyro__ring gyro__ring--b" />
             <span class="gyro__ring gyro__ring--c" />
           </div>
-          <Pupo color="#2EC4B6" accessory="leaves" mood="happy" motion="breathe" size={150} />
+          <Bubu color="#2EC4B6" look={{ pattern: 'spots', mouth: 'cat', hat: 'leaves' }} mood="happy" motion="breathe" size={150} />
         </div>
         <div>
           <h2 id="req-title" class="section__title">{t('home.requirementTitle')}</h2>

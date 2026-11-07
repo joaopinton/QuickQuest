@@ -12,7 +12,7 @@ import { computeAwards, currentBarber, currentHaircut, standings } from './rules
 import { createBarberSession, type BarberSession, type SessionSnapshot } from './session';
 import './barber.css';
 
-const DEFAULT_ROSTER: readonly ScreenPlayer[] = [{ id: 'P1', name: 'Pupo 1', color: '#2EC4B6', symbol: '●' }];
+const DEFAULT_ROSTER: readonly ScreenPlayer[] = [{ id: 'P1', name: 'Bubù 1', color: '#2EC4B6', symbol: '●' }];
 const ASSIST_LABELS: Readonly<Record<AssistLevel, string>> = { easy: 'Facile', normal: 'Normale', pro: 'Pro' };
 const INITIAL: SessionSnapshot = { phase: 'setup', game: null, countdown: 0, timeLeft: 0, comb: 1, turn: 0, result: null };
 

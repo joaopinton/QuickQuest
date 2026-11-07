@@ -27,7 +27,7 @@ function simulatedThrow(heldMs: number): ThrowOutput {
 }
 
 export function Pad({
-  slot, color, isDemo, isLost, activeSlot, tracker, haptics, swingProfile, lastCue, isSimulated, send, onRecalibrate, onLeave,
+  slot, color, isDemo, isLost, activeSlot, tracker, haptics, swingProfile, learnSwing, lastCue, isSimulated, send, onRecalibrate, onLeave,
 }: ControllerPadProps) {
   const [isPressed, setPressed] = useState(false);
   const [feedback, setFeedback] = useState<Feedback>(null);
@@ -81,6 +81,7 @@ export function Pad({
       return;
     }
     const th = throwFromSwing(swing, swingProfile);
+    learnSwing(swing);
     send(throwEvent(th));
     setFeedback({ kind: 'thrown', text: describeThrow(th) });
     haptics.play('success');

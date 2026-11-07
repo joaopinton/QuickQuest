@@ -63,8 +63,8 @@ Già presenti (2026-11-04):
 - `apps/web`:
   - sito pubblico (Home, Come si gioca, Giochi, 404);
   - lobby `/stanza` con QR;
-  - flusso del telefono `/c/:code`: codice, permessi, sonda, Pupo, sicurezza, attesa.
-- `packages/ui`: token, componenti, Pupo in SVG e i18n.
+  - flusso del telefono `/c/:code`: codice, permessi, sonda, Bubù, sicurezza, attesa.
+- `packages/ui`: token, componenti, Bubù in SVG e i18n.
 - `packages/protocol`:
   - messaggi core e codici stanza;
   - **reducer della stanza**, lo stesso che userà il DO;
@@ -94,7 +94,7 @@ quickquest/
 │   ├── protocol/                    tipi messaggi, codec JSON/binario, versione, validazione
 │   ├── motion/                      SensorAdapter, filtri, fusione orientamento, primitive recognizer, tracce
 │   ├── engine/                      shell Three.js, loop, scene, asset, quality tier, audio, fisica lazy
-│   ├── avatar/                      Pupi: generazione procedurale, IK braccio, animazioni
+│   ├── avatar/                      Bubù: generazione procedurale, IK braccio, animazioni
 │   └── ui/                          design token (CSS), componenti Preact condivisi
 ├── games/
 │   ├── registry.ts                  elenco GameDefinition (1 riga per gioco)
@@ -144,7 +144,7 @@ Boot → Home → CreaStanza → Lobby (attende ≥1 controller)
 ```
 Apri link → Benvenuto → [tap] Connetti → Permessi → Verifica sensori
           → (fallita) Schermata "telefono non compatibile"  ✖ fine
-          → (ok) Join → Scelta Pupo → Attesa → Layout di gioco ⇄ Attesa → …
+          → (ok) Join → Scelta Bubù → Attesa → Layout di gioco ⇄ Attesa → …
 ```
 - La logica di gioco sul controller (layout + recognizer) si carica quando lo schermo invia `controller.layout`.
 
@@ -179,7 +179,7 @@ Il modello di minaccia è modesto: nessun dato personale, nessun pagamento. Prot
 | Flood di messaggi | Limite per connessione (es. 60 msg/s per lo stream, 20/s per gli eventi); i messaggi in eccesso vengono scartati, e oltre una soglia la connessione si chiude |
 | Messaggi malformati o enormi | Dimensione massima (2 KB per evento, 64 byte per frame di posa); validazione dello schema nel DO e di nuovo sullo schermo |
 | Un controller che si finge lo schermo | Il ruolo `screen` viene fissato alla creazione della stanza da un `screenSecret` che resta sullo schermo |
-| XSS tramite il nome del giocatore | Nessun testo libero nell'MVP: si sceglie un colore e un Pupo. Se in futuro si aggiungono nomi, verranno resi solo come testo, mai come HTML |
+| XSS tramite il nome del giocatore | Nessun testo libero nell'MVP: si sceglie un colore e un Bubù. Se in futuro si aggiungono nomi, verranno resi solo come testo, mai come HTML |
 | Header e CSP | `_headers` di Pages: CSP `default-src 'self'`, `connect-src 'self' wss:`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy` che abilita `accelerometer` e `gyroscope` solo per `self` |
 | Stanze zombie | Il DO usa un alarm che chiude la stanza dopo 10 min senza schermo o 2 h di vita |
 

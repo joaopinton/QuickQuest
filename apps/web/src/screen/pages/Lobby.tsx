@@ -2,7 +2,7 @@ import { findGame, GAMES, type GameMeta } from '@quickquest/games';
 import type { ScreenPlayer } from '@quickquest/games/contract';
 import { isPlayable, loadersFor } from '@quickquest/games/loaders';
 import { SLOT_IDS, type LobbyPlayer, type SlotId } from '@quickquest/protocol';
-import { Button, Logo, PlayerSlot, showToast, slotStyle, t, type Accessory, type SlotState } from '@quickquest/ui';
+import { Button, displayName, Logo, normalizeStyle, PlayerSlot, showToast, slotStyle, t, type SlotState } from '@quickquest/ui';
 import { useLocation } from 'preact-iso';
 import { useEffect, useState } from 'preact/hooks';
 import { useScreenRoom } from '../../net/useScreenRoom';
@@ -12,7 +12,7 @@ import { GameCard } from '../components/GameCard';
 import { QrCode } from '../components/QrCode';
 import './lobby.css';
 
-/** Giocatori collegati come li vede un gioco: colore del Pupo scelto sul telefono e simbolo dello slot. */
+/** Giocatori collegati come li vede un gioco: colore del Bubù scelto sul telefono e simbolo dello slot. */
 function screenPlayers(players: readonly LobbyPlayer[]): ScreenPlayer[] {
   return players
     .filter((p) => p.state !== 'disconnected')
@@ -20,7 +20,7 @@ function screenPlayers(players: readonly LobbyPlayer[]): ScreenPlayer[] {
       const slot = slotStyle(p.slot);
       return {
         id: p.slot,
-        name: `Pupo ${p.slot.slice(1)}`,
+        name: displayName(p.profile?.name, p.slot),
         // il telefono manda già l'esadecimale del colore scelto (non l'id della palette)
         color: p.profile?.color ?? slot.hex,
         symbol: slot.symbol,
@@ -35,14 +35,13 @@ function slotState(p: LobbyPlayer | undefined): SlotState {
 const KICK_CONFIRM_MS = 3000;
 
 /** Togli un giocatore: primo tocco chiede conferma, il secondo (entro 3 s) lo toglie. */
-function KickButton({ slot, onKick }: { slot: SlotId; onKick: (slot: SlotId) => void }) {
+function KickButton({ slot, name, onKick }: { slot: SlotId; name: string; onKick: (slot: SlotId) => void }) {
   const [isArmed, setArmed] = useState(false);
   useEffect(() => {
     if (!isArmed) return;
     const id = setTimeout(() => setArmed(false), KICK_CONFIRM_MS);
     return () => clearTimeout(id);
   }, [isArmed]);
-  const name = `Pupo ${slot.slice(1)}`;
   return (
     <button
       type="button"
@@ -141,8 +140,9 @@ function PlayingScreen({
                 <PlayerSlot
                   slot={id}
                   state={slotState(p)}
-                  pupoColor={p.profile?.color}
-                  accessory={(p.profile?.accessory ?? 'none') as Accessory}
+                  bubuColor={p.profile?.color}
+                  look={normalizeStyle(p.profile as Record<string, unknown> | null)}
+                  name={displayName(p.profile?.name, id)}
                 />
               </li>
             );
@@ -222,10 +222,11 @@ export function Lobby() {
                     <PlayerSlot
                       slot={id}
                       state={slotState(p)}
-                      pupoColor={p?.profile?.color}
-                      accessory={(p?.profile?.accessory ?? 'none') as Accessory}
+                      bubuColor={p?.profile?.color}
+                      look={normalizeStyle(p?.profile as Record<string, unknown> | null | undefined)}
+                      name={p ? displayName(p.profile?.name, id) : undefined}
                     />
-                    {p && <KickButton slot={id} onKick={kick} />}
+                    {p && <KickButton slot={id} name={displayName(p.profile?.name, id)} onKick={kick} />}
                   </li>
                 );
               })}

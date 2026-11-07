@@ -1,5 +1,5 @@
-// Scena della home: strati di carta (cielo, colline, Pupi) con parallasse leggero.
-import { Pupo, t } from '@quickquest/ui';
+// Scena della home: strati di carta (cielo, colline, Bubù) con parallasse leggero.
+import { Bubu, t } from '@quickquest/ui';
 import { useEffect, useRef } from 'preact/hooks';
 
 function Hills() {
@@ -69,14 +69,14 @@ export function HeroScene() {
       <Hills />
       <Pins />
       <div class="scene__cast">
-        <div class="scene__pupo scene__pupo--left scene__layer" data-depth="0.7">
-          <Pupo color="#F7C531" accessory="cap" mood="happy" motion="hop" delay={0.4} size="100%" />
+        <div class="scene__bubu scene__bubu--left scene__layer" data-depth="0.7">
+          <Bubu color="#F7C531" look={{ pattern: 'belly', mouth: 'grin', hat: 'cap' }} mood="happy" motion="hop" delay={0.4} size="100%" />
         </div>
-        <div class="scene__pupo scene__pupo--center scene__layer" data-depth="0.9">
-          <Pupo color="#9C6BFF" accessory="headphones" ball motion="breathe" size="100%" />
+        <div class="scene__bubu scene__bubu--center scene__layer" data-depth="0.9">
+          <Bubu color="#9C6BFF" look={{ pattern: 'stripes', color2: '#FFD23F', eyes: 'sleepy', hat: 'headphones' }} ball motion="breathe" size="100%" />
         </div>
-        <div class="scene__pupo scene__pupo--right scene__layer" data-depth="0.75">
-          <Pupo color="#3C8CF0" accessory="glasses" mood="idle" motion="breathe" wave delay={1.2} size="100%" />
+        <div class="scene__bubu scene__bubu--right scene__layer" data-depth="0.75">
+          <Bubu color="#3C8CF0" look={{ pattern: 'dots', neck: 'scarf', color2: '#FF7EB6', face: 'glasses' }} mood="idle" motion="breathe" wave delay={1.2} size="100%" />
         </div>
       </div>
     </div>

@@ -38,9 +38,9 @@ describe('host locale della stanza su BroadcastChannel', () => {
     a.t.send({ t: 'hello', p: { sessionToken: null, capabilities: caps } });
     await until(() => a.inbox.length > 0);
     expect(a.inbox[0]).toMatchObject({ t: 'welcome', p: { slot: 'P1' } });
-    a.t.send({ t: 'profile', p: { color: '#9C6BFF', accessory: 'glasses' } });
+    a.t.send({ t: 'profile', p: { name: '', color: '#9C6BFF', color2: '#FFF6E8', pattern: 'none', eyes: 'round', mouth: 'smile', hat: 'glasses', face: 'none', neck: 'none' } });
     await until(() => lobbies.at(-1)?.[0]?.state === 'ready');
-    expect(lobbies.at(-1)).toEqual([{ slot: 'P1', state: 'ready', profile: { color: '#9C6BFF', accessory: 'glasses' } }]);
+    expect(lobbies.at(-1)).toEqual([{ slot: 'P1', state: 'ready', profile: { name: '', color: '#9C6BFF', color2: '#FFF6E8', pattern: 'none', eyes: 'round', mouth: 'smile', hat: 'glasses', face: 'none', neck: 'none' } }]);
     expect(a.inbox.at(-1)).toMatchObject({ t: 'lobby' });
     expect(host.players()).toHaveLength(1);
   });
@@ -51,9 +51,9 @@ describe('host locale della stanza su BroadcastChannel', () => {
     const replies: unknown[] = [];
     raw.addEventListener('message', (e) => replies.push(e.data));
     cleanups.push(() => raw.close());
-    raw.postMessage({ from: 'x', to: 'host', data: '{"v":1,"t":"profile","p":{"color":"javascript:"}}' });
+    raw.postMessage({ from: 'x', to: 'host', data: '{"v":2,"t":"profile","p":{"color":"javascript:"}}' });
     await until(() => replies.length > 0);
-    expect(replies).toContainEqual({ from: 'host', to: 'x', data: '{"v":1,"t":"error","p":{"code":"BAD_MESSAGE"}}' });
+    expect(replies).toContainEqual({ from: 'host', to: 'x', data: '{"v":2,"t":"error","p":{"code":"BAD_MESSAGE"}}' });
     expect(lobbies).toHaveLength(0);
   });
 
@@ -103,7 +103,7 @@ describe('host locale della stanza su BroadcastChannel', () => {
     const a = client();
     a.t.send({ t: 'hello', p: { sessionToken: null, capabilities: caps } });
     await until(() => a.inbox.some((m) => m.t === 'welcome'));
-    a.t.send({ t: 'profile', p: { color: '#8E5BFF', accessory: 'cap' } });
+    a.t.send({ t: 'profile', p: { name: '', color: '#8E5BFF', color2: '#FFF6E8', pattern: 'none', eyes: 'round', mouth: 'smile', hat: 'cap', face: 'none', neck: 'none' } });
     await until(() => a.inbox.some((m) => m.t === 'lobby' && m.p.players[0]?.state === 'ready'));
 
     // Selezione del gioco
@@ -138,7 +138,7 @@ describe('lancio col gesto dal telefono del giocatore di turno', () => {
   const ready = async (c: { t: ClientTransport; inbox: ServerMessage[] }) => {
     c.t.send({ t: 'hello', p: { sessionToken: null, capabilities: caps } });
     await until(() => c.inbox.some((m) => m.t === 'welcome'));
-    c.t.send({ t: 'profile', p: { color: '#9C6BFF', accessory: 'glasses' } });
+    c.t.send({ t: 'profile', p: { name: '', color: '#9C6BFF', color2: '#FFF6E8', pattern: 'none', eyes: 'round', mouth: 'smile', hat: 'glasses', face: 'none', neck: 'none' } });
   };
 
   test('bowling sul contratto: solo il telefono di turno lancia', async () => {

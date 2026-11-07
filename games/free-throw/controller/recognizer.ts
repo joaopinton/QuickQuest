@@ -64,6 +64,8 @@ export interface FreeThrowGestureAnalysis {
   readonly peakUpAcc: number;
   /** Angolo di chiusura del polso a gancio (gradi). */
   readonly wristHookDeg: number;
+  /** Direzione dell'asse della frustata (rad), `null` se non affidabile: serve alla taratura automatica. */
+  readonly heading?: number | null;
 }
 
 export interface FreeThrowRecognizer {
@@ -307,6 +309,7 @@ export function createFreeThrowRecognizer(): FreeThrowRecognizer {
         peakOmega,
         peakUpAcc,
         wristHookDeg,
+        heading,
       };
     },
 

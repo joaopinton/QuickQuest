@@ -6,7 +6,7 @@ async function roomCode(page: Page): Promise<string> {
   return code;
 }
 
-test('stanza → telefono simulato → scelta Pupo → lo slot P1 diventa pronto', async ({ context }) => {
+test('stanza → telefono simulato → scelta Bubù → lo slot P1 diventa pronto', async ({ context }) => {
   const screen = await context.newPage();
   await screen.goto('/stanza');
   await expect(screen.getByRole('heading', { name: 'La tua stanza' })).toBeVisible();
@@ -18,23 +18,31 @@ test('stanza → telefono simulato → scelta Pupo → lo slot P1 diventa pronto
   await phone.goto(`/c/${code}?sim`);
   await expect(phone.getByText('Ti stai unendo alla stanza')).toBeVisible();
   await phone.getByRole('button', { name: 'Connetti' }).click();
-  await expect(phone.getByRole('heading', { name: 'Scegli il tuo Pupo' })).toBeVisible({ timeout: 10_000 });
+  await expect(phone.getByRole('heading', { name: 'Scegli il tuo Bubù' })).toBeVisible({ timeout: 10_000 });
   await expect(phone.getByText('Giocatore P1')).toBeVisible();
   await expect(screen.locator('[data-slot="P1"]')).toHaveAttribute('data-state', 'connecting');
 
+  await phone.getByRole('textbox', { name: 'Nome' }).fill('Zoë <3');
   await phone.getByRole('radio', { name: 'Colore Uva' }).click();
+  await phone.getByRole('radio', { name: 'Mani e piedi Limone' }).click();
+  await phone.getByRole('tab', { name: 'Faccia' }).click();
   await phone.getByRole('radio', { name: 'Occhiali tondi' }).click();
-  await phone.getByRole('button', { name: 'Questo è il mio Pupo' }).click();
+  await phone.getByRole('tab', { name: 'Accessori' }).click();
+  await phone.getByRole('radio', { name: 'Corona' }).click();
+  await phone.getByRole('button', { name: 'Questo è il mio Bubù' }).click();
   await phone.getByRole('button', { name: 'Ho capito' }).click();
   await expect(phone.getByRole('heading', { name: 'Guarda lo schermo!' })).toBeVisible();
   await expect(phone.getByText('Demo: nessuno schermo collegato')).toHaveCount(0);
 
   await expect(screen.locator('[data-slot="P1"]')).toHaveAttribute('data-state', 'ready');
+  // il nome scelto arriva allo schermo, ripulito dai caratteri non ammessi
+  await expect(screen.locator('[data-slot="P1"]')).toContainText('Zoë 3');
   await expect(screen.getByText('1 di 4 giocatori')).toBeVisible();
   await screen.getByRole('button', { name: 'Scegli il gioco' }).click();
   await expect(screen.getByRole('heading', { name: 'A cosa giochiamo?' })).toBeVisible();
   await screen.getByRole('button', { name: 'Dettagli su Bowling' }).click();
-  await expect(screen.getByText('Il bowling arriva presto!')).toBeVisible();
+  // il bowling è giocabile: parte la partita
+  await expect(screen.getByText('QuickQuest Bowling')).toBeVisible({ timeout: 15_000 });
 });
 
 test('un telefono senza giroscopio vede "non può giocare" e non entra', async ({ page }) => {
@@ -49,7 +57,7 @@ test('senza schermo raggiungibile il telefono entra in modalità demo', async ({
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/c/ZZZZ?sim');
   await page.getByRole('button', { name: 'Connetti' }).click();
-  await page.getByRole('button', { name: 'Questo è il mio Pupo' }).click({ timeout: 10_000 });
+  await page.getByRole('button', { name: 'Questo è il mio Bubù' }).click({ timeout: 10_000 });
   await page.getByRole('button', { name: 'Ho capito' }).click();
   await expect(page.getByText('Demo: nessuno schermo collegato')).toBeVisible();
 });

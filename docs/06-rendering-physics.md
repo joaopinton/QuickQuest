@@ -81,10 +81,10 @@ L'overlay di debug (tasto `` ` ``) mostra i wireframe dei collider di Rapier, i 
    - birilli e palla del bowling: `LatheGeometry` da un profilo di 20–30 punti (pesa quasi zero byte);
    - pista, canaline, tabellone, campo da bocce, canestro: box arrotondati (`RoundedBoxGeometry`), tubi, estrusioni;
    - vegetazione semplice: cluster di icosfere deformate.
-2. **Modelli** (Pupi, oggetti complessi come il tagliacapelli o il cliente del barbiere): Blender → glTF 2.0 → `gltf-transform`:
+2. **Modelli** (Bubù, oggetti complessi come il tagliacapelli o il cliente del barbiere): Blender → glTF 2.0 → `gltf-transform`:
    - `meshopt` (compressione geometria, decoder ~ 10 KB), `quantize`, `prune`, `dedup`, `weld`;
    - colori in **vertex color**; AO **bakata in un secondo canale vertex color**;
-   - niente texture PBR. Quando serve un decal (logo sul tabellone, numeri, volto dei Pupi) si usa un piccolo **atlas condiviso** in KTX2/Basis o WebP ≤ 256×256.
+   - niente texture PBR. Quando serve un decal (logo sul tabellone, numeri, volto dei Bubù) si usa un piccolo **atlas condiviso** in KTX2/Basis o WebP ≤ 256×256.
 3. **Audio**: campioni brevi in AAC/M4A, compatibili con tutti i browser incluso iOS, mono 22–32 kHz per gli SFX; musica in loop da 30–60 s. Alcuni SFX procedurali via Web Audio (click, tick) pesano 0 byte.
 4. **Font**: Fredoka + Nunito in WOFF2, subset latino base + latino esteso (italiano), `font-display: swap`.
 
@@ -119,6 +119,6 @@ L'overlay di debug (tasto `` ` ``) mostra i wireframe dei collider di Rapier, i 
 ### Tecniche
 - `InstancedMesh` per gli oggetti ripetuti (birilli, pubblico, coriandoli).
 - Geometrie unite (`mergeGeometries`) per l'arredo statico.
-- Ombre solo sugli oggetti che contano: palla, birilli, Pupo attivo.
+- Ombre solo sugli oggetti che contano: palla, birilli, Bubù attivo.
 - Nessuna allocazione nel loop caldo: vettori e quaternioni temporanei riutilizzati.
 - Frustum culling di default; LOD solo se un gioco lo richiede (golf).

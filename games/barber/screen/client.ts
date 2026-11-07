@@ -1,4 +1,4 @@
-// Il cliente: un Pupo "peloso" seduto in poltrona con la mantellina (docs/games/barber.md § Set).
+// Il cliente: un Bubù "peloso" seduto in poltrona con la mantellina (docs/games/barber.md § Set).
 // La testa è una sfera unitaria scalata a HEAD_RADIUS: i capelli sono i gusci di hair-shells.ts,
 // la faccia (occhi, naso, bocca, sopracciglia) si gira con la testa. Le reazioni allo specchio
 // sono sempre comiche, mai offensive (docs/11 § 6.1).

@@ -27,16 +27,16 @@ Le misure sono reali e la fisica le usa così come sono. Il visivo può esagerar
 | Pista: dalla linea di fallo al birillo 1 | 18,29 m | |
 | Larghezza pista | 1,054 m (39 tavole) | Le tavole sono strisce di vertex color alternate |
 | Canaline | ~0,235 m ciascuna, sezione semicircolare | Collider: due cilindri tagliati / trimesh semplice |
-| Approccio (rincorsa) | 4,57 m | Dove si muove il Pupo |
+| Approccio (rincorsa) | 4,57 m | Dove si muove il Bubù |
 | Frecce di mira | 7 frecce a ~4,6 m dalla linea di fallo | Riferimento visivo per mirare, come nel reale |
 | Birilli | Alti 38,1 cm, Ø max 12,1 cm, 1,53 kg | Triangolo, passo 30,48 cm tra i centri |
-| Palla | Ø 21,6 cm, 6,4 kg (14 lb) | Colore = colore del Pupo, con riflesso lucido |
+| Palla | Ø 21,6 cm, 6,4 kg (14 lb) | Colore = colore del Bubù, con riflesso lucido |
 | Zona oliata | primi 12 m (~40 ft) | μ ≈ 0,04 |
 | Back end asciutto | ultimi ~6,3 m | μ ≈ 0,20 |
 | Pin deck + pozzetto | dietro i birilli | I birilli che cadono nel pozzetto vengono rimossi |
 
 ### Ambiente
-- Una sala bowling "serale e accogliente": la pista protagonista in primo piano; le piste vicine come set più scuri con Pupi di sfondo che giocano in loop; insegne al neon **originali** (birillo stilizzato, stelline); un pubblico di Pupi sulle panche dietro l'approccio.
+- Una sala bowling "serale e accogliente": la pista protagonista in primo piano; le piste vicine come set più scuri con Bubù di sfondo che giocano in loop; insegne al neon **originali** (birillo stilizzato, stelline); un pubblico di Bubù sulle panche dietro l'approccio.
 - **Tabellone** sopra i birilli: monitor stilizzato con il frame corrente e il punteggio.
 - **Pinsetter**: una barra sweeper che scende, spazza e risale (animazione procedurale).
 - Luce: sala calda (ambra), la pista come superficie lucida (riflesso finto a gradiente, o planar reflection sul tier High), rim light viola dall'accento.
@@ -51,11 +51,11 @@ Il telefono si tiene **in verticale nel palmo, con lo schermo verso l'alto e il 
 ### 3.2 Fasi del turno
 | Fase | Controller (layout `aim-action`) | Schermo |
 |---|---|---|
-| **Mira** | Trackpad: trascinamento orizzontale. Un chip alterna **Sposta** (posizione sull'approccio, a scatti di 1 tavola) e **Ruota** (angolo della freccia di mira, ±6°). | Pupo sull'approccio, freccia di mira che proietta la linea sulla pista fino alle frecce |
-| **Preparazione** | Il giocatore **tiene premuto** il tasto → vibrazione breve, il tasto si "abbassa" | Il Pupo porta la palla al petto; ricalibrazione automatica dello yaw (telefono fermo) |
-| **Swing** | Il tasto resta premuto, il braccio va indietro e poi avanti | **Il braccio del Pupo segue la posa del telefono** (IK); i passi della rincorsa avanzano in proporzione alla fase dello swing, così il rilascio cade sulla linea di fallo |
+| **Mira** | Trackpad: trascinamento orizzontale. Un chip alterna **Sposta** (posizione sull'approccio, a scatti di 1 tavola) e **Ruota** (angolo della freccia di mira, ±6°). | Bubù sull'approccio, freccia di mira che proietta la linea sulla pista fino alle frecce |
+| **Preparazione** | Il giocatore **tiene premuto** il tasto → vibrazione breve, il tasto si "abbassa" | Il Bubù porta la palla al petto; ricalibrazione automatica dello yaw (telefono fermo) |
+| **Swing** | Il tasto resta premuto, il braccio va indietro e poi avanti | **Il braccio del Bubù segue la posa del telefono** (IK); i passi della rincorsa avanzano in proporzione alla fase dello swing, così il rilascio cade sulla linea di fallo |
 | **Rilascio** | Il giocatore **alza il pollice** → l'evento parte subito, con feedback aptico locale immediato | La palla esce dalla mano con i parametri dell'evento |
-| **Annullo** | Alzare il pollice senza swing valido | Il Pupo riporta la palla al petto ("Ripensamento!"), il turno non si consuma |
+| **Annullo** | Alzare il pollice senza swing valido | Il Bubù riporta la palla al petto ("Ripensamento!"), il turno non si consuma |
 
 ### 3.3 Recognizer (`games/bowling/controller/recognizer.ts`)
 Stati: `idle → armed → backswing → forward → released | cancelled`.
@@ -107,7 +107,7 @@ Lo schermo **valida e limita** ogni campo prima di usarlo.
 - **Hitbox e birilli fermi**: un birillo in piedi sullo spot è un **corpo fisso** e non può cadere da solo. Prima di ogni sottopasso si controllano le hitbox: la palla è una sfera che spazza il tragitto del sottopasso, il birillo una capsula col raggio della pancia attorno al suo asse (`ballHitsPin`, `segmentDistance`). Quando la palla o un birillo già in moto entra nella hitbox di un birillo fermo, quel birillo diventa dinamico e da lì in poi è tutta fisica reale (`releaseHitPins`).
 - **Conservazione**: Rapier integra le equazioni di Eulero complete (termine giroscopico incluso), quindi il momento angolare si conserva in volo e cambia solo per gli impulsi di contatto. Non ci sono forze aggiunte a mano: l'hook è solo attrito di Coulomb tra il punto di contatto che slitta e la pista.
 - **Canaline**: collider semicircolari. La palla che ci entra viene "guidata" fino in fondo e non colpisce birilli.
-- **Lancio**: la palla parte dalla posizione della mano del Pupo alla linea di fallo con:
+- **Lancio**: la palla parte dalla posizione della mano del Bubù alla linea di fallo con:
   - velocità lineare = `speed` nella direzione della freccia di mira + `dirOffset`;
   - **linea di gioco** (`playingLine`): come un giocatore vero, chi fa hook parte dal lato da cui la palla rientra (fino a 29 cm dal centro) e tira leggermente verso l'esterno; la tabella è tarata in simulazione perché col tiro normale (7,5 m/s) e mira dritta la palla entri in tasca (7 cm dal birillo 1) con 0–3° d'ingresso. Più lenta curva di più (colpo alto), più veloce di meno (colpo leggero), la mira del telefono si somma. Mancini (spin < 0) a specchio;
   - velocità angolare = `revRate` da 10 a 27 rad/s attorno a un asse orizzontale ruotato fino a 30,6° dall'asse di rotolamento, entrambi proporzionali a `|spin|` (`releaseAngularVelocity`). La palla parte in slittamento (giri < v/R) e l'attrito la porta al rotolamento puro nel back end.
@@ -124,7 +124,7 @@ Lo schermo **valida e limita** ogni campo prima di usarlo.
 - 10 frame per giocatore; 2 tiri per frame, salvo lo strike.
 - **Strike** (X): 10 + i 2 tiri successivi. **Spare** (/): 10 + il tiro successivo.
 - **10° frame**: dopo uno strike si hanno 2 tiri bonus, dopo uno spare 1 tiro bonus. Massimo 3 tiri.
-- **Canalina**: 0 birilli (simbolo "G"). Il fallo non viene modellato: il Pupo si ferma sempre sulla linea.
+- **Canalina**: 0 birilli (simbolo "G"). Il fallo non viene modellato: il Bubù si ferma sempre sulla linea.
 - Ordine: P1 frame 1 → P2 frame 1 → … (come nel reale).
 - **Test obbligatori**:
   - partita perfetta (12 strike) = 300;
@@ -138,22 +138,22 @@ Lo schermo **valida e limita** ogni campo prima di usarlo.
 ## 6. Camera (`camera.ts`)
 | Inquadratura | Quando | Descrizione |
 |---|---|---|
-| **Dietro il Pupo** | Mira e swing | 3 m dietro e 1,6 m in alto, guarda verso i birilli; leggera inclinazione verso la freccia di mira |
+| **Dietro il Bubù** | Mira e swing | 3 m dietro e 1,6 m in alto, guarda verso i birilli; leggera inclinazione verso la freccia di mira |
 | **Segui palla** | Dopo il rilascio | Segue la palla da dietro e dall'alto con smorzamento; si abbassa progressivamente |
 | **Pin cam** | Palla a 5 m dai birilli | Si stacca e si ferma a circa 3 m dai birilli, un po' rialzata e laterale, per vedere l'impatto |
 | **Replay strike** | Solo strike / spare difficili | Laterale, slow-mo 0,25× sull'impatto (dal buffer di [`replay.ts`](../06-rendering-physics.md#estensioni-nostre-in-packagesenginephysics)) |
-| **Reazione** | Dopo il conteggio | Primo piano del Pupo che esulta o si dispera, 1,5 s |
+| **Reazione** | Dopo il conteggio | Primo piano del Bubù che esulta o si dispera, 1,5 s |
 
 Le transizioni usano easing morbidi; nessun taglio brusco, salvo quello verso il replay.
 
-**Festa dello strike** (implementata): appena cade il decimo birillo del primo tiro, nella scena (`strike-fx.ts`) esplodono coriandoli luminosi dal pin deck, una luce col colore del giocatore lampeggia, un'onda d'urto si allarga sulla pista e la camera trema per mezzo secondo (non con "riduci movimento"). A punteggio contato, al posto del banner normale compare `StrikeBurst`: lampo, raggi rotanti, due onde d'urto, scintille e "STRIKE!" lettera per lettera, poi il totale. Il rack resta in vista 2,7 s invece di 1,7. Replay e primo piano del Pupo non ci sono ancora.
+**Festa dello strike** (implementata): appena cade il decimo birillo del primo tiro, nella scena (`strike-fx.ts`) esplodono coriandoli luminosi dal pin deck, una luce col colore del giocatore lampeggia, un'onda d'urto si allarga sulla pista e la camera trema per mezzo secondo (non con "riduci movimento"). A punteggio contato, al posto del banner normale compare `StrikeBurst`: lampo, raggi rotanti, due onde d'urto, scintille e "STRIKE!" lettera per lettera, poi il totale. Il rack resta in vista 2,7 s invece di 1,7. Replay e primo piano del Bubù non ci sono ancora.
 
 ---
 
 ## 7. Feedback e juice
 | Momento | Schermo | Telefono |
 |---|---|---|
-| Tieni premuto | Il Pupo porta la palla al petto, suono "pronto" | Vibrazione 15 ms / tick |
+| Tieni premuto | Il Bubù porta la palla al petto, suono "pronto" | Vibrazione 15 ms / tick |
 | Swing | Il braccio segue il telefono; whoosh ∝ velocità | — |
 | Rilascio | La palla tocca la pista con un "tud" (volume ∝ timing: perfetto = morbido), scia leggera | Vibrazione 30 ms + click (locale, immediato) |
 | Rotolamento | Rombo continuo, con pitch e volume ∝ velocità | — |
@@ -161,13 +161,13 @@ Le transizioni usano easing morbidi; nessun taglio brusco, salvo quello verso il
 | Impatto | Hit-stop di 2 frame, camera shake ∝ energia, crash dei birilli stratificato (numero di impatti → numero di layer) | `cue` rumble ∝ birilli abbattuti |
 | **Strike** | "STRIKE!" display con overshoot, coriandoli viola e gialli, pubblico in piedi, jingle, replay | Pattern "festa" |
 | **Spare** | "SPARE!" e applausi | Pattern breve doppio |
-| Canalina | "Ops!" simpatico, il Pupo si copre gli occhi | "bonk" |
+| Canalina | "Ops!" simpatico, il Bubù si copre gli occhi | "bonk" |
 | Info tiro | Pannello: **velocità km/h**, **effetto** (giri/min stimati), "In tasca!" se la palla entra nella tasca 1-3 / 1-2 | — |
 
 ---
 
 ## 8. HUD
-- In alto a sinistra: simbolo, colore e Pupo del giocatore di turno, frame corrente ("Frame 4 · Tiro 2").
+- In alto a sinistra: simbolo, colore e Bubù del giocatore di turno, frame corrente ("Frame 4 · Tiro 2").
 - In alto a destra: punteggio del giocatore di turno.
 - Tra un turno e l'altro: **tabellone completo** di tutti i giocatori (stile segnapunti classico, con X e /), che entra dal basso per 2 s.
 - Fine partita: podio, premi ("Più strike", "Braccio d'oro" per la velocità massima, "Mago dell'effetto" per lo spin massimo, "Costanza" per lo scarto minimo).
@@ -191,7 +191,7 @@ Le transizioni usano easing morbidi; nessun taglio brusco, salvo quello verso il
 | Birillo e palla | `LatheGeometry` procedurale | ~0 KB |
 | Pinsetter, tabellone, panche | Procedurale con box arrotondati | ~0 KB |
 | Insegne al neon (2–3 forme originali) | SVG estrusi o glTF piccoli | < 30 KB |
-| Pupi | Modulo condiviso `packages/avatar` | condiviso |
+| Bubù | Modulo condiviso `packages/avatar` | condiviso |
 | Audio: rotolamento, 6–8 campioni di birilli, tud, applausi, jingle strike | M4A | < 600 KB |
 | **Totale stimato** | | **< 1 MB** (fisica esclusa) |
 
@@ -199,7 +199,7 @@ Le transizioni usano easing morbidi; nessun taglio brusco, salvo quello verso il
 
 ## 11. Criteri di successo del vertical slice (Fase 3)
 - [ ] 1 giocatore completa 10 frame con il telefono reale, senza bug bloccanti.
-- [ ] Il braccio del Pupo segue il telefono con una latenza percepita < 120 ms (misurata con l'overlay).
+- [ ] Il braccio del Bubù segue il telefono con una latenza percepita < 120 ms (misurata con l'overlay).
 - [ ] Velocità del tiro: chi tira "piano" e chi tira "forte" ottengono velocità chiaramente diverse (≥ 3 m/s di differenza) in 9 tiri su 10.
 - [ ] Hook: ruotando il polso al rilascio, 4 testers su 5 riescono a far curvare la palla nel verso voluto entro 5 tiri.
 - [ ] Strike possibili ma non banali: in 20 tiri di un tester medio, il 15–35% sono strike (livello Normale).

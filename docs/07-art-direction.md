@@ -10,7 +10,7 @@ Obiettivo: lo *spirito* dei party-game Nintendo (amichevole, leggibile, gioioso,
 1. **Leggibilità dal divano.** Il gioco si guarda da 3 metri: silhouette chiare, contrasto forte tra soggetto e sfondo, niente dettagli minuti.
 2. **Morbidezza.** Nessuno spigolo vivo: tutto è arrotondato, smussato, "gonfio".
 3. **Semplicità ricca.** Poche forme, pochi colori per oggetto, ma luce e animazione curate. La qualità viene da luce, movimento e suono, non dal numero di poligoni.
-4. **Gioia.** Ogni azione ha una risposta che fa sorridere: un rimbalzo, un suono, una reazione del Pupo.
+4. **Gioia.** Ogni azione ha una risposta che fa sorridere: un rimbalzo, un suono, una reazione del Bubù.
 5. **Leggerezza tecnica.** Lo stile *nasce* senza texture ([ADR-005](adr/ADR-005-procedural-vertex-color-assets.md)).
 
 ---
@@ -80,7 +80,7 @@ La ricetta "Soft Toy" (implementata in `packages/engine/materials`, vedi [06](06
 | P3 | Limone | `#F7C531` | ■ |
 | P4 | Menta | `#34C27A` | ◆ |
 
-Colori corpo dei Pupi disponibili (8): i 4 sopra + Arancio `#FF9A3C`, Uva `#9C6BFF`, Confetto `#FF7EB6`, Laguna `#2EC4B6`.
+Colori corpo dei Bubù disponibili (8): i 4 sopra + Arancio `#FF9A3C`, Uva `#9C6BFF`, Confetto `#FF7EB6`, Laguna `#2EC4B6`.
 
 ### Accento per gioco
 | Gioco | Accento | Hex | Atmosfera |
@@ -111,7 +111,7 @@ L'accento colora la card del gioco, gli elementi HUD del gioco e il controller d
 
 ---
 
-## 6. Personaggi: i Pupi
+## 6. Personaggi: i Bubù
 
 ### Concept
 Creature-giocattolo **a forma di fagiolo**, vivaci e gentili. Sono il volto della piattaforma: si scelgono nella lobby e giocano al posto tuo.
@@ -129,14 +129,14 @@ Creature-giocattolo **a forma di fagiolo**, vivaci e gentili. Sono il volto dell
 | Stato | Tecnica |
 |---|---|
 | Idle | Respiro (squash & stretch sinusoidale ±3%), battito di ciglia casuale, sguardo verso l'azione |
-| **Braccio in gioco** | **IK a 2 segmenti guidato dal quaternione del telefono**: il braccio del Pupo *è* il braccio del giocatore |
+| **Braccio in gioco** | **IK a 2 segmenti guidato dal quaternione del telefono**: il braccio del Bubù *è* il braccio del giocatore |
 | Camminata/passi | Saltelli brevi con squash all'atterraggio |
 | Gioia | Salto con stretch + braccia in alto + occhi a archetto + coriandoli |
 | Delusione | Corpo che si "affloscia" (squash verticale), occhi a mezz'asta, sospiro |
 | Attesa turno | Guarda il giocatore di turno, piccoli dondolii |
 
 ### Cosa li rende *non*-Mii
-I Pupi non hanno proporzioni umane, non hanno testa separata né facce costruite con occhi, naso, bocca, capelli e sopracciglia combinabili, e non hanno vestiti umani. Sono **oggetti-giocattolo con occhi**, più vicini a un pupazzo da tavolo che a un avatar umano.
+I Bubù non hanno proporzioni umane, non hanno testa separata né facce costruite con occhi, naso, bocca, capelli e sopracciglia combinabili, e non hanno vestiti umani. Sono **oggetti-giocattolo con occhi**, più vicini a un pupazzo da tavolo che a un avatar umano.
 
 ---
 
@@ -144,7 +144,7 @@ I Pupi non hanno proporzioni umane, non hanno testa separata né facce costruite
 - **Diorama.** Ogni gioco è un piccolo set teatrale: un'area di gioco curata, uno sfondo semplice (pareti, colline, cielo) e niente open world.
 - **Profondità a strati**: primo piano (oggetto di gioco), piano medio (set), fondale (sagome piatte e colori desaturati del 20%).
 - **Luce come atmosfera**: ogni gioco ha 1 preset di luce (colore cielo, sole, terra, rim) in `games/<id>/screen/lighting.ts`.
-- **Pubblico**: Pupi in `InstancedMesh` con animazione di idle via vertex shader; esultano agli eventi.
+- **Pubblico**: Bubù in `InstancedMesh` con animazione di idle via vertex shader; esultano agli eventi.
 
 ---
 
@@ -155,7 +155,7 @@ I Pupi non hanno proporzioni umane, non hanno testa separata né facce costruite
 | Impatto | Camera shake breve (≤ 120 ms, ampiezza ∝ energia), particelle di "polvere" a stelline, hit-stop di 2–3 frame |
 | Successo grande (strike, canestro pulito, buca in uno) | Slow-mo 0,25× di 1 s, coriandoli negli accenti del gioco, testo display che entra con overshoot a molla, jingle |
 | Punteggio | I numeri contano verso l'alto con un "tic" per unità e rimbalzano a fine conteggio |
-| Errore / fallo | Suono "bonk" simpatico, il Pupo si gratta la testa. Mai punitivo. |
+| Errore / fallo | Suono "bonk" simpatico, il Bubù si gratta la testa. Mai punitivo. |
 
 Easing e curve: tutte dai token di motion ([08 § Motion](08-ui-ux.md#motion)).
 
@@ -166,7 +166,7 @@ Easing e curve: tutte dai token di motion ([08 § Motion](08-ui-ux.md#motion)).
 - **SFX di gioco**: credibili ma "arrotondati". Il crash dei birilli è vero, ma con meno rumore bianco e più "toc" legnosi.
 - **UI**: click morbidi intonati su una scala (do maggiore pentatonica), così le sequenze di click suonano musicali.
 - **Musica**: un tema per il menu (loop di 30–60 s, allegro, ~110 bpm) e un sottofondo per ogni gioco, a basso volume durante il gesto.
-- **Voce**: niente voce parlata; tutt'al più "vocine" non verbali dei Pupi (sintetizzate o registrate in proprio).
+- **Voce**: niente voce parlata; tutt'al più "vocine" non verbali dei Bubù (sintetizzate o registrate in proprio).
 - **Fonti**: composizioni e registrazioni **originali**, oppure librerie **CC0**. Licenze tracciate in `assets/LICENSES.md`.
 - Mix: bus `music`, `sfx`, `ui`, `crowd`, con ducking della musica durante gli eventi importanti.
 

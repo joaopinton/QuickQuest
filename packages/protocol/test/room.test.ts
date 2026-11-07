@@ -49,14 +49,14 @@ describe('reducer della stanza', () => {
   test('chi rientra con il token si riprende lo slot e il profilo', () => {
     let s = createRoom('K7RM');
     const first = hello(s, 'a');
-    s = applyProfile(first.state, 'a', { color: '#9C6BFF', accessory: 'cap' });
+    s = applyProfile(first.state, 'a', { name: '', color: '#9C6BFF', color2: '#FFF6E8', pattern: 'none', eyes: 'round', mouth: 'smile', hat: 'cap', face: 'none', neck: 'none' });
     s = hello(s, 'b').state;
     s = applyDisconnect(s, 'a');
     expect(lobbyPlayers(s)[0]?.state).toBe('disconnected');
     const token = first.reply.t === 'welcome' ? first.reply.p.sessionToken : '';
     const again = hello(s, 'a2', token);
     expect(again.reply).toEqual({ t: 'welcome', p: { slot: 'P1', sessionToken: token } });
-    expect(lobbyPlayers(again.state)[0]).toEqual({ slot: 'P1', state: 'ready', profile: { color: '#9C6BFF', accessory: 'cap' } });
+    expect(lobbyPlayers(again.state)[0]).toEqual({ slot: 'P1', state: 'ready', profile: { name: '', color: '#9C6BFF', color2: '#FFF6E8', pattern: 'none', eyes: 'round', mouth: 'smile', hat: 'cap', face: 'none', neck: 'none' } });
   });
 
   test('la stessa connessione che ripete hello (doppio tap) non occupa due slot', () => {
@@ -93,13 +93,13 @@ describe('reducer della stanza', () => {
   test('stati della lobby: connecting → ready', () => {
     let s = hello(createRoom('K7RM'), 'a').state;
     expect(lobbyPlayers(s)).toEqual([{ slot: 'P1', state: 'connecting', profile: null }]);
-    s = applyProfile(s, 'a', { color: '#EF4E5B', accessory: 'none' });
+    s = applyProfile(s, 'a', { name: '', color: '#EF4E5B', color2: '#FFF6E8', pattern: 'none', eyes: 'round', mouth: 'smile', hat: 'none', face: 'none', neck: 'none' });
     expect(lobbyPlayers(s)[0]?.state).toBe('ready');
   });
 
   test('applyProfile e applyDisconnect ignorano connessioni sconosciute', () => {
     const s = hello(createRoom('K7RM'), 'a').state;
-    expect(applyProfile(s, 'zzz', { color: '#EF4E5B', accessory: 'none' })).toBe(s);
+    expect(applyProfile(s, 'zzz', { name: '', color: '#EF4E5B', color2: '#FFF6E8', pattern: 'none', eyes: 'round', mouth: 'smile', hat: 'none', face: 'none', neck: 'none' })).toBe(s);
     expect(applyDisconnect(s, 'zzz')).toBe(s);
   });
 
@@ -125,7 +125,7 @@ describe('reducer della stanza', () => {
 
     // Con un giocatore pronto
     s = hello(s, 'a').state;
-    s = applyProfile(s, 'a', { color: '#8E5BFF', accessory: 'cap' });
+    s = applyProfile(s, 'a', { name: '', color: '#8E5BFF', color2: '#FFF6E8', pattern: 'none', eyes: 'round', mouth: 'smile', hat: 'cap', face: 'none', neck: 'none' });
 
     const startOk = applyStart(s);
     expect(startOk.ok).toBe(true);

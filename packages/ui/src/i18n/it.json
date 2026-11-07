@@ -28,15 +28,15 @@
     "gamesMore": "Tutti i giochi",
     "requirementTitle": "Serve un telefono con giroscopio",
     "requirementLead": "Quasi tutti gli smartphone degli ultimi anni ce l'hanno. Lo controlliamo noi quando entri: se manca, te lo diciamo subito.",
-    "sceneLabel": "Tre Pupi che si preparano a giocare su una collina"
+    "sceneLabel": "Tre Bubù che si preparano a giocare su una collina"
   },
   "steps": {
     "s1Title": "Crea la stanza",
     "s1Text": "Apri quickquest sul PC o sulla TV e premi «Crea una stanza». Compaiono un QR e un codice di 4 lettere.",
     "s2Title": "Inquadra il QR",
-    "s2Text": "Ognuno inquadra il QR con la fotocamera del telefono, tocca «Connetti» e sceglie il suo Pupo.",
+    "s2Text": "Ognuno inquadra il QR con la fotocamera del telefono, tocca «Connetti» e sceglie il suo Bubù.",
     "s3Title": "Fai il gesto",
-    "s3Text": "Tieni premuto il tasto, fai il movimento vero e alza il pollice per lanciare. Il tuo Pupo fa esattamente quello che fai tu."
+    "s3Text": "Tieni premuto il tasto, fai il movimento vero e alza il pollice per lanciare. Il tuo Bubù fa esattamente quello che fai tu."
   },
   "howTo": {
     "title": "Come si gioca",
@@ -147,19 +147,17 @@
     "failLead": "Per sentire il gesto servono sia il giroscopio sia l'accelerometro. Ecco cosa abbiamo trovato:",
     "failRetry": "Riprova",
     "failHelp": "Puoi comunque guardare la partita sullo schermo grande e fare il tifo.",
-    "pickTitle": "Scegli il tuo Pupo",
-    "pickLead": "Giocherà al posto tuo, con il tuo braccio.",
+    "pickTitle": "Scegli il tuo Bubù",
+    "pickLead": "Dagli un nome e rendilo tuo: giocherà al posto tuo, con il tuo braccio.",
     "colorLabel": "Colore",
-    "accessoryLabel": "Accessorio",
-    "accessoryNone": "Nessuno",
-    "pickConfirm": "Questo è il mio Pupo",
+    "pickConfirm": "Questo è il mio Bubù",
     "safetyTitle": "Una cosa importante",
     "safetyLead": "Tieni il telefono ben saldo. Non lanciarlo mai: per tirare si alza solo il pollice. Se hai un laccetto, usalo, e lascia spazio intorno a te.",
     "safetyOk": "Ho capito",
     "waitTitle": "Guarda lo schermo!",
     "waitLead": "Sei dentro. La partita parte quando tutti sono pronti.",
     "youAre": "Sei {slot}",
-    "changePupo": "Cambia Pupo",
+    "changeBubu": "Cambia Bubù",
     "leave": "Esci dalla stanza",
     "demoBadge": "Demo: nessuno schermo collegato",
     "connecting": "Mi collego alla stanza…",
@@ -182,23 +180,7 @@
     "noSwing": "Non ho sentito lo swing: tieni premuto e muovi il braccio come in un vero lancio",
     "thrown": "Palla lanciata!",
     "notYourTurn": "ASPETTA IL TUO TURNO",
-    "calibTitle": "Prova dei sensori",
-    "calibMove": "Muovi e ruota il telefono: la barra si deve muovere",
-    "calibNoData": "Il telefono non manda i dati dei sensori. Ricarica la pagina e consenti «Movimento e orientamento».",
-    "calibSensorsOk": "Sensori ok!",
-    "calibNext": "Avanti",
-    "calibPracticeTitle": "Tiri di prova",
-    "calibPracticeLead": "Mettiti in piedi rivolto verso lo schermo. Tieni premuto il tasto, porta il braccio indietro, fai lo swing in avanti dritto verso lo schermo e alza il pollice.",
-    "calibPracticeCount": "Tiro di prova {n} di {total}",
-    "calibGood": "✓ Ottimo! Braccio a {w} rad/s",
-    "calibWeak": "✗ Swing troppo debole ({w} rad/s, ne servono almeno {min}). Muovi il braccio più deciso.",
-    "calibNoSwingData": "✗ Nessun dato dai sensori durante il tiro. Riprova.",
-    "calibDoneTitle": "Taratura fatta!",
-    "calibDoneLead": "Per mirare girati un po' a sinistra o a destra mentre fai lo swing. Più veloce muovi il braccio, più veloce va la palla.",
-    "calibRedo": "Rifai la taratura",
-    "calibPlay": "Andiamo!",
-    "calibSkip": "Salta (simulatore)",
-    "recalibrate": "Ricalibra",
+    "recalibrate": "Riallinea la mira",
     "meterLabel": "Movimento",
     "meterStill": "fermo",
     "loadingGame": "Carico il gioco…",
@@ -207,22 +189,31 @@
     "aimLeft": "{deg}° a sinistra",
     "aimRight": "{deg}° a destra",
     "noSwingDetail": "Swing non sentito ({w} rad/s, ne servono {min}): muovi il braccio più deciso",
-    "backToLobby": "Torna in attesa"
+    "backToLobby": "Torna in attesa",
+    "recalibrated": "Mira riallineata: il prossimo tiro va dritto",
+    "nameLabel": "Nome",
+    "namePlaceholder": "Bubù {n}",
+    "nameHint": "Fino a {max} lettere: lo vedranno tutti sullo schermo.",
+    "tabColors": "Colori",
+    "tabPattern": "Motivo",
+    "tabFace": "Faccia",
+    "tabExtras": "Accessori",
+    "color2Label": "Mani, piedi e motivo",
+    "color2Name": "Mani e piedi {name}",
+    "patternLabel": "Motivo sul corpo",
+    "eyesLabel": "Occhi",
+    "mouthLabel": "Bocca",
+    "faceLabel": "Sul viso",
+    "hatLabel": "In testa",
+    "neckLabel": "Al collo",
+    "randomize": "🎲 A caso",
+    "firstThrowHint": "Il primo tiro va sempre dritto: serve al telefono per capire dov'è lo schermo."
   },
   "checks": {
     "events": "Eventi dai sensori",
     "frequency": "Frequenza",
     "gyro": "Giroscopio",
     "accel": "Accelerometro"
-  },
-  "accessories": {
-    "none": "Nessuno",
-    "cap": "Berretto",
-    "band": "Fascia",
-    "headphones": "Cuffie",
-    "glasses": "Occhiali tondi",
-    "bowtie": "Papillon",
-    "leaves": "Coroncina di foglie"
   },
   "colors": {
     "cherry": "Ciliegia",
@@ -232,7 +223,13 @@
     "orange": "Arancio",
     "grape": "Uva",
     "candy": "Confetto",
-    "lagoon": "Laguna"
+    "lagoon": "Laguna",
+    "sky": "Cielo",
+    "peach": "Pesca",
+    "lilac": "Lilla",
+    "cocoa": "Cacao",
+    "snow": "Neve",
+    "night": "Notte"
   },
   "notFound": {
     "title": "Questa pagina è uscita dalla pista",
@@ -249,5 +246,58 @@
     "missing": "Questo sensore non risponde: probabilmente il telefono non ce l'ha.",
     "frozen": "Il giroscopio manda sempre lo stesso valore: sembra spento o simulato.",
     "bad-gravity": "L'accelerometro dà valori strani: la gravità non torna."
+  },
+  "look": {
+    "patterns": {
+      "none": "Tinta unita",
+      "belly": "Pancia",
+      "stripes": "Righe",
+      "dots": "Pois",
+      "stars": "Stelle",
+      "spots": "Macchie",
+      "split": "Due colori"
+    },
+    "eyes": {
+      "round": "Occhioni",
+      "happy": "Felici",
+      "sleepy": "Assonnati",
+      "sly": "Furbetti",
+      "stars": "Stellati",
+      "dots": "Puntini"
+    },
+    "mouths": {
+      "smile": "Sorriso",
+      "grin": "Risata",
+      "cat": "Gattino",
+      "tongue": "Linguaccia",
+      "o": "Stupito",
+      "flat": "Serio"
+    },
+    "hats": {
+      "none": "Niente",
+      "cap": "Berretto",
+      "beanie": "Cuffia di lana",
+      "crown": "Corona",
+      "chef": "Cappello da cuoco",
+      "party": "Cappellino da festa",
+      "band": "Fascia",
+      "headphones": "Cuffie",
+      "leaves": "Coroncina di foglie",
+      "antennae": "Antenne",
+      "bow": "Fiocco"
+    },
+    "face": {
+      "none": "Niente",
+      "glasses": "Occhiali tondi",
+      "sunglasses": "Occhiali da sole",
+      "freckles": "Lentiggini",
+      "mustache": "Baffi"
+    },
+    "neck": {
+      "none": "Niente",
+      "bowtie": "Papillon",
+      "scarf": "Sciarpa",
+      "necklace": "Collana"
+    }
   }
 }

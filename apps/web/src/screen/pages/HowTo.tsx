@@ -1,4 +1,4 @@
-import { Button, Pupo, t } from '@quickquest/ui';
+import { Button, Bubu, t } from '@quickquest/ui';
 import { PhoneDuo } from '../components/Decor';
 import { PhoneScanning, ScreenWithQr, ThumbButton } from '../components/Illustrations';
 import { Page } from '../components/SiteChrome';
@@ -58,7 +58,7 @@ export function HowTo() {
         <div class="gesture__card">
           <div class="gesture__stage" aria-hidden="true">
             <div class="gesture__lane" />
-            <Pupo color="#9C6BFF" accessory="band" ball motion="none" size={220} class="gesture__pupo" />
+            <Bubu color="#9C6BFF" look={{ hat: 'band' }} ball motion="none" size={220} class="gesture__bubu" />
           </div>
           <div class="gesture__copy">
             <h2 id="gesture-title" class="section__title">{t('howTo.gestureTitle')}</h2>

@@ -1,7 +1,8 @@
 // Messaggi del core (docs/03 § 3). Envelope { v, t, p } con validazione scritta a mano:
 // niente librerie di schema, per tenere leggero il bundle del controller.
 
-export const PROTOCOL_VERSION = 1;
+/** 2: il profilo porta nome e aspetto completo del Bubù (prima solo colore e accessorio). */
+export const PROTOCOL_VERSION = 2;
 
 export type SlotId = 'P1' | 'P2' | 'P3' | 'P4';
 export const SLOT_IDS: readonly SlotId[] = ['P1', 'P2', 'P3', 'P4'];
@@ -15,10 +16,21 @@ export interface Capabilities {
   readonly platform: Platform;
 }
 
+/** Aspetto e nome del Bubù scelti sul telefono (packages/ui `look.ts`). */
 export interface Profile {
+  /** Nome scelto, 0–12 caratteri (vuoto = "Bubù N" sullo schermo). */
+  readonly name: string;
   readonly color: string;
-  readonly accessory: string;
+  readonly color2: string;
+  readonly pattern: string;
+  readonly eyes: string;
+  readonly mouth: string;
+  readonly hat: string;
+  readonly face: string;
+  readonly neck: string;
 }
+
+export const PROFILE_NAME_MAX = 12;
 
 export type PlayerState = 'connecting' | 'ready' | 'disconnected';
 
@@ -90,6 +102,8 @@ export type Envelope<M extends Message = Message> = { v: typeof PROTOCOL_VERSION
 export const MAX_MESSAGE_BYTES = 2048;
 const HEX = /^#[0-9a-fA-F]{6}$/;
 const ACCESSORY = /^[a-z]{1,16}$/;
+/** Lettere (anche accentate), cifre, spazi e poca punteggiatura: niente markup né controlli. */
+const NAME = /^[\p{L}\p{N} '._-]*$/u;
 const TOKEN = /^[A-Za-z0-9_-]{8,64}$/;
 const ID_REGEX = /^[a-z0-9_-]{1,32}$/;
 
@@ -109,9 +123,15 @@ function isCapabilities(x: unknown): x is Capabilities {
     && (x.platform === 'ios' || x.platform === 'android' || x.platform === 'altro');
 }
 
+const isHex = (x: unknown): x is string => typeof x === 'string' && HEX.test(x);
+const isToken = (x: unknown): x is string => typeof x === 'string' && ACCESSORY.test(x);
+
 export function isProfile(x: unknown): x is Profile {
-  return isObj(x) && typeof x.color === 'string' && HEX.test(x.color)
-    && typeof x.accessory === 'string' && ACCESSORY.test(x.accessory);
+  return isObj(x)
+    && typeof x.name === 'string' && Array.from(x.name).length <= PROFILE_NAME_MAX && NAME.test(x.name)
+    && isHex(x.color) && isHex(x.color2)
+    && isToken(x.pattern) && isToken(x.eyes) && isToken(x.mouth)
+    && isToken(x.hat) && isToken(x.face) && isToken(x.neck);
 }
 
 const MAX_EVENT_FIELDS = 16;

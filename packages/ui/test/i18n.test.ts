@@ -1,7 +1,8 @@
 import { describe, expect, test } from 'vitest';
 import { hasKey, setLocale, t } from '../src/i18n';
 import it from '../src/i18n/it.json';
-import { ACCESSORIES, PLAYER_SLOTS, PUPO_COLORS, pupoColor, slotStyle } from '../src/palette';
+import { EYES, FACE_ITEMS, HATS, MOUTHS, NECK_ITEMS, PATTERNS } from '../src/look';
+import { PLAYER_SLOTS, BUBU_COLORS, bubuColor, slotStyle } from '../src/palette';
 
 describe('i18n', () => {
   test('sostituisce i segnaposto e lascia quelli senza valore', () => {
@@ -21,9 +22,12 @@ describe('i18n', () => {
     expect(t('brand.name')).toBe('quickquest');
   });
 
-  test('ogni colore e accessorio ha il suo nome', () => {
-    for (const c of PUPO_COLORS) expect(hasKey(`colors.${c.id}`)).toBe(true);
-    for (const a of ACCESSORIES) expect(hasKey(`accessories.${a}`)).toBe(true);
+  test('ogni colore e ogni opzione del Bubù ha il suo nome', () => {
+    for (const c of BUBU_COLORS) expect(hasKey(`colors.${c.id}`)).toBe(true);
+    const groups = { patterns: PATTERNS, eyes: EYES, mouths: MOUTHS, hats: HATS, face: FACE_ITEMS, neck: NECK_ITEMS };
+    for (const [group, list] of Object.entries(groups)) {
+      for (const id of list) expect(hasKey(`look.${group}.${id}`)).toBe(true);
+    }
   });
 
   test('nessuna stringa vuota e nessun richiamo a marchi Nintendo', () => {
@@ -39,7 +43,7 @@ describe('palette', () => {
     expect(PLAYER_SLOTS.map((s) => s.symbol).join('')).toBe('●▲■◆');
     expect(slotStyle('P3').hex).toBe('#F7C531');
     expect(() => slotStyle('P9' as 'P1')).toThrow();
-    expect(pupoColor('grape').hex).toBe('#9C6BFF');
-    expect(pupoColor('inesistente').id).toBe('cherry');
+    expect(bubuColor('grape').hex).toBe('#9C6BFF');
+    expect(bubuColor('inesistente').id).toBe('cherry');
   });
 });

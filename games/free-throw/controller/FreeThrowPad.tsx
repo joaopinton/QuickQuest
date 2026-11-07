@@ -19,6 +19,8 @@ import {
 import './free-throw-pad.css';
 
 const FEEDBACK_MS = 3800;
+/** Picco "normale" che lascia la potenza com'era senza taratura (refOmega = 0.56 × picco = 3.5 rad/s). */
+const NEUTRAL_NORMAL_PEAK = 3.5 / 0.56;
 const UI_POLL_MS = 90;
 
 type Feedback =
@@ -79,6 +81,9 @@ export function Pad({
   const [loadLevel, setLoadLevel] = useState(0);
   const [feedback, setFeedback] = useState<Feedback>(null);
   const pressedAtRef = useRef(0);
+  // La frustata del tiro libero ha un asse suo, diverso dallo swing del bowling: la direzione
+  // dello schermo si impara dal primo tiro valido di questo gioco (quel tiro va dritto).
+  const aimRef = useRef<number | null>(null);
   const style = slotStyle(slot);
   const isMyTurn = activeSlot === slot && !isLost;
 
@@ -139,7 +144,10 @@ export function Pad({
     }
 
     tracker.cancel();
-    const analysis = recognizer.release(now, swingProfile);
+    const profile = aimRef.current === null
+      ? null
+      : { heading0: aimRef.current, normalPeak: swingProfile?.normalPeak ?? NEUTRAL_NORMAL_PEAK };
+    const analysis = recognizer.release(now, profile);
     if (!analysis.valid || !analysis.shot) {
       const msg =
         analysis.failure === 'no-upward-push'
@@ -150,6 +158,7 @@ export function Pad({
       return;
     }
 
+    if (aimRef.current === null && analysis.heading != null) aimRef.current = analysis.heading;
     send(shootEvent(analysis.shot));
     setFeedback({ kind: 'shot', text: describeFreeThrow(analysis.shot) });
     haptics.play('success');
@@ -255,7 +264,14 @@ export function Pad({
 
       <footer class="ctl-actions">
         {!isSimulated && (
-          <button type="button" class="qq-btn qq-btn--secondary" onClick={onRecalibrate}>
+          <button
+            type="button"
+            class="qq-btn qq-btn--secondary"
+            onClick={() => {
+              aimRef.current = null;
+              onRecalibrate();
+            }}
+          >
             🎯 {t('controller.recalibrate')}
           </button>
         )}

@@ -44,11 +44,11 @@ describe('connessione del telefono', () => {
     const p = c.join(caps);
     vi.advanceTimersByTime(JOIN_TIMEOUT_MS + 10);
     await expect(p).resolves.toEqual({ ok: true, mode: 'demo', slot: 'P1' });
-    c.sendProfile({ color: '#9C6BFF', accessory: 'cap' });
+    c.sendProfile({ name: '', color: '#9C6BFF', color2: '#FFF6E8', pattern: 'none', eyes: 'round', mouth: 'smile', hat: 'cap', face: 'none', neck: 'none' });
     expect(f.sent.filter((m) => m.t === 'profile')).toHaveLength(0);
     f.deliver({ t: 'welcome', p: { slot: 'P3', sessionToken: 'abcdefgh12' } });
     expect(statuses).toEqual(['live:P3']);
-    expect(f.sent.at(-1)).toEqual({ t: 'profile', p: { color: '#9C6BFF', accessory: 'cap' } });
+    expect(f.sent.at(-1)).toEqual({ t: 'profile', p: { name: '', color: '#9C6BFF', color2: '#FFF6E8', pattern: 'none', eyes: 'round', mouth: 'smile', hat: 'cap', face: 'none', neck: 'none' } });
   });
 
   test('errore dall’host', async () => {

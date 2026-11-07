@@ -1,6 +1,6 @@
 // Contratto di un modulo di gioco (docs/05). Tutti i giochi passano da qui: eventi generici
 // `game-event` dal telefono, `cue` dallo schermo al telefono, componenti caricati con import() dinamico.
-import type { FusedSample, MotionTracker, SwingProfile } from '@quickquest/motion';
+import type { FusedSample, MotionTracker, SwingAnalysis, SwingProfile } from '@quickquest/motion';
 import type { Cue, CueKind, GameEvent, SlotId } from '@quickquest/protocol';
 import type { ComponentType } from 'preact';
 
@@ -45,9 +45,11 @@ export interface ControllerPadProps {
   /** Campioni fusi a 60 Hz, quiete, velocità angolare; press/release per i gesti "tieni premuto". */
   readonly tracker: Pick<MotionTracker, 'subscribe' | 'still' | 'omega' | 'press' | 'release' | 'cancel'>;
   readonly haptics: ControllerHaptics;
-  /** Taratura del giocatore dai tiri di prova; `null` se non c'è (telefono simulato). */
+  /** Taratura imparata dai primi tiri veri; `null` finché non c'è (il primo tiro va dritto). */
   readonly swingProfile: SwingProfile | null;
-  /** Rifà la taratura; poi il telefono torna sul pad. */
+  /** Un tiro valido appena fatto: serve alla taratura automatica (packages/motion `learnFromSwing`). */
+  readonly learnSwing: (swing: SwingAnalysis) => void;
+  /** Riallinea la mira: si dimentica la taratura e il prossimo tiro va di nuovo dritto. */
   readonly onRecalibrate: () => void;
   /** Ultimo feedback ricevuto dallo schermo. */
   readonly lastCue: Cue | null;

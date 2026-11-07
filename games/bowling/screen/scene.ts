@@ -222,7 +222,7 @@ export function createBowlingScene(
 
   const strikeFx = createStrikeFx(scene);
 
-  // Regia della telecamera (dietro il pupo -> segui palla -> pin cam, docs/games/bowling.md § 6)
+  // Regia della telecamera (dietro il bubù -> segui palla -> pin cam, docs/games/bowling.md § 6)
   const initialCamPos = new THREE.Vector3(0, 1.15, -1.9);
   const initialCamTarget = new THREE.Vector3(0, 0.2, HEADPIN_Z - 3);
   camera.position.copy(initialCamPos);

@@ -27,7 +27,7 @@ Ogni gioco segue la stessa sequenza, così chi ha giocato a un gioco sa già muo
 |---|---|---|---|
 | **Impostazione** | Scheda del gioco: modalità, numero di round, assist per giocatore, squadre | P1 sceglie con il layout `menu`; gli altri vedono le scelte | libera |
 | **Intro** | Il set si presenta con un giro di camera; due righe di regole | `wait` con "Preparati!" | ≤ 8 s, saltabile |
-| **Tutorial del gesto** | Animazione del Pupo che fa il gesto, con le tre fasi (presa, movimento, rilascio) | La stessa animazione in piccolo + indicazioni su come tenere il telefono | Solo alla prima partita della stanza a quel gioco, poi saltabile |
+| **Tutorial del gesto** | Animazione del Bubù che fa il gesto, con le tre fasi (presa, movimento, rilascio) | La stessa animazione in piccolo + indicazioni su come tenere il telefono | Solo alla prima partita della stanza a quel gioco, poi saltabile |
 | **Tiro di prova** [MVP] | "Prova!": il colpo si gioca ma non conta | Layout del gioco con l'etichetta "prova" | 1 per giocatore, solo al primo turno |
 | **Partita** | Il gioco vero | Layout del gioco per chi è di turno, `wait` per gli altri | Vedi ogni gioco |
 | **Risultati** | Podio, premi, statistiche | Il proprio piazzamento e il proprio premio | ~10 s |
@@ -36,7 +36,7 @@ Ogni gioco segue la stessa sequenza, così chi ha giocato a un gioco sa già muo
 ### 1.2 Il giro del turno
 Uguale per tutti i giochi a turni (tutti tranne la scherma):
 
-1. **Annuncio**: lo schermo mostra Pupo, colore e nome del giocatore ("Tocca a Verde!"); il telefono di quel giocatore vibra due volte e passa al layout del gioco. Gli altri telefoni passano a `wait`.
+1. **Annuncio**: lo schermo mostra Bubù, colore e nome del giocatore ("Tocca a Verde!"); il telefono di quel giocatore vibra due volte e passa al layout del gioco. Gli altri telefoni passano a `wait`.
 2. **Preparazione**: mira, scelta dell'attrezzo, eventuale presa da fermo (che serve anche a ricalibrare lo yaw).
 3. **Gesto**: il telefono riconosce il gesto e invia **un solo evento** con i parametri ([ADR-002](adr/ADR-002-gesture-recognition-on-device.md)).
 4. **Risoluzione**: lo schermo simula e mostra l'esito; il telefono riceve un `cue` (vibrazione e testo breve: "Forte! 28 km/h", "Un po' corto").
@@ -58,7 +58,7 @@ Il layout `wait` non deve essere morto: è lì che una festa si annoia o si dive
 
 ### 1.4 Assist e handicap
 - Tre livelli per giocatore: **Facile**, **Normale** (default), **Pro**, come nel [GDD del bowling § 3.4](games/bowling.md#34-livelli-di-assist-impostazione-per-giocatore). Ogni gioco definisce cosa cambia (tabella nella sua sezione).
-- Il livello si sceglie in Impostazione accanto al Pupo e si vede nel tabellone con una piccola icona: nessuno deve sentirsi "imbrogliato".
+- Il livello si sceglie in Impostazione accanto al Bubù e si vede nel tabellone con una piccola icona: nessuno deve sentirsi "imbrogliato".
 - [Dopo] Handicap numerico per partite miste genitori/bambini: punti di partenza (bowling, bocce) o colpi regalati (golf).
 
 ### 1.5 Sicurezza
@@ -83,8 +83,8 @@ Ogni gioco assegna 3–5 premi, **almeno uno raggiungibile da chi arriva ultimo*
 - **Giro del turno**:
   1. "Tocca a Viola · Frame 4" → telefono in `aim-action`.
   2. Il giocatore si mette in posizione sull'approccio (oggi la mira viene dalla direzione dello swing: ci si gira col corpo).
-  3. **Tiene premuto**: il Pupo porta la palla al petto, il telefono vibra; da fermo si ricalibra lo yaw.
-  4. **Swing** indietro e avanti; il braccio del Pupo segue il telefono.
+  3. **Tiene premuto**: il Bubù porta la palla al petto, il telefono vibra; da fermo si ricalibra lo yaw.
+  4. **Swing** indietro e avanti; il braccio del Bubù segue il telefono.
   5. **Alza il pollice**: la palla parte. Sul telefono: "31 km/h · un po' a sinistra".
   6. Conteggio dei birilli → se non è strike, secondo tiro con i birilli rimasti evidenziati.
   7. Tabellone di 2 s, poi il prossimo giocatore.
@@ -103,7 +103,7 @@ Ogni gioco assegna 3–5 premi, **almeno uno raggiungibile da chi arriva ultimo*
 ### 2.3 Assist
 Già definiti nel GDD (velocità, direzione, spin, finestra di timing). In più:
 - [Dopo] **Linea dello spare** in Facile: dopo il primo tiro una linea tratteggiata sulla pista suggerisce dove mirare per i birilli rimasti.
-- [Dopo] **Mancino**: impostazione per giocatore che specchia la linea di gioco (già prevista per spin < 0) e il braccio del Pupo.
+- [Dopo] **Mancino**: impostazione per giocatore che specchia la linea di gioco (già prevista per spin < 0) e il braccio del Bubù.
 
 ### 2.4 Chi aspetta
 Tabellone proprio sul telefono; il tasto "Tifo!" non si può usare tra il "tieni premuto" e il rilascio di chi tira.
@@ -129,7 +129,7 @@ Una partita è fatta di **mani**. In ogni mano si lancia il pallino, poi tutte l
   1. **Pallino**: lo lancia chi ha vinto la mano precedente (alla prima mano P1). È valido se si ferma tra 5 e 12 m (campo da giardino di 15 m) e ad almeno 50 cm dalle sponde laterali; se no lo rilancia l'avversario più a sinistra nel tabellone. Il gesto è lo stesso della boccia, la fisica più leggera.
   2. **Prima boccia**: la tira chi ha lanciato il pallino.
   3. **Poi tira sempre chi è più lontano** (la squadra o il giocatore la cui boccia migliore è più lontana dal pallino), finché ha bocce. Chi non ha più bocce passa. È la regola che rende le bocce interessanti, ma è anche la meno intuitiva: lo schermo la deve spiegare ogni volta ("Tocca a Rosso: è più lontano di 42 cm").
-  4. **Conteggio**: a bocce finite, vista dall'alto con i cerchi di distanza; la squadra più vicina segna 1 punto per ogni sua boccia più vicina della migliore avversaria. Se due bocce di squadre diverse sono a meno di 3 cm, arriva il Pupo arbitro con il metro (animazione di 2 s, poi verdetto).
+  4. **Conteggio**: a bocce finite, vista dall'alto con i cerchi di distanza; la squadra più vicina segna 1 punto per ogni sua boccia più vicina della migliore avversaria. Se due bocce di squadre diverse sono a meno di 3 cm, arriva il Bubù arbitro con il metro (animazione di 2 s, poi verdetto).
 - **Fine partita**: a 7 punti (veloce) o 11 (classica). Con 3–4 giocatori individuali: a 7, o dopo 6 mani chi ha più punti.
 - **Casi limite**:
   - Boccia oltre la sponda di fondo o fuori campo: **morta**, si toglie.
@@ -184,7 +184,7 @@ Dietro il giocatore in mira → segue la boccia → **vista drone dall'alto** qu
 - **Unità di turno**: un tiro. Si gioca **a giri**: tutti tirano il tiro 1, poi tutti il tiro 2, e così via. Un tiro dura pochi secondi, quindi nessuno aspetta a lungo, e la tensione sale verso l'ultimo giro.
 - **Giro del turno**:
   1. "Tocca ad Arancio · tiro 4 di 10" → telefono in `action`.
-  2. Il Pupo è in lunetta con la palla; [Forse] palleggio rituale se il giocatore scuote il telefono verso il basso (non serve, ma fa ridere).
+  2. Il Bubù è in lunetta con la palla; [Forse] palleggio rituale se il giocatore scuote il telefono verso il basso (non serve, ma fa ridere).
   3. **Tiene premuto** e porta il telefono sopra la fronte (caricamento).
   4. **Spinta verso l'alto** con flessione del polso, **pollice su** in cima.
   5. Volo della palla; esito: canestro, swish, ferro-dentro, ferro-fuori, tabellone, air ball.
@@ -306,7 +306,7 @@ Il golf è il gioco più lento. Idee per tenerlo vivo:
 | Classica (3 clienti) | [MVP] | Sopra |
 | Salone | [Dopo] | 2 giocatori **simultanei** su due poltrone, schermo diviso, stessa richiesta |
 | Corsa del sabato | [Dopo] | 3 minuti, clienti a raffica con tagli semplici: conta quanti se ne servono con almeno 3 stelle |
-| Cliente misterioso | [Forse] | La richiesta è solo a parole ("Qualcosa di giovanile") e i Pupi spettatori votano con il tasto "Tifo!": il voto è del pubblico, non dell'algoritmo |
+| Cliente misterioso | [Forse] | La richiesta è solo a parole ("Qualcosa di giovanile") e i Bubù spettatori votano con il tasto "Tifo!": il voto è del pubblico, non dell'algoritmo |
 | Bottega libera | [Forse] | Niente tempo né voto; alla fine una "foto" del cliente da tenere |
 
 **Strumenti in più** [Dopo]: rasoio per i clienti con la barba, spruzzino colorato per le tinte (scrive in una seconda mappa, quella del colore).
@@ -338,11 +338,11 @@ Guarda lo schermo: è il gioco più divertente da guardare. [Dopo] il tasto "Tif
 ### 7.1 Come si svolge
 - **Incontro 1 vs 1**, entrambi in piedi uno accanto all'altro, rivolti allo schermo ([brief § Sicurezza](games/fencing.md#sicurezza)).
 - **Giro di un assalto**:
-  1. **"En garde!"**: entrambi puntano il telefono verso lo schermo e tengono premuto → ricalibrazione. I Pupi si mettono in guardia al centro della pedana.
+  1. **"En garde!"**: entrambi puntano il telefono verso lo schermo e tengono premuto → ricalibrazione. I Bubù si mettono in guardia al centro della pedana.
   2. **"Prêts? Allez!"**: dopo un conto alla rovescia di 1 s si combatte. Nessun turno: è tempo reale.
   3. Si muove la lama ruotando il polso (orientamento 1:1), si avanza e indietreggia con lo swipe, si affonda con la spinta in avanti e il tasto, si para con una rotazione rapida laterale.
   4. **Tocco**: luce del colore del giocatore sul tabellone, "Touché!", slow-mo di mezzo secondo sul tocco.
-  5. **"Halte!"**: i Pupi tornano in guardia, punto assegnato, nuovo "En garde".
+  5. **"Halte!"**: i Bubù tornano in guardia, punto assegnato, nuovo "En garde".
 - **Fine incontro**: a 5 tocchi, oppure dopo 3 minuti chi ne ha di più (in parità: un tocco a morte improvvisa).
 
 ### 7.2 Meccanica (proposta per renderla leggibile)
@@ -351,12 +351,12 @@ Senza tracking di posizione la scherma rischia di diventare "agitare il telefono
 | Concetto | Regola |
 |---|---|
 | **Linee** | La punta della lama sta in uno di 4 quadranti: alta-dentro, alta-fuori, bassa-dentro, bassa-fuori. Lo schermo li disegna leggermente sulla sagoma dell'avversario |
-| **Misura** | L'affondo arriva solo se i Pupi sono "a misura" (distanza giusta, indicata da una linea a terra che si illumina). Fuori misura l'affondo va a vuoto e lascia scoperti per 400 ms: avvicinarsi diventa una scelta |
+| **Misura** | L'affondo arriva solo se i Bubù sono "a misura" (distanza giusta, indicata da una linea a terra che si illumina). Fuori misura l'affondo va a vuoto e lascia scoperti per 400 ms: avvicinarsi diventa una scelta |
 | **Affondo** | Colpisce la linea in cui sta la punta al momento della spinta |
 | **Parata** | Riesce se, nella finestra di 150 ms prima del tocco, la lama del difensore si sposta **nella linea dell'attacco** con una rotazione rapida |
 | **Risposta** | Dopo una parata riuscita, chi ha parato ha 500 ms di "priorità": se tocca in quel tempo il punto è suo anche in caso di tocco doppio |
 | **Tocco doppio** | Entro 80 ms: punto a chi ha l'iniziativa (ha cominciato l'attacco per primo o ha la risposta) |
-| **Spinta a vuoto** | Affondi ripetuti senza misura stancano il Pupo (brevissimo rallentamento): si scoraggia lo "spam" |
+| **Spinta a vuoto** | Affondi ripetuti senza misura stancano il Bubù (brevissimo rallentamento): si scoraggia lo "spam" |
 
 ### 7.3 Modalità
 | Modalità | Priorità | Come funziona |
@@ -392,13 +392,13 @@ Buffer di giudizio di ~120 ms e timestamp nel clock del DO, come nel brief. Prim
 ## 8. Idee trasversali
 
 ### 8.1 Serata (modalità multi-gioco) [Dopo]
-Una "playlist" di 3 giochi in versione veloce (es. Bowling 3 frame → Tiri liberi 5 tiri → Bocce una mano). A ogni gioco: 3 punti al primo, 2 al secondo, 1 al terzo, 0 al quarto. Alla fine **Podio della serata** con il Pupo campione con la coppa. È la modalità che trasforma la piattaforma in una festa vera, e si può aggiungere appena ci sono due giochi.
+Una "playlist" di 3 giochi in versione veloce (es. Bowling 3 frame → Tiri liberi 5 tiri → Bocce una mano). A ogni gioco: 3 punti al primo, 2 al secondo, 1 al terzo, 0 al quarto. Alla fine **Podio della serata** con il Bubù campione con la coppa. È la modalità che trasforma la piattaforma in una festa vera, e si può aggiungere appena ci sono due giochi.
 
 ### 8.2 Squadre
 Dove ha senso, le squadre sono **2 vs 2 con i colori degli slot** (P1+P3 contro P2+P4, modificabile in Impostazione): bocce (regola naturale), bowling a staffetta, golf scramble, scherma a staffetta, tiri liberi a somma.
 
 ### 8.3 Profilo nella stanza
-Senza account: la stanza ricorda per la serata livello di assist, mano dominante e statistiche di ogni Pupo (sono già persistenti nella stanza, [03](03-network-protocol.md)). Si azzera quando la stanza scade.
+Senza account: la stanza ricorda per la serata livello di assist, mano dominante e statistiche di ogni Bubù (sono già persistenti nella stanza, [03](03-network-protocol.md)). Si azzera quando la stanza scade.
 
 ### 8.4 Replay [Forse]
 Per bowling (strike), tiri liberi (canestro decisivo) e golf (colpo in buca da fuori green): 3 s di replay rallentato, saltabile da chi è di turno. Costa un buffer di stati per gioco: da valutare dopo il primo.

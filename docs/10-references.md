@@ -57,10 +57,10 @@ Ricerca su GitHub del 2026-11-04. ★ = stelle, la data è l'ultimo push. Per og
 
 | Repo | ★ | Uso | Note |
 |---|---|---|---|
-| [mrdoob/three.js](https://github.com/mrdoob/three.js) | 117k | 🧩 | Motore di base. Esempi utili: `MeshToonMaterial`, `CCDIKSolver` per l'IK del braccio dei Pupi, `RoundedBoxGeometry`, `LatheGeometry`. |
+| [mrdoob/three.js](https://github.com/mrdoob/three.js) | 117k | 🧩 | Motore di base. Esempi utili: `MeshToonMaterial`, `CCDIKSolver` per l'IK del braccio dei Bubù, `RoundedBoxGeometry`, `LatheGeometry`. |
 | [FarazzShaikh/THREE-CustomShaderMaterial](https://github.com/FarazzShaikh/THREE-CustomShaderMaterial) | 1.4k · 2025-10 | 🧩 | Estende i materiali standard con shader propri senza riscriverli: il modo più pulito per aggiungere **rim light, AO dai vertex color e ramp morbida** ([07 § 3](07-art-direction.md#3-shading)). |
 | [pmndrs/postprocessing](https://github.com/pmndrs/postprocessing) | 2.9k · 2026-11 | 🧩 | Post-processing efficiente (FXAA/SMAA, bloom) per i tier Mid/High. |
-| [OmarShehata/webgl-outlines](https://github.com/OmarShehata/webgl-outlines) | 415 · 2022 | 📖 | Outline in post-process basato su normali e depth: alternativa all'inverted hull per i contorni dei Pupi. |
+| [OmarShehata/webgl-outlines](https://github.com/OmarShehata/webgl-outlines) | 415 · 2022 | 📖 | Outline in post-process basato su normali e depth: alternativa all'inverted hull per i contorni dei Bubù. |
 | [gkjohnson/three-jumpflood-demo](https://github.com/gkjohnson/three-jumpflood-demo) | 113 · 2025-12 | 📖 | Outline e glow con Jump Flood: contorni spessi e morbidi in stile giocattolo. |
 | [Faraz-Portfolio/demo-2023-toon-shader](https://github.com/Faraz-Portfolio/demo-2023-toon-shader) | 2 · 2026-06 | 📖 | Replica in Three.js del nodo Color Ramp di Blender: utile per far combaciare la **ramp** tra Blender e il gioco. |
 | [spxrshofficial/fur-gl](https://github.com/spxrshofficial/fur-gl) | 0 · 2026-05 | 📖 | Pelo con **shell instancing**: la tecnica prevista per i capelli del [barber shop](games/barber.md). |
@@ -76,7 +76,7 @@ Ricerca su GitHub del 2026-11-04. ★ = stelle, la data è l'ultimo push. Per og
 |---|---|---|---|
 | [pmndrs/maath](https://github.com/pmndrs/maath) | 1.3k · 2026-11 | 🧩 | Damping, easing, utility per vettori e quaternioni: smoothing della camera e della posa. |
 | [tweenjs/tween.js](https://github.com/tweenjs/tween.js) | 10k · 2026-10 | 🧩 | Tween per camera, UI 3D e sweeper del bowling. |
-| [jsantell/THREE.IK](https://github.com/jsantell/THREE.IK) | 591 · 2023 | 📖 | IK FABRIK per Three.js. Per i 2 segmenti del braccio dei Pupi basta un IK analitico, da scrivere in poche righe; qui c'è il riferimento. |
+| [jsantell/THREE.IK](https://github.com/jsantell/THREE.IK) | 591 · 2023 | 📖 | IK FABRIK per Three.js. Per i 2 segmenti del braccio dei Bubù basta un IK analitico, da scrivere in poche righe; qui c'è il riferimento. |
 
 ## 7. Audio
 
@@ -109,7 +109,7 @@ Ricerca su GitHub del 2026-11-04. ★ = stelle, la data è l'ultimo push. Per og
 2. **ADR-001 (relay su DO)** → **PartyServer** semplifica il DO `Room`. È da valutare nello spike S2, insieme a un DO "puro" in stile `workers-chat-demo`.
 3. **ADR-003 (Rapier)** → `rapier.js` è archiviato: in S3 si verifica il pacchetto npm attuale, che viene da `dimforge/rapier/typescript`.
 4. **Input di movimento** → da Pocket Sports prendiamo due idee:
-   - **dead-reckoning lato schermo**: si proietta la posa in avanti con ω per la latenza misurata. Riduce il ritardo percepito del braccio del Pupo e si aggiunge al buffer di interpolazione di [03 § 5](03-network-protocol.md#5-latenza-e-interpolazione);
+   - **dead-reckoning lato schermo**: si proietta la posa in avanti con ω per la latenza misurata. Riduce il ritardo percepito del braccio del Bubù e si aggiunge al buffer di interpolazione di [03 § 5](03-network-protocol.md#5-latenza-e-interpolazione);
    - un **Controller Lab** (telefono 3D che segue quello reale, con le letture dei sensori), da inserire tra gli strumenti di sviluppo della Fase 2.
 5. **Orientamento** → `psiphi75/ahrs` è il primo candidato per il filtro (Madgwick), contro un filtro complementare scritto da noi (S1).
 

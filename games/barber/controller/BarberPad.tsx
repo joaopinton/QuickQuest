@@ -47,7 +47,6 @@ export function Pad({
   lastCue,
   isSimulated,
   send,
-  onRecalibrate,
   onLeave,
 }: ControllerPadProps) {
   const pointer = useMemo(() => createPointer(), []);
@@ -278,8 +277,15 @@ export function Pad({
           ✅ Finito!
         </button>
         {!isSimulated && (
-          <button type="button" class="qq-btn qq-btn--secondary" onClick={onRecalibrate}>
-            🎯 {t('controller.recalibrate')}
+          <button
+            type="button"
+            class="qq-btn qq-btn--secondary"
+            onClick={() => {
+              pointer.recenter();
+              haptics.play('success');
+            }}
+          >
+            🎯 Centro
           </button>
         )}
         <button type="button" class="qq-btn qq-btn--ghost" onClick={onLeave}>

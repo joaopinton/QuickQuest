@@ -1,8 +1,9 @@
 export { t, setLocale, hasKey } from './i18n';
 export type { Vars } from './i18n';
 export * from './palette';
-export { Pupo } from './components/Pupo';
-export type { PupoMood, PupoMotion, PupoProps } from './components/Pupo';
+export { Bubu } from './components/Bubu';
+export type { BubuFraming, BubuMood, BubuMotion, BubuProps } from './components/Bubu';
+export * from './look';
 export { Logo } from './components/Logo';
 export { Button } from './components/Button';
 export type { ButtonProps, ButtonVariant, ButtonSize } from './components/Button';

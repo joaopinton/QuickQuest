@@ -1,5 +1,5 @@
 // Cornice del sito: header con navigazione, footer, contenitore di pagina.
-import { Button, Logo, Pupo, t } from '@quickquest/ui';
+import { Button, Logo, Bubu, t } from '@quickquest/ui';
 import type { ComponentChildren } from 'preact';
 import { useLocation } from 'preact-iso';
 
@@ -32,10 +32,10 @@ export function SiteFooter() {
   return (
     <footer class="site-footer">
       <div class="site-footer__edge" aria-hidden="true">
-        <div class="site-footer__pupi">
-          <Pupo color="#FF7EB6" accessory="bowtie" motion="breathe" size={76} delay={0.3} />
-          <Pupo color="#F7C531" accessory="cap" mood="happy" motion="breathe" size={92} />
-          <Pupo color="#2EC4B6" accessory="headphones" motion="breathe" size={70} delay={1.1} />
+        <div class="site-footer__bubu">
+          <Bubu color="#FF7EB6" look={{ eyes: 'happy', neck: 'bowtie' }} motion="breathe" size={76} delay={0.3} />
+          <Bubu color="#F7C531" look={{ hat: 'cap' }} mood="happy" motion="breathe" size={92} />
+          <Bubu color="#2EC4B6" look={{ pattern: 'stars', color2: '#FFF6E8', hat: 'headphones' }} motion="breathe" size={70} delay={1.1} />
         </div>
         <svg viewBox="0 0 1440 90" preserveAspectRatio="none">
           <path d="M0 60 C240 10 420 10 640 40 C860 70 1080 80 1260 40 C1340 22 1400 24 1440 30 V90 H0 Z" fill="#1E2A4A" />
