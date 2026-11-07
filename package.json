@@ -43,6 +43,14 @@
       "limit": "15 KB"
     },
     {
+      "name": "telefono, pad del barber",
+      "path": [
+        "apps/web/dist/assets/BarberPad-*.js",
+        "apps/web/dist/assets/BarberPad-*.css"
+      ],
+      "limit": "15 KB"
+    },
+    {
       "name": "telefono, pad del bowling",
       "path": [
         "apps/web/dist/assets/BowlingPad-*.js",

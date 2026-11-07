@@ -420,7 +420,7 @@ Per bowling (strike), tiri liberi (canestro decisivo) e golf (colpo in buca da f
 | Durata tipica (4 giocatori) | 15 min (veloce: 5) | 12 min | 8 min | 15 min (3 buche) | 10 min | 6 min (torneo: 15) |
 | Momento clou | Strike | Bacio / bocciata | Ciuff | Palla in buca | Specchio | Touché |
 | Modalità a 1 giocatore | Sì | Sì (Bersaglio) | Sì | Sì | Sì | Manichino |
-| Stato | Giocabile, fisica reale | Brief | Brief | Giocabile (3 buche) | Brief | Brief |
+| Stato | Giocabile, fisica reale | Brief | Brief | Giocabile (3 buche) | Giocabile (Classica) | Brief |
 
 ---
 

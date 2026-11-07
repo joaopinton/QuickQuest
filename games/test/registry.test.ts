@@ -7,7 +7,7 @@ describe('registro dei giochi', () => {
     expect(GAMES).toHaveLength(6);
     expect(new Set(GAMES.map((g) => g.id)).size).toBe(6);
     expect(GAMES[0]?.id).toBe('bowling');
-    expect(GAMES.filter((g) => g.status === 'soon').map((g) => g.id)).toEqual(['bowling', 'free-throw', 'golf']);
+    expect(GAMES.filter((g) => g.status === 'soon').map((g) => g.id)).toEqual(['bowling', 'free-throw', 'golf', 'barber']);
   });
 
   test('accenti validi e giocatori coerenti con il massimo di 4', () => {
@@ -29,6 +29,7 @@ describe('loader dei giochi sul contratto modulo', () => {
   test('si avviano il bowling (cablato) e i giochi con i loader', () => {
     expect(isPlayable('bowling')).toBe(true);
     expect(isPlayable('golf')).toBe(true);
+    expect(isPlayable('barber')).toBe(true);
     expect(isPlayable('bocce')).toBe(false);
     expect(loadersFor(null)).toBeUndefined();
     expect(loadersFor('golf')).toBe(GAME_LOADERS.golf);

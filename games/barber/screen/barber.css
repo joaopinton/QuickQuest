@@ -1,0 +1,528 @@
+/* HUD del Barber shop (docs/07, docs/08): bottega anni '60, carta crema, menta #2EC4B6,
+   rosso poltrona e titoli con grazie come le insegne dipinte a mano. */
+
+.bb-screen {
+  --bb-mint: #2ec4b6;
+  --bb-mint-dark: #1b8f85;
+  --bb-red: #d94352;
+  --bb-cream: #fff4de;
+  --bb-ink: #2b2d42;
+  --bb-display: 'Georgia', 'Times New Roman', serif;
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--bb-cream);
+  color: var(--bb-ink);
+  font-family: 'Nunito', system-ui, -apple-system, sans-serif;
+  user-select: none;
+}
+
+.bb-canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.bb-eyebrow {
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--bb-mint-dark);
+}
+
+/* Barra in alto */
+.bb-header {
+  position: absolute;
+  top: 18px;
+  left: 22px;
+  right: 22px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.bb-badge,
+.bb-header__actions {
+  pointer-events: auto;
+}
+
+.bb-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 20px;
+  border-radius: 999px;
+  background: var(--bb-cream);
+  border: 2.5px solid var(--player, var(--bb-mint));
+  box-shadow: 0 5px 0 rgba(43, 45, 66, 0.18);
+  font-size: 1.08rem;
+  font-weight: 700;
+}
+
+.bb-badge__meta {
+  padding-left: 12px;
+  border-left: 2px dotted rgba(43, 45, 66, 0.3);
+  font-weight: 900;
+  color: var(--bb-red);
+}
+
+.bb-header__actions {
+  display: flex;
+  gap: 10px;
+}
+
+/* Bottoni */
+.bb-btn {
+  cursor: pointer;
+  border: none;
+  border-radius: 14px;
+  padding: 10px 18px;
+  font: inherit;
+  font-weight: 800;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.bb-btn:hover {
+  transform: translateY(-1px);
+}
+
+.bb-btn:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
+}
+
+.bb-btn:focus-visible,
+.bb-pill:focus-visible {
+  outline: 3px solid var(--bb-mint);
+  outline-offset: 3px;
+}
+
+.bb-btn--primary {
+  background: var(--bb-mint);
+  color: var(--bb-ink);
+  box-shadow: 0 4px 0 var(--bb-mint-dark);
+}
+
+.bb-btn--secondary {
+  background: #ffffff;
+  color: var(--bb-ink);
+  box-shadow: 0 3px 0 rgba(43, 45, 66, 0.22);
+}
+
+.bb-btn--big {
+  padding: 14px 34px;
+  font-size: 1.2rem;
+}
+
+/* Cartellino della richiesta, come una figurina appesa allo specchio */
+.bb-request {
+  position: absolute;
+  top: 88px;
+  left: 22px;
+  width: 220px;
+  padding: 14px 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-radius: 6px 22px 22px 22px;
+  background: #ffffff;
+  border: 2px solid rgba(43, 45, 66, 0.12);
+  box-shadow: 0 10px 0 -4px var(--bb-mint), 0 16px 30px rgba(43, 45, 66, 0.16);
+  transform: rotate(-1.5deg);
+  z-index: 5;
+}
+
+.bb-request__name {
+  font-family: var(--bb-display);
+  font-size: 1.35rem;
+  line-height: 1.15;
+}
+
+.bb-request__line {
+  margin: 0;
+  font-style: italic;
+  font-size: 0.92rem;
+  color: rgba(43, 45, 66, 0.72);
+}
+
+.bb-figure {
+  width: 100%;
+  height: auto;
+}
+
+.bb-figure__hair {
+  fill: #5b3a29;
+}
+
+.bb-figure__skin {
+  fill: #f2c7a5;
+}
+
+.bb-figure__eye {
+  fill: var(--bb-ink);
+}
+
+.bb-figure__ear {
+  fill: #e8b48e;
+}
+
+.bb-figure__mouth {
+  fill: none;
+  stroke: var(--bb-ink);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.bb-figure__label {
+  font-size: 9px;
+  font-weight: 800;
+  text-anchor: middle;
+  fill: rgba(43, 45, 66, 0.55);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* Strumenti e timer */
+.bb-tools {
+  position: absolute;
+  top: 88px;
+  right: 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  z-index: 5;
+}
+
+.bb-timer {
+  min-width: 120px;
+  text-align: center;
+  padding: 8px 18px;
+  border-radius: 16px;
+  background: var(--bb-ink);
+  color: var(--bb-cream);
+  font-family: var(--bb-display);
+  font-size: 2rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 5px 0 rgba(0, 0, 0, 0.25);
+}
+
+.bb-timer.is-hurry {
+  background: var(--bb-red);
+  animation: bb-tick 1s steps(2) infinite;
+}
+
+.bb-chip {
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 2px solid var(--bb-mint);
+  font-weight: 800;
+  font-size: 0.95rem;
+}
+
+/* Classifica */
+.bb-board {
+  position: absolute;
+  right: 22px;
+  bottom: 84px;
+  margin: 0;
+  padding: 10px;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 190px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 10px 24px rgba(43, 45, 66, 0.15);
+  z-index: 5;
+}
+
+.bb-board__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border-left: 5px solid var(--player);
+  font-weight: 700;
+}
+
+.bb-board__row.is-active {
+  background: color-mix(in oklab, var(--player) 18%, #ffffff);
+}
+
+/* Conto alla rovescia */
+.bb-countdown {
+  position: absolute;
+  left: 50%;
+  bottom: 12%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 16px 34px;
+  border-radius: 26px;
+  background: var(--bb-cream);
+  border: 3px solid var(--player);
+  box-shadow: 0 8px 0 rgba(43, 45, 66, 0.18);
+  text-align: center;
+  z-index: 8;
+}
+
+.bb-countdown p {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.bb-countdown__num {
+  font-family: var(--bb-display);
+  font-size: 4rem;
+  line-height: 1;
+  color: var(--player);
+  animation: bb-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.bb-prompt {
+  position: absolute;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 10px 22px;
+  border-radius: 999px;
+  background: rgba(43, 45, 66, 0.88);
+  color: var(--bb-cream);
+  font-weight: 700;
+  white-space: nowrap;
+  border: 2px solid var(--player);
+  z-index: 5;
+}
+
+/* Verdetto allo specchio */
+.bb-verdict {
+  position: absolute;
+  left: 50%;
+  bottom: 9%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 18px 36px;
+  border-radius: 28px;
+  background: #ffffff;
+  border: 3px solid var(--player);
+  box-shadow: 0 12px 0 -4px var(--bb-mint), 0 18px 40px rgba(43, 45, 66, 0.22);
+  animation: bb-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  z-index: 8;
+}
+
+.bb-verdict__line {
+  margin: 0;
+  font-family: var(--bb-display);
+  font-size: 1.6rem;
+}
+
+.bb-stars {
+  display: inline-flex;
+  gap: 2px;
+  font-size: 1.9rem;
+  color: rgba(43, 45, 66, 0.18);
+}
+
+.bb-stars .is-on {
+  color: #ffb703;
+  text-shadow: 0 2px 0 #c98400;
+}
+
+.bb-podium .bb-stars {
+  font-size: 1.1rem;
+}
+
+/* Finestre: impostazioni e podio */
+.bb-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(43, 45, 66, 0.42);
+  backdrop-filter: blur(5px);
+  z-index: 30;
+}
+
+.bb-modal {
+  width: 100%;
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 28px 32px;
+  text-align: center;
+  border-radius: 30px;
+  background: var(--bb-cream);
+  border: 3px solid var(--bb-ink);
+  box-shadow: 10px 10px 0 var(--bb-mint);
+}
+
+.bb-modal__title {
+  margin: -4px 0 0;
+  font-family: var(--bb-display);
+  font-size: clamp(2rem, 4vw, 2.8rem);
+}
+
+.bb-modal__lead {
+  margin: 0;
+  max-width: 42ch;
+  font-weight: 600;
+  color: rgba(43, 45, 66, 0.75);
+}
+
+.bb-modal__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+.bb-roster {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.bb-roster__chip {
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 2.5px solid var(--player);
+}
+
+.bb-assist {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bb-assist__label {
+  font-weight: 800;
+  margin-right: 4px;
+}
+
+.bb-pill {
+  cursor: pointer;
+  padding: 7px 16px;
+  border-radius: 999px;
+  border: 2px solid var(--bb-ink);
+  background: #ffffff;
+  font: inherit;
+  font-weight: 800;
+}
+
+.bb-pill.is-active {
+  background: var(--bb-ink);
+  color: var(--bb-cream);
+}
+
+.bb-podium {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bb-podium__row {
+  display: grid;
+  grid-template-columns: 40px 1fr auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  border-radius: 14px;
+  background: #ffffff;
+  border-left: 6px solid var(--player);
+  text-align: left;
+}
+
+.bb-podium__rank {
+  font-family: var(--bb-display);
+  font-weight: 700;
+  font-size: 1.2rem;
+}
+
+.bb-podium__name {
+  font-weight: 800;
+}
+
+.bb-podium__score {
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.bb-awards {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.bb-award {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 2px dashed rgba(43, 45, 66, 0.2);
+  text-align: left;
+}
+
+.bb-award small {
+  display: block;
+  font-weight: 800;
+}
+
+.bb-award__icon {
+  font-size: 1.6rem;
+}
+
+@keyframes bb-pop {
+  from {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+}
+
+@keyframes bb-rise {
+  from {
+    transform: translate(-50%, 30px);
+    opacity: 0;
+  }
+}
+
+@keyframes bb-tick {
+  50% {
+    filter: brightness(1.25);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bb-countdown__num,
+  .bb-verdict,
+  .bb-timer.is-hurry {
+    animation: none;
+  }
+}

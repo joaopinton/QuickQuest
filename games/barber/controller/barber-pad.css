@@ -1,0 +1,113 @@
+/* Controller del Barber shop (docs/07, docs/08, accento #2EC4B6) */
+
+.bb-pad {
+  --bb-mint: #2ec4b6;
+  --bb-mint-dark: #1b8f85;
+}
+
+.bb-pad__lost {
+  background: color-mix(in oklab, var(--danger-500) 14%, #fff);
+  color: color-mix(in oklab, var(--danger-500) 70%, var(--ink-900));
+}
+
+.bb-pad__track {
+  position: relative;
+  min-height: 120px;
+  flex: 1 1 120px;
+  display: grid;
+  place-items: center;
+  border-radius: 20px;
+  border: 2px dashed color-mix(in oklab, var(--bb-mint) 55%, transparent);
+  background:
+    repeating-linear-gradient(45deg, transparent 0 14px, color-mix(in oklab, var(--bb-mint) 8%, transparent) 14px 28px),
+    #ffffff;
+  touch-action: none;
+}
+
+.bb-pad__track.is-sim {
+  cursor: crosshair;
+  border-style: solid;
+}
+
+.bb-pad__hint {
+  text-align: center;
+  font-weight: 800;
+  font-size: 0.9rem;
+  color: var(--ink-600, #4a5878);
+  pointer-events: none;
+}
+
+.bb-pad__dot {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  margin: -13px 0 0 -13px;
+  border-radius: 50%;
+  border: 4px solid var(--slot, var(--bb-mint));
+  background: color-mix(in oklab, var(--slot, var(--bb-mint)) 25%, transparent);
+  pointer-events: none;
+}
+
+.bb-pad__row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.bb-pad__row > * {
+  flex: 1;
+}
+
+.bb-pad__comb {
+  padding: 10px 6px;
+  border-radius: 14px;
+  border: 2px solid rgba(30, 42, 74, 0.15);
+  background: #ffffff;
+  font: inherit;
+  font-weight: 800;
+  color: var(--ink-900, #1e2a4a);
+}
+
+.bb-pad__comb.is-active {
+  border-color: var(--bb-mint-dark);
+  background: color-mix(in oklab, var(--bb-mint) 22%, #ffffff);
+}
+
+.bb-pad__scissors {
+  flex: 2;
+  padding: 12px;
+  border: none;
+  border-radius: 16px;
+  background: #ffd23f;
+  box-shadow: 0 4px 0 #c99a00;
+  font: inherit;
+  font-size: 1.05rem;
+  font-weight: 900;
+  color: #1e2a4a;
+  touch-action: manipulation;
+}
+
+.bb-pad__scissors:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 #c99a00;
+}
+
+.bb-pad__scissors:disabled {
+  opacity: 0.5;
+}
+
+.bb-pad__clipper.is-pressed {
+  animation: bb-pad-buzz 0.07s linear infinite;
+}
+
+@keyframes bb-pad-buzz {
+  50% {
+    transform: translateX(1px) scale(0.98);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bb-pad__clipper.is-pressed {
+    animation: none;
+  }
+}

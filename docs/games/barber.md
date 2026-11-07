@@ -11,6 +11,7 @@
 | Layout controller | `pointer`, `wait` |
 | Fattibilità | 🟡 Media |
 | Ordine | 5° gioco |
+| Stato | **Giocabile — MVP modalità Classica** (`games/barber/`): 3 clienti a testa, macchinetta + forbici, 3 pettini, poltrona a 90°, voto a stelle, assist, premi, telefono simulato |
 
 ## Fantasia
 *"Ho seguito il modello, ho sfumato la nuca con la macchinetta che vibrava in mano e il cliente si è guardato allo specchio felicissimo."*
@@ -43,3 +44,10 @@ Il telefono **è lo strumento**: lo si tiene come una macchinetta o un paio di f
 - **Precisione del puntamento** con il solo orientamento, più il drift → assist "magnetico" verso il bordo della zona target, dwell (lo strumento rallenta vicino ai bordi), ricalibrazione con un doppio tap, e un'area di taglio un po' più grande del visibile.
 - **Leggibilità**: il giocatore deve vedere dove taglia → anteprima del pennello sulla testa (cerchio luminoso) e camera che ruota da sola verso la zona su cui si lavora.
 - **Feedback aptico su iOS** limitato → ronzio audio ritmico come sostituto.
+
+## Implementazione (MVP)
+- **Input continuo**: il pad manda `tool` {x, y, clip, comb} a ~20 Hz solo nel proprio turno (più `snip`, `rotate`, `finish`); il relay già scarta gli eventi di chi non è di turno. Il puntatore è `createPointer` + `aimRates` di `packages/motion`.
+- **Capelli**: mappa 128×128 (`screen/hair-map.ts`) → `DataTexture` letta da 16 gusci in una sola `InstancedMesh` (`screen/hair-shells.ts`). In Facile/Normale lo shader colora in menta i capelli ancora da tagliare (sagoma dell'assist).
+- **Puntamento**: raycast logico su sfera con la stessa inclinazione della telecamera (`screen/pointing.ts`); il cursore rallenta vicino ai bordi del taglio (dwell).
+- **Voto**: `screen/rules.ts` — errore medio pesato per area e zona, bonus simmetria, malus buchi; stelle × 100 + bonus tempo (da 3★).
+- **Da fare**: prova del puntamento su telefoni veri (frangia), modalità Salone e Corsa del sabato, camera che segue la zona di lavoro.
