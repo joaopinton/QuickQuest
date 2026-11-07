@@ -1,15 +1,31 @@
 // Pad del Barber shop sul telefono (docs/05 § Lato controller, docs/games/barber.md § Gesto).
-// Il telefono è il tagliacapelli: inclinandolo si muove il cerchio sulla testa del cliente
-// (puntatore col giroscopio, packages/motion/pointer). Tasto grande tenuto premuto = macchinetta
-// (vibra e ronza), tasto forbici = una sforbiciata per tocco. Sul trackpad: swipe orizzontale per
-// girare la poltrona, verticale per il pettine, doppio tocco per ricentrare.
-// Col telefono simulato (`?sim`) il trackpad diventa una superficie per puntare col dito.
+// Il telefono è il tagliacapelli e si tiene DRITTO, in verticale: si taglia dove guarda il retro
+// (mira assoluta, packages/motion/aim). Stesso orientamento = stesso punto, niente deriva in
+// altezza; il centro orizzontale si prende da solo quando il telefono si ferma dritto a inizio
+// turno, oppure col tasto "Centra".
+// Gli attrezzi si scelgono come le mazze del golf: macchinetta coi tre rialzi o forbici. Il tasto
+// grande fa quello che fa l'attrezzo in mano: tenuto premuto accende la macchinetta (vibra e
+// ronza), con le forbici ogni tocco è una sforbiciata.
+// Col telefono simulato (`?sim`) compare una superficie per puntare col dito.
 
-import { aimRates, createPointer, type PointerPosition } from '@quickquest/motion';
+import { createAimPointer, type PointerPosition } from '@quickquest/motion';
 import { slotStyle, t } from '@quickquest/ui';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { ControllerPadProps } from '../../contract';
-import { COMB_LABELS, COMB_LEVELS, finishEvent, rotateEvent, snipEvent, toolEvent, type CombLevel } from '../shared/events';
+import {
+  BARBER_TOOLS,
+  finishEvent,
+  rotateEvent,
+  snipEvent,
+  TOOL_COMB,
+  TOOL_HINT,
+  TOOL_NAME,
+  toolEvent,
+  type BarberTool,
+  type CombLevel,
+} from '../shared/events';
+import { HEAD_SPAN } from '../shared/head';
+import { ToolArt } from '../shared/ToolArt';
 import { createClipperBuzz } from './buzz';
 import './barber-pad.css';
 
@@ -17,9 +33,16 @@ const SEND_MS = 50;
 const HEARTBEAT_MS = 500;
 const MOVE_EPS = 0.002;
 const CLIP_HAPTIC_MS = 140;
-const SWIPE_PX = 40;
-const DOUBLE_TAP_MS = 320;
+const UI_REFRESH_MS = 90;
+/** Per prendere il centro da solo il telefono deve stare dritto e fermo così a lungo. */
+const AUTO_CENTER_STEADY_MS = 300;
 const CENTER: PointerPosition = { x: 0.5, y: 0.5 };
+
+interface AimView extends PointerPosition {
+  readonly isUpright: boolean;
+}
+
+const combOf = (tool: BarberTool): CombLevel => (tool === 'scissors' ? 1 : TOOL_COMB[tool]);
 
 /** Il pointer capture può mancare (pointer sintetici, dito già sollevato): non è un errore. */
 function capture(e: PointerEvent): void {
@@ -30,10 +53,50 @@ function capture(e: PointerEvent): void {
   }
 }
 
-interface Gesture {
-  readonly x: number;
-  readonly y: number;
-  readonly at: number;
+interface ToolPickerProps {
+  readonly tool: BarberTool;
+  readonly isEnabled: boolean;
+  readonly onPick: (tool: BarberTool) => void;
+}
+
+/** Gli attrezzi sul carrello, disegnati uno accanto all'altro: si tocca quello che si vuole. */
+function ToolPicker({ tool, isEnabled, onPick }: ToolPickerProps) {
+  return (
+    <div class="bb-tools-pick" role="radiogroup" aria-label="Scegli l'attrezzo">
+      {BARBER_TOOLS.map((item) => (
+        <button
+          key={item}
+          type="button"
+          role="radio"
+          aria-checked={item === tool}
+          class={`bb-tool ${item === tool ? 'is-selected' : ''}`}
+          disabled={!isEnabled}
+          onClick={() => onPick(item)}
+        >
+          <ToolArt tool={item} class="bb-tool__art" />
+          <span class="bb-tool__name">{TOOL_NAME[item]}</span>
+          <span class="bb-tool__meta">{TOOL_HINT[item]}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** Mirino: la testa del cliente e il punto in cui guarda il retro del telefono. */
+function AimGauge({ aim }: { readonly aim: AimView }) {
+  const size = `${HEAD_SPAN * 200}%`;
+  const dx = (aim.x - 0.5) / HEAD_SPAN;
+  const dy = (aim.y - 0.5) / HEAD_SPAN;
+  const isOnHead = Math.hypot(dx, dy) <= 1.15;
+  return (
+    <div class={`bb-aim ${aim.isUpright ? '' : 'is-tilted'}`} aria-hidden="true">
+      <span class="bb-aim__head" style={{ width: size, height: size }} />
+      <span class={`bb-aim__dot ${isOnHead ? 'is-on' : ''}`} style={{ left: `${aim.x * 100}%`, top: `${aim.y * 100}%` }} />
+      <span class="bb-aim__label">
+        {aim.isUpright ? (isOnHead ? 'Sulla testa' : 'Fuori dalla testa') : '📱 Tieni il telefono dritto, retro verso lo schermo'}
+      </span>
+    </div>
+  );
 }
 
 export function Pad({
@@ -49,54 +112,69 @@ export function Pad({
   send,
   onLeave,
 }: ControllerPadProps) {
-  const pointer = useMemo(() => createPointer(), []);
+  const aim = useMemo(() => createAimPointer(), []);
   const buzz = useMemo(() => createClipperBuzz(), []);
   const [isClipping, setClipping] = useState(false);
-  const [comb, setComb] = useState<CombLevel>(1);
+  const [tool, setTool] = useState<BarberTool>('clip1');
   const [simPos, setSimPos] = useState<PointerPosition>(CENTER);
-  const live = useRef({ clip: false, comb: 1 as CombLevel, simPos: CENTER, send });
-  const gestureRef = useRef<Gesture | null>(null);
-  const lastTapRef = useRef(0);
+  const [aimView, setAimView] = useState<AimView>({ ...CENTER, isUpright: true });
+  const live = useRef({ clip: false, tool: 'clip1' as BarberTool, simPos: CENTER, send });
+  const needsCenterRef = useRef(true);
   const style = slotStyle(slot);
   const isMyTurn = activeSlot === slot && !isLost;
-  live.current = { clip: isClipping, comb, simPos, send };
+  const isScissors = tool === 'scissors';
+  live.current = { clip: isClipping, tool, simPos, send };
 
-  const position = (): PointerPosition => (isSimulated ? live.current.simPos : pointer.position);
+  const position = (): PointerPosition => (isSimulated ? live.current.simPos : aim.reading);
 
-  // Giroscopio → puntatore
-  useEffect(
-    () =>
-      tracker.subscribe((s) => {
-        pointer.update(aimRates(s.gyro, s.q), s.dtMs / 1000);
-      }),
-    [tracker, pointer],
-  );
-
-  // A inizio turno lo strumento riparte dal centro della testa; a fine turno si spegne
+  // Orientamento → mira; a inizio turno il centro si prende quando il telefono si ferma dritto
   useEffect(() => {
-    pointer.recenter();
+    const off = tracker.subscribe((s) => {
+      const r = aim.update(s.q, s.dtMs / 1000);
+      if (needsCenterRef.current && r.isUpright && s.still.isStill && s.still.steadyMs >= AUTO_CENTER_STEADY_MS) {
+        aim.recenter();
+        needsCenterRef.current = false;
+      }
+    });
+    const id = setInterval(() => {
+      const r = aim.reading;
+      setAimView((prev) =>
+        Math.abs(prev.x - r.x) < MOVE_EPS && Math.abs(prev.y - r.y) < MOVE_EPS && prev.isUpright === r.isUpright
+          ? prev
+          : { x: r.x, y: r.y, isUpright: r.isUpright },
+      );
+    }, UI_REFRESH_MS);
+    return () => {
+      off();
+      clearInterval(id);
+    };
+  }, [tracker, aim]);
+
+  // A inizio turno si riprende il centro; a fine turno la macchinetta si spegne
+  useEffect(() => {
+    needsCenterRef.current = true;
     setSimPos(CENTER);
     if (!isMyTurn) {
       setClipping(false);
       buzz.stop();
     }
-  }, [isMyTurn, pointer, buzz]);
+  }, [isMyTurn, buzz]);
 
   // Streaming dello strumento a ~20 Hz, solo nel proprio turno
   useEffect(() => {
     if (!isMyTurn) return;
-    let last = { x: -1, y: -1, clip: false, comb: -1, at: 0 };
+    let last = { x: -1, y: -1, clip: false, tool: '' as string, at: 0 };
     const id = setInterval(() => {
-      const p = isSimulated ? live.current.simPos : pointer.position;
-      const { clip, comb: c } = live.current;
+      const p = isSimulated ? live.current.simPos : aim.reading;
+      const { clip, tool: current } = live.current;
       const now = performance.now();
       const moved = Math.abs(p.x - last.x) > MOVE_EPS || Math.abs(p.y - last.y) > MOVE_EPS;
-      if (!moved && clip === last.clip && c === last.comb && now - last.at < HEARTBEAT_MS) return;
-      live.current.send(toolEvent({ x: p.x, y: p.y, clip, comb: c }));
-      last = { x: p.x, y: p.y, clip, comb: c, at: now };
+      if (!moved && clip === last.clip && current === last.tool && now - last.at < HEARTBEAT_MS) return;
+      live.current.send(toolEvent({ x: p.x, y: p.y, clip, comb: combOf(current), scissors: current === 'scissors' }));
+      last = { x: p.x, y: p.y, clip, tool: current, at: now };
     }, SEND_MS);
     return () => clearInterval(id);
-  }, [isMyTurn, isSimulated, pointer]);
+  }, [isMyTurn, isSimulated, aim]);
 
   // Vibrazione ritmata della macchinetta (su iPhone resta il ronzio audio)
   useEffect(() => {
@@ -107,30 +185,34 @@ export function Pad({
 
   useEffect(() => () => buzz.dispose(), [buzz]);
 
-  const clipDown = (e: PointerEvent) => {
+  const stopClipper = () => {
+    setClipping(false);
+    buzz.stop();
+  };
+
+  const actionDown = (e: PointerEvent) => {
     e.preventDefault();
     if (!isMyTurn) return;
+    if (isScissors) {
+      send(snipEvent(position()));
+      haptics.impact(0.6);
+      return;
+    }
     capture(e);
     setClipping(true);
     buzz.start();
     haptics.play('tap');
   };
 
-  const clipUp = (e: PointerEvent) => {
+  const actionUp = (e: PointerEvent) => {
     e.preventDefault();
-    setClipping(false);
-    buzz.stop();
+    stopClipper();
   };
 
-  const snip = () => {
-    if (!isMyTurn) return;
-    send(snipEvent(position()));
-    haptics.impact(0.6);
-  };
-
-  const changeComb = (next: CombLevel) => {
-    if (next === comb) return;
-    setComb(next);
+  const pickTool = (next: BarberTool) => {
+    if (next === tool) return;
+    if (next === 'scissors') stopClipper();
+    setTool(next);
     haptics.play('select');
   };
 
@@ -138,6 +220,12 @@ export function Pad({
     if (!isMyTurn) return;
     send(rotateEvent(dir));
     haptics.play('select');
+  };
+
+  const recenter = () => {
+    aim.recenter();
+    needsCenterRef.current = false;
+    haptics.play('success');
   };
 
   const simPoint = (e: PointerEvent) => {
@@ -148,46 +236,10 @@ export function Pad({
     });
   };
 
-  const padDown = (e: PointerEvent) => {
-    e.preventDefault();
-    capture(e);
-    if (isSimulated) {
-      simPoint(e);
-      return;
-    }
-    gestureRef.current = { x: e.clientX, y: e.clientY, at: performance.now() };
-  };
-
-  const padMove = (e: PointerEvent) => {
-    if (isSimulated && e.buttons > 0) simPoint(e);
-  };
-
-  const padUp = (e: PointerEvent) => {
-    const g = gestureRef.current;
-    gestureRef.current = null;
-    if (isSimulated || !g) return;
-    const dx = e.clientX - g.x;
-    const dy = e.clientY - g.y;
-    if (Math.abs(dx) > SWIPE_PX && Math.abs(dx) > Math.abs(dy)) {
-      rotate(dx > 0 ? 1 : -1);
-    } else if (Math.abs(dy) > SWIPE_PX) {
-      const step = dy < 0 ? 1 : -1;
-      changeComb(Math.min(2, Math.max(0, comb + step)) as CombLevel);
-    } else {
-      const now = performance.now();
-      if (now - lastTapRef.current < DOUBLE_TAP_MS) {
-        pointer.recenter();
-        haptics.play('success');
-        lastTapRef.current = 0;
-      } else {
-        lastTapRef.current = now;
-      }
-    }
-  };
-
   let turnText: string;
   if (lastCue?.text && !isMyTurn) turnText = lastCue.text;
-  else if (isMyTurn) turnText = isClipping ? 'Bzzzz… taglia!' : lastCue?.text ?? 'Tocca a te: muovi il telefono sulla testa';
+  else if (isMyTurn && isClipping) turnText = 'Bzzzz… taglia!';
+  else if (isMyTurn) turnText = lastCue?.text ?? 'Tocca a te: punta il retro del telefono sulla testa';
   else if (activeSlot) turnText = t('controller.waitTurn', { slot: `${slotStyle(activeSlot).symbol} ${activeSlot}` });
   else turnText = 'Il cliente si guarda allo specchio…';
 
@@ -195,7 +247,9 @@ export function Pad({
   if (isLost) statusBadge = <span class="ctl-demo bb-pad__lost">{t('controller.reconnecting')}</span>;
   else if (isDemo) statusBadge = <span class="ctl-demo">{t('controller.demoBadge')}</span>;
 
-  const shown = isSimulated ? simPos : null;
+  let actionText: string = t('controller.notYourTurn');
+  if (isMyTurn && isScissors) actionText = 'TOCCA: SFORBICIATA';
+  else if (isMyTurn) actionText = isClipping ? 'TAGLIO…' : 'TIENI PREMUTO: MACCHINETTA';
 
   return (
     <section class="ctl-screen ctl-game bb-pad" style={{ '--slot': color || style.hex }}>
@@ -212,82 +266,58 @@ export function Pad({
         {turnText}
       </p>
 
-      <div
-        class={`bb-pad__track ${isSimulated ? 'is-sim' : ''}`}
-        onPointerDown={padDown}
-        onPointerMove={padMove}
-        onPointerUp={padUp}
-        onPointerCancel={() => {
-          gestureRef.current = null;
-        }}
-        aria-label={isSimulated ? 'Trascina per puntare' : 'Swipe: gira la poltrona o cambia pettine. Doppio tocco: ricentra'}
-      >
-        {shown ? (
-          <span class="bb-pad__dot" style={{ left: `${shown.x * 100}%`, top: `${shown.y * 100}%` }} />
-        ) : (
-          <span class="bb-pad__hint">
-            ⇆ poltrona · ⇅ pettine
-            <br />
-            doppio tocco = centro
-          </span>
-        )}
-      </div>
+      <ToolPicker tool={tool} isEnabled={isMyTurn} onPick={pickTool} />
 
-      <div class="bb-pad__row" role="radiogroup" aria-label="Pettine">
-        {COMB_LEVELS.map((lvl) => (
-          <button
-            key={lvl}
-            type="button"
-            role="radio"
-            aria-checked={comb === lvl}
-            class={`bb-pad__comb ${comb === lvl ? 'is-active' : ''}`}
-            onClick={() => changeComb(lvl)}
-          >
-            {COMB_LABELS[lvl]}
-          </button>
-        ))}
-      </div>
+      {isSimulated ? (
+        <div
+          class="bb-pad__track"
+          onPointerDown={(e) => {
+            e.preventDefault();
+            capture(e);
+            simPoint(e);
+          }}
+          onPointerMove={(e) => {
+            if (e.buttons > 0) simPoint(e);
+          }}
+          aria-label="Trascina per puntare"
+        >
+          <span class="bb-aim__head" style={{ width: `${HEAD_SPAN * 200}%`, height: `${HEAD_SPAN * 200}%` }} />
+          <span class="bb-pad__dot" style={{ left: `${simPos.x * 100}%`, top: `${simPos.y * 100}%` }} />
+        </div>
+      ) : (
+        <AimGauge aim={aimView} />
+      )}
 
       <div class="bb-pad__row">
         <button type="button" class="qq-btn qq-btn--secondary" disabled={!isMyTurn} onClick={() => rotate(-1)} aria-label="Gira la poltrona a sinistra">
-          ↺
+          ↺ Poltrona
         </button>
-        <button type="button" class="bb-pad__scissors" disabled={!isMyTurn} onClick={snip}>
-          ✂️ Forbici
-        </button>
+        {!isSimulated && (
+          <button type="button" class="qq-btn qq-btn--secondary" onClick={recenter}>
+            🎯 Centra
+          </button>
+        )}
         <button type="button" class="qq-btn qq-btn--secondary" disabled={!isMyTurn} onClick={() => rotate(1)} aria-label="Gira la poltrona a destra">
-          ↻
+          Poltrona ↻
         </button>
       </div>
 
       <button
         type="button"
-        class={`ctl-action-btn bb-pad__clipper ${isClipping ? 'is-pressed' : ''}`}
+        class={`ctl-action-btn bb-pad__action ${isClipping ? 'is-pressed' : ''} ${isScissors ? 'is-scissors' : ''}`}
         disabled={!isMyTurn}
-        onPointerDown={clipDown}
-        onPointerUp={clipUp}
-        onPointerCancel={clipUp}
+        onPointerDown={actionDown}
+        onPointerUp={actionUp}
+        onPointerCancel={actionUp}
       >
-        <span class="ctl-action-btn__icon" aria-hidden="true">💈</span>
-        <span>{isMyTurn ? (isClipping ? 'TAGLIO…' : 'TIENI PREMUTO: MACCHINETTA') : t('controller.notYourTurn')}</span>
+        <span class="ctl-action-btn__icon" aria-hidden="true">{isScissors ? '✂️' : '💈'}</span>
+        <span>{actionText}</span>
       </button>
 
       <footer class="ctl-actions">
         <button type="button" class="qq-btn qq-btn--primary" disabled={!isMyTurn} onClick={() => send(finishEvent())}>
           ✅ Finito!
         </button>
-        {!isSimulated && (
-          <button
-            type="button"
-            class="qq-btn qq-btn--secondary"
-            onClick={() => {
-              pointer.recenter();
-              haptics.play('success');
-            }}
-          >
-            🎯 Centro
-          </button>
-        )}
         <button type="button" class="qq-btn qq-btn--ghost" onClick={onLeave}>
           {t('controller.leave')}
         </button>

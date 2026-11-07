@@ -112,7 +112,7 @@ I dettagli di stima di velocità, spin e direzione sono nel [GDD del bowling](ga
 
 ### Colpi senza tasto (`burst.ts`) e puntatore (`pointer.ts`)
 Per i giochi senza tasto (golf, tennis, scherma) il colpo si riconosce al picco di |ω|, da `SwingDetector` di PhoneMote: si arma sopra 400 °/s e si riarma sotto 110 °/s; la cattura riprende i campioni appena prima dell'armo e si chiude quando |ω| scende al 60% del picco o dopo 400 ms; serve un'accelerazione lineare di almeno 12 m/s². Un colpo più forte che inizia entro 120 ms da un altro lo sostituisce (`replacesPrevious`, D29: backswing seguito dal colpo vero). La potenza è relativa alla scala del giocatore (D42).
-Il puntatore integra yaw e pitch letti nel frame del mondo (vale con qualsiasi presa), con filtro 1€, deadzone di 2 °/s con isteresi e ricentratura. `grip.ts` misura rollio e beccheggio con il segno rispetto alla presa catturata, dalla gravità e non dagli angoli di Eulero.
+Il puntatore integra yaw e pitch letti nel frame del mondo (vale con qualsiasi presa), con filtro 1€, deadzone di 2 °/s con isteresi e ricentratura. Per il barbiere c'è anche la **mira assoluta** (`aim.ts`): col telefono dritto conta la direzione del retro; il beccheggio è letto dalla gravità (non deriva) e l'imbardata è relativa a un centro preso ricentrando, così lo stesso orientamento dà sempre lo stesso punto. `grip.ts` misura rollio e beccheggio con il segno rispetto alla presa catturata, dalla gravità e non dagli angoli di Eulero.
 
 ### Perché il pollice e non un picco di accelerazione per il rilascio?
 - È **deterministico**: il giocatore decide il momento esatto, come aprire la mano.

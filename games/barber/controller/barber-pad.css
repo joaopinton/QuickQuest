@@ -1,4 +1,4 @@
-/* Controller del Barber shop (docs/07, docs/08, accento #2EC4B6) */
+/* Controller del Barber shop (docs/07, docs/08, accento #2EC4B6). Token da packages/ui/src/tokens.css. */
 
 .bb-pad {
   --bb-mint: #2ec4b6;
@@ -10,104 +10,126 @@
   color: color-mix(in oklab, var(--danger-500) 70%, var(--ink-900));
 }
 
+/* Carrello degli attrezzi: come le mazze del golf, quello in mano si alza e prende il colore del giocatore. */
+.bb-tools-pick {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  align-items: end;
+}
+.bb-tool {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 8px 4px 10px;
+  border: 0;
+  border-radius: var(--radius-lg, 18px);
+  background: var(--surface, #fff);
+  color: var(--ink-300, #a6b0c6);
+  box-shadow: var(--shadow-soft);
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 180ms ease, color 180ms ease;
+}
+.bb-tool__art {
+  width: auto;
+  height: 70px;
+  transform-origin: 50% 90%;
+  transition: transform 260ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.bb-tool__name { font: 700 0.92rem/1.1 var(--font-display, inherit); color: var(--ink-900, #1e2a4a); }
+.bb-tool__meta { font-size: 0.66rem; font-weight: 700; line-height: 1.15; color: var(--ink-600, #4a5878); text-align: center; }
+.bb-tool.is-selected {
+  color: var(--slot);
+  transform: translateY(-6px);
+  box-shadow: 0 0 0 3px var(--slot), var(--shadow-soft);
+}
+.bb-tool.is-selected .bb-tool__art { transform: rotate(-6deg) scale(1.06); }
+.bb-tool:not(.is-selected):active:not(:disabled) { transform: scale(0.96); }
+.bb-tool:disabled { cursor: default; opacity: 0.55; }
+.bb-tool:focus-visible { outline: 3px solid var(--slot); outline-offset: 3px; }
+
+/* Mirino: la testa e dove guarda il retro del telefono. Il punto può uscire dalla testa. */
+.bb-aim,
 .bb-pad__track {
   position: relative;
-  min-height: 120px;
-  flex: 1 1 120px;
+  /* quadrato: x e y del puntatore hanno la stessa scala, la testa resta tonda */
+  width: min(100%, 210px, 30vh);
+  aspect-ratio: 1;
+  margin-inline: auto;
+  flex: none;
   display: grid;
   place-items: center;
+  overflow: hidden;
   border-radius: 20px;
-  border: 2px dashed color-mix(in oklab, var(--bb-mint) 55%, transparent);
   background:
-    repeating-linear-gradient(45deg, transparent 0 14px, color-mix(in oklab, var(--bb-mint) 8%, transparent) 14px 28px),
-    #ffffff;
+    repeating-linear-gradient(45deg, transparent 0 14px, color-mix(in oklab, var(--bb-mint) 7%, transparent) 14px 28px),
+    var(--surface, #fff);
+  box-shadow: var(--shadow-soft);
   touch-action: none;
 }
+.bb-pad__track { cursor: crosshair; border: 2px solid color-mix(in oklab, var(--bb-mint) 55%, transparent); }
 
-.bb-pad__track.is-sim {
-  cursor: crosshair;
-  border-style: solid;
+.bb-aim__head {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, color-mix(in oklab, var(--bb-mint) 18%, #fff), color-mix(in oklab, var(--bb-mint) 30%, #fff));
+  border: 2px dashed color-mix(in oklab, var(--bb-mint-dark) 50%, transparent);
+  pointer-events: none;
 }
 
-.bb-pad__hint {
+.bb-aim__dot,
+.bb-pad__dot {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  margin: -11px 0 0 -11px;
+  border-radius: 50%;
+  border: 4px solid var(--ink-300, #a6b0c6);
+  background: color-mix(in oklab, var(--ink-300, #a6b0c6) 25%, transparent);
+  pointer-events: none;
+  transition: left 90ms linear, top 90ms linear, border-color 150ms ease;
+}
+.bb-aim__dot.is-on,
+.bb-pad__dot {
+  border-color: var(--slot, var(--bb-mint));
+  background: color-mix(in oklab, var(--slot, var(--bb-mint)) 25%, transparent);
+}
+
+.bb-aim__label {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  right: 8px;
   text-align: center;
+  font-size: 0.8rem;
   font-weight: 800;
-  font-size: 0.9rem;
   color: var(--ink-600, #4a5878);
   pointer-events: none;
 }
-
-.bb-pad__dot {
-  position: absolute;
-  width: 26px;
-  height: 26px;
-  margin: -13px 0 0 -13px;
-  border-radius: 50%;
-  border: 4px solid var(--slot, var(--bb-mint));
-  background: color-mix(in oklab, var(--slot, var(--bb-mint)) 25%, transparent);
-  pointer-events: none;
-}
+.bb-aim.is-tilted { box-shadow: 0 0 0 3px #ffd23f, var(--shadow-soft); }
+.bb-aim.is-tilted .bb-aim__label { color: var(--ink-900, #1e2a4a); }
 
 .bb-pad__row {
   display: flex;
   gap: 8px;
   align-items: stretch;
 }
+.bb-pad__row > * { flex: 1; }
 
-.bb-pad__row > * {
-  flex: 1;
-}
-
-.bb-pad__comb {
-  padding: 10px 6px;
-  border-radius: 14px;
-  border: 2px solid rgba(30, 42, 74, 0.15);
-  background: #ffffff;
-  font: inherit;
-  font-weight: 800;
-  color: var(--ink-900, #1e2a4a);
-}
-
-.bb-pad__comb.is-active {
-  border-color: var(--bb-mint-dark);
-  background: color-mix(in oklab, var(--bb-mint) 22%, #ffffff);
-}
-
-.bb-pad__scissors {
-  flex: 2;
-  padding: 12px;
-  border: none;
-  border-radius: 16px;
-  background: #ffd23f;
-  box-shadow: 0 4px 0 #c99a00;
-  font: inherit;
-  font-size: 1.05rem;
-  font-weight: 900;
-  color: #1e2a4a;
-  touch-action: manipulation;
-}
-
-.bb-pad__scissors:active {
-  transform: translateY(3px);
-  box-shadow: 0 1px 0 #c99a00;
-}
-
-.bb-pad__scissors:disabled {
-  opacity: 0.5;
-}
-
-.bb-pad__clipper.is-pressed {
-  animation: bb-pad-buzz 0.07s linear infinite;
-}
+.bb-pad__action.is-scissors { background: #ffd23f; color: #1e2a4a; }
+.bb-pad__action.is-pressed { animation: bb-pad-buzz 0.07s linear infinite; }
 
 @keyframes bb-pad-buzz {
-  50% {
-    transform: translateX(1px) scale(0.98);
-  }
+  50% { transform: translateX(1px) scale(0.98); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .bb-pad__clipper.is-pressed {
-    animation: none;
-  }
+  .bb-pad__action.is-pressed { animation: none; }
+  .bb-tool, .bb-tool__art, .bb-aim__dot, .bb-pad__dot { transition: none; }
 }

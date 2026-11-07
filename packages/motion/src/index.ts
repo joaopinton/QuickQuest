@@ -18,5 +18,6 @@ export * from './stillness';
 export * from './one-euro';
 export * from './grip';
 export * from './pointer';
+export * from './aim';
 export * from './burst';
 export * from './trace';

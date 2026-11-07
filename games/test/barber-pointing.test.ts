@@ -3,8 +3,10 @@ import { findHaircut } from '../barber/shared/haircuts';
 import {
   edgeSlowdown,
   followPointer,
+  HEAD_SPAN,
   headYaw,
   isNearCutEdge,
+  pointerContact,
   pointerToDir,
   turnChair,
   VIEW_TILT,
@@ -12,28 +14,39 @@ import {
 
 describe('puntamento sulla testa', () => {
   test('il centro punta la parte alta della fronte, in alto la cima', () => {
-    const d = pointerToDir({ x: 0.5, y: 0.5 }, 0);
+    const d = pointerToDir({ x: 0.5, y: 0.5 }, 0)!;
     expect(d[0]).toBeCloseTo(0);
     expect(d[1]).toBeCloseTo(Math.sin(VIEW_TILT));
     expect(d[2]).toBeCloseTo(Math.cos(VIEW_TILT));
-    expect(pointerToDir({ x: 0.5, y: 0.2 }, 0)[1]).toBeGreaterThan(0.9);
+    expect(pointerToDir({ x: 0.5, y: 0.2 }, 0)![1]).toBeGreaterThan(0.9);
   });
 
   test('destra del puntatore = lato destro della testa (x > 0) vista di fronte', () => {
-    expect(pointerToDir({ x: 0.8, y: 0.5 }, 0)[0]).toBeGreaterThan(0.5);
+    expect(pointerToDir({ x: 0.8, y: 0.5 }, 0)![0]).toBeGreaterThan(0.5);
   });
 
   test('girando la poltrona il centro punta il lato e poi la nuca', () => {
-    expect(pointerToDir({ x: 0.5, y: 0.5 }, 1)[0]).toBeCloseTo(Math.cos(VIEW_TILT));
-    expect(pointerToDir({ x: 0.5, y: 0.5 }, 2)[2]).toBeCloseTo(-Math.cos(VIEW_TILT));
+    expect(pointerToDir({ x: 0.5, y: 0.5 }, 1)![0]).toBeCloseTo(Math.cos(VIEW_TILT));
+    expect(pointerToDir({ x: 0.5, y: 0.5 }, 2)![2]).toBeCloseTo(-Math.cos(VIEW_TILT));
     expect(turnChair(0, -1)).toBe(3);
     expect(turnChair(3, 1)).toBe(0);
     expect(headYaw(2)).toBeCloseTo(-Math.PI);
   });
 
-  test('fuori dalla testa il puntatore resta sul bordo (direzione unitaria)', () => {
-    const d = pointerToDir({ x: 1, y: 1 }, 0);
-    expect(Math.hypot(d[0], d[1], d[2])).toBeCloseTo(1);
+  test('il puntatore è libero: lontano dalla testa non tocca niente', () => {
+    expect(pointerToDir({ x: 1, y: 1 }, 0)).toBeNull();
+    expect(pointerToDir({ x: 0.02, y: 0.5 }, 0)).toBeNull();
+  });
+
+  test('appena fuori dalla cute tocca il bordo, ma solo se i capelli lì sono lunghi', () => {
+    const justOut = { x: 0.5 + HEAD_SPAN * 1.12, y: 0.5 };
+    const d = pointerToDir(justOut, 0);
+    expect(d).not.toBeNull();
+    expect(Math.hypot(d![0], d![1], d![2])).toBeCloseTo(1);
+    expect(pointerContact(justOut, 0, () => 0.82)).not.toBeNull();
+    expect(pointerContact(justOut, 0, () => 0.06)).toBeNull();
+    // sulla cute tocca sempre, anche coi capelli già rasati
+    expect(pointerContact({ x: 0.5, y: 0.5 }, 0, () => 0)).not.toBeNull();
   });
 
   test('il cursore insegue il telefono e il freno lo rallenta', () => {

@@ -1,20 +1,22 @@
 // Dal puntatore del telefono a un punto della testa (docs/games/barber.md § Gesto).
-// Il telefono manda una posizione relativa 0..1 (giroscopio integrato, packages/motion/pointer).
-// Qui la si proietta sulla testa vista dalla telecamera (un po' dall'alto) e si tiene conto di
-// quanto è girata la poltrona: è un raycast "logico" su una sfera, senza la scena 3D.
+// Il telefono manda dove punta il suo retro, 0..1 (mira assoluta, packages/motion/aim). Qui lo si
+// proietta sulla testa vista dalla telecamera (un po' dall'alto) e si tiene conto di quanto è
+// girata la poltrona: è un raycast "logico" su una sfera, senza la scena 3D.
+// Il puntatore è libero: può uscire dalla testa. Taglia solo dove tocca davvero i capelli.
 
 import { targetLength, type Haircut } from '../shared/haircuts';
-import type { Vec3 } from '../shared/head';
+import { HEAD_SPAN, hairHeight, MAX_HAIR, type Vec3 } from '../shared/head';
 
 /** La telecamera guarda la testa da sopra di circa 20°. */
 export const VIEW_TILT = 0.36;
-/** Raggio del puntatore (in unità 0..1) che copre la testa vista di fronte. */
-export const HEAD_SPAN = 0.34;
+export { HEAD_SPAN };
 /** Rapidità con cui il cursore insegue il telefono, 1/s. */
 export const FOLLOW_RATE = 18;
 /** Distanza (rad) a cui si guarda se si è vicini al bordo di una zona del taglio. */
 const EDGE_PROBE = 0.12;
 const RIM = 0.985;
+/** Oltre questo raggio (in raggi della testa) non c'è nemmeno un capello da toccare. */
+export const HAIR_REACH = 1 + MAX_HAIR;
 
 export type ChairTurn = 0 | 1 | 2 | 3;
 
@@ -35,15 +37,29 @@ export function headYaw(turn: ChairTurn): number {
 const CHAIR_VIEW_NAMES: Readonly<Record<ChairTurn, string>> = { 0: 'Fronte', 1: 'Lato destro', 2: 'Nuca', 3: 'Lato sinistro' };
 export const chairViewName = (turn: ChairTurn): string => CHAIR_VIEW_NAMES[turn];
 
-/** Punto della testa (direzione nel riferimento della testa) sotto il puntatore. */
-export function pointerToDir(p: Cursor, turn: ChairTurn): Vec3 {
-  let sx = (p.x - 0.5) / HEAD_SPAN;
-  let sy = (0.5 - p.y) / HEAD_SPAN;
-  const r2 = sx * sx + sy * sy;
-  if (r2 > RIM * RIM) {
-    const k = RIM / Math.sqrt(r2);
-    sx *= k;
-    sy *= k;
+export interface ViewPoint {
+  /** Coordinate sul piano della vista, in raggi della testa (0 = centro, +y in alto). */
+  readonly sx: number;
+  readonly sy: number;
+}
+
+/** Il puntatore sul piano della vista di lavoro, centrato sulla testa. */
+export function pointerToView(p: Cursor): ViewPoint {
+  return { sx: (p.x - 0.5) / HEAD_SPAN, sy: (0.5 - p.y) / HEAD_SPAN };
+}
+
+/**
+ * Punto della testa (direzione nel riferimento della testa) sotto il puntatore, `null` se il
+ * puntatore è fuori dalla testa e dai capelli. Appena fuori dalla cute si prende il bordo: lì i
+ * capelli lunghi sporgono e si possono ancora toccare.
+ */
+export function pointerToDir(p: Cursor, turn: ChairTurn): Vec3 | null {
+  let { sx, sy } = pointerToView(p);
+  const r = Math.hypot(sx, sy);
+  if (r > HAIR_REACH) return null;
+  if (r > RIM) {
+    sx *= RIM / r;
+    sy *= RIM / r;
   }
   const sz = Math.sqrt(Math.max(0, 1 - sx * sx - sy * sy));
 
@@ -58,6 +74,18 @@ export function pointerToDir(p: Cursor, turn: ChairTurn): Vec3 {
   const cb = Math.cos(b);
   const sb = Math.sin(b);
   return [sx * cb + wz * sb, wy, -sx * sb + wz * cb];
+}
+
+/**
+ * Dove lo strumento tocca i capelli, `null` se è nel vuoto. Sulla cute tocca sempre; sul bordo
+ * della testa tocca solo se i capelli lì sono abbastanza lunghi da arrivare al puntatore.
+ */
+export function pointerContact(p: Cursor, turn: ChairTurn, lengthAt: (d: Vec3) => number): Vec3 | null {
+  const dir = pointerToDir(p, turn);
+  if (!dir) return null;
+  const { sx, sy } = pointerToView(p);
+  const r = Math.hypot(sx, sy);
+  return r <= 1 || r <= 1 + hairHeight(lengthAt(dir)) ? dir : null;
 }
 
 /** Il cursore insegue il telefono; `slow` < 1 lo frena (assist vicino ai bordi). */

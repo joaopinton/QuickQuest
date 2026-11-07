@@ -9,6 +9,19 @@ export type Vec3 = readonly [number, number, number];
 /** Lato della mappa delle lunghezze (128×128 texel, un byte ciascuno). */
 export const HAIR_MAP_SIZE = 128;
 
+/** Raggio della testa nel puntatore 0..1 del telefono, vista di lavoro (cute, senza capelli). */
+export const HEAD_SPAN = 0.34;
+
+/** Spessore dei capelli a lunghezza 1, in raggi della testa: oltre la cute ci sono ancora capelli. */
+export const MAX_HAIR = 0.26;
+/** I capelli lunghi si coricano lungo la testa: a lunghezza 1 sporgono il 38% in meno. */
+export const HAIR_LIE_DOWN = 0.38;
+
+/** Di quanto sporgono dalla cute capelli lunghi `len` (0..1), in raggi della testa. */
+export function hairHeight(len: number): number {
+  return MAX_HAIR * len * (1 - HAIR_LIE_DOWN * len);
+}
+
 export function dirFromUv(u: number, v: number): Vec3 {
   const phi = u * Math.PI * 2;
   const theta = v * Math.PI;

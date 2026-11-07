@@ -4,11 +4,12 @@
 
 import type { SlotId } from '@quickquest/protocol';
 import type { ScreenGameProps, ScreenPlayer } from '../../contract';
-import type { AssistLevel, BarberEvent, CombLevel } from '../shared/events';
+import { toolFromComb, type AssistLevel, type BarberEvent, type BarberTool, type CombLevel } from '../shared/events';
 import { COMB_LENGTH, HAIRCUTS, targetLength } from '../shared/haircuts';
 import { CLIENT_LOOKS } from './client';
 import { createHairMap, cutAt, initialHairMap, lengthAt, type BrushKind, type HairMap } from './hair-map';
-import { edgeSlowdown, followPointer, headYaw, pointerToDir, turnChair, type ChairTurn, type Cursor } from './pointing';
+import type { Vec3 } from '../shared/head';
+import { edgeSlowdown, followPointer, headYaw, pointerContact, pointerToView, turnChair, type ChairTurn, type Cursor } from './pointing';
 import {
   ASSIST_CONFIG,
   createBarberGame,
@@ -43,6 +44,8 @@ export interface SessionSnapshot {
   readonly countdown: number;
   readonly timeLeft: number;
   readonly comb: CombLevel;
+  /** Attrezzo in mano al barbiere (macchinetta col suo rialzo, o forbici). */
+  readonly tool: BarberTool;
   readonly turn: ChairTurn;
   readonly result: CutResultView | null;
 }
@@ -96,6 +99,7 @@ function runSession(deps: SessionDeps, scene: BarberScene): BarberSession {
   let raw: Cursor = CENTER;
   let clip = false;
   let comb: CombLevel = 1;
+  let scissors = false;
   let lastToolAt = 0;
   let turn: ChairTurn = 0;
   let result: CutResultView | null = null;
@@ -115,6 +119,7 @@ function runSession(deps: SessionDeps, scene: BarberScene): BarberSession {
       countdown: phase === 'intro' ? Math.max(1, Math.ceil(INTRO_S - phaseT)) : 0,
       timeLeft: game ? Math.ceil(game.timeRemainingS) : 0,
       comb,
+      tool: scissors ? 'scissors' : toolFromComb(comb),
       turn,
       result,
     });
@@ -137,11 +142,12 @@ function runSession(deps: SessionDeps, scene: BarberScene): BarberSession {
     scene.setBarberColor(barber.color);
     scene.setShot('intro');
     scene.setHeadYaw(0);
-    scene.setCursor(null);
+    scene.setTool(null);
     turn = 0;
     cursor = CENTER;
     raw = CENTER;
     clip = false;
+    scissors = false;
     cutT = 0;
     result = null;
     lastShownSecond = -1;
@@ -163,7 +169,7 @@ function runSession(deps: SessionDeps, scene: BarberScene): BarberSession {
       stars: score.stars, accuracy: score.accuracy, timeBonus, line: REACTION_LINES[reaction] };
     game = recordCut(game, score);
     clip = false;
-    scene.setCursor(null);
+    scene.setTool(null);
     scene.setGhost(0);
     scene.setShot('mirror');
     scene.setHeadYaw(0);
@@ -175,9 +181,12 @@ function runSession(deps: SessionDeps, scene: BarberScene): BarberSession {
     setPhase('mirror');
   };
 
+  /** Dove lo strumento tocca i capelli adesso, `null` se è nel vuoto accanto alla testa. */
+  const contact = (): Vec3 | null => pointerContact(cursor, turn, (d) => lengthAt(map, d));
+
   const applyCut = (kind: BrushKind, radius: number) => {
-    if (!game) return;
-    const dir = pointerToDir(cursor, turn);
+    const dir = contact();
+    if (!game || !dir) return;
     const res = cutAt(map, {
       dir,
       radius: radius * ASSIST_CONFIG[game.assist].brushScale,
@@ -196,12 +205,19 @@ function runSession(deps: SessionDeps, scene: BarberScene): BarberSession {
     cutT += dt;
     const cfg = ASSIST_CONFIG[game.assist];
     const cut = currentHaircut(game);
-    const slow = edgeSlowdown(cut, pointerToDir(cursor, turn), cfg.dwell);
+    const here = contact();
+    const slow = here ? edgeSlowdown(cut, here, cfg.dwell) : 1;
     cursor = followPointer(cursor, raw, dt, slow);
-    const isCutting = clip && performance.now() - lastToolAt < TOOL_STALE_MS;
-    if (isCutting) applyCut('clip', CLIP_RADIUS);
-    const dir = pointerToDir(cursor, turn);
-    scene.setCursor({ dir, length: lengthAt(map, dir), radius: CLIP_RADIUS, isCutting });
+    const isOn = !scissors && clip && performance.now() - lastToolAt < TOOL_STALE_MS;
+    if (isOn) applyCut('clip', CLIP_RADIUS);
+    const dir = contact();
+    scene.setTool({
+      view: pointerToView(cursor),
+      contact: dir ? { dir, length: lengthAt(map, dir) } : null,
+      radius: scissors ? SNIP_RADIUS : CLIP_RADIUS,
+      isOn,
+      tool: scissors ? 'scissors' : toolFromComb(comb),
+    });
     const ghostLeft = cfg.ghostSeconds - cutT;
     scene.setGhost(ghostLeft > 1 ? 1 : Math.max(0, ghostLeft));
 
@@ -248,8 +264,9 @@ function runSession(deps: SessionDeps, scene: BarberScene): BarberSession {
           raw = { x: e.tool.x, y: e.tool.y };
           clip = e.tool.clip;
           lastToolAt = performance.now();
-          if (e.tool.comb !== comb) {
+          if (e.tool.comb !== comb || e.tool.scissors !== scissors) {
             comb = e.tool.comb;
+            scissors = e.tool.scissors;
             emit();
           }
           break;
@@ -258,6 +275,7 @@ function runSession(deps: SessionDeps, scene: BarberScene): BarberSession {
           raw = { x: e.snip.x, y: e.snip.y };
           cursor = raw;
           applyCut('snip', SNIP_RADIUS);
+          scene.snip();
           break;
         case 'rotate':
           turn = turnChair(turn, e.dir);
@@ -272,7 +290,7 @@ function runSession(deps: SessionDeps, scene: BarberScene): BarberSession {
     toSetup() {
       game = null;
       result = null;
-      scene.setCursor(null);
+      scene.setTool(null);
       scene.setShot('intro');
       setPhase('setup');
     },

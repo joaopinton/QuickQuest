@@ -1,12 +1,23 @@
 import { isGameEvent } from '@quickquest/protocol';
 import { describe, expect, test } from 'vitest';
-import { finishEvent, parseBarberEvent, rotateEvent, snipEvent, toolEvent } from '../barber/shared/events';
+import { finishEvent, parseBarberEvent, rotateEvent, snipEvent, TOOL_COMB, toolEvent, toolFromComb } from '../barber/shared/events';
 
 describe('eventi del Barber shop', () => {
   test('tool: andata e ritorno, valori arrotondati e dentro 0..1', () => {
-    const wire = toolEvent({ x: 0.123456, y: 1.4, clip: true, comb: 1 });
+    const wire = toolEvent({ x: 0.123456, y: 1.4, clip: true, comb: 1, scissors: false });
     expect(isGameEvent(wire)).toBe(true);
-    expect(parseBarberEvent(wire)).toEqual({ type: 'tool', tool: { x: 0.123, y: 1, clip: true, comb: 1 } });
+    expect(parseBarberEvent(wire)).toEqual({ type: 'tool', tool: { x: 0.123, y: 1, clip: true, comb: 1, scissors: false } });
+  });
+
+  test('tool: le forbici in mano viaggiano; senza il campo vale la macchinetta', () => {
+    const wire = toolEvent({ x: 0.5, y: 0.5, clip: false, comb: 2, scissors: true });
+    expect(parseBarberEvent(wire)).toMatchObject({ tool: { scissors: true } });
+    expect(parseBarberEvent({ kind: 'tool', data: { x: 0.5, y: 0.5, clip: true, comb: 0 } })).toMatchObject({ tool: { scissors: false } });
+    expect(parseBarberEvent({ kind: 'tool', data: { x: 0.5, y: 0.5, clip: true, comb: 0, scissors: 1 } })).toBeNull();
+  });
+
+  test('ogni rialzo della macchinetta corrisponde a un pettine', () => {
+    for (const tool of ['clip0', 'clip1', 'clip2'] as const) expect(toolFromComb(TOOL_COMB[tool])).toBe(tool);
   });
 
   test('snip, rotate e finish sono eventi validi per il protocollo', () => {

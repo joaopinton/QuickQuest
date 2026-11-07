@@ -38,7 +38,9 @@ test('barber: dalla lobby al primo cliente servito dal telefono simulato', async
   await phone.mouse.down();
   await phone.mouse.move(box.x + box.width * 0.7, box.y + box.height * 0.35, { steps: 20 });
   await phone.mouse.up();
-  await phone.getByRole('button', { name: /Forbici/ }).click();
+  // si passa alle forbici dal carrello (come le mazze del golf): il tasto grande fa una sforbiciata
+  await phone.getByRole('radio', { name: /Forbici/ }).click();
+  await phone.getByRole('button', { name: /SFORBICIATA/ }).dispatchEvent('pointerdown', { pointerId: 3, buttons: 1 });
   // "Finito!" vale dopo 5 s di lavoro (tempo di gioco: con WebGL software scorre più lento)
   const verdict = screen.getByText('Allo specchio').or(screen.getByText('Cliente 2/3'));
   await expect(async () => {

@@ -4,7 +4,7 @@
 
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { ScreenGameProps, ScreenPlayer } from '../../contract';
-import { COMB_LABELS, parseBarberEvent, type AssistLevel } from '../shared/events';
+import { parseBarberEvent, TOOL_NAME, type AssistLevel } from '../shared/events';
 import { findHaircut } from '../shared/haircuts';
 import { HaircutFigure, Podium, Stars } from './hud';
 import { chairViewName } from './pointing';
@@ -14,7 +14,7 @@ import './barber.css';
 
 const DEFAULT_ROSTER: readonly ScreenPlayer[] = [{ id: 'P1', name: 'Piggy 1', color: '#2EC4B6', symbol: '●' }];
 const ASSIST_LABELS: Readonly<Record<AssistLevel, string>> = { easy: 'Facile', normal: 'Normale', pro: 'Pro' };
-const INITIAL: SessionSnapshot = { phase: 'setup', game: null, countdown: 0, timeLeft: 0, comb: 1, turn: 0, result: null };
+const INITIAL: SessionSnapshot = { phase: 'setup', game: null, countdown: 0, timeLeft: 0, comb: 1, tool: 'clip1', turn: 0, result: null };
 
 export function Screen({ players, subscribeEvents, setActiveSlot, sendCue, onEndGame, isPaused }: ScreenGameProps) {
   const roster = players.length > 0 ? players : DEFAULT_ROSTER;
@@ -135,7 +135,7 @@ export function Screen({ players, subscribeEvents, setActiveSlot, sendCue, onEnd
       {phase === 'cutting' && (
         <div class="bb-tools" aria-live="polite">
           <span class={`bb-timer ${isHurry ? 'is-hurry' : ''}`}>⏱ {snap.timeLeft}s</span>
-          <span class="bb-chip">Pettine: {COMB_LABELS[snap.comb]}</span>
+          <span class="bb-chip">{snap.tool === 'scissors' ? '✂️' : '💈'} {TOOL_NAME[snap.tool]}</span>
           <span class="bb-chip">Vista: {chairViewName(snap.turn)}</span>
         </div>
       )}
@@ -164,13 +164,13 @@ export function Screen({ players, subscribeEvents, setActiveSlot, sendCue, onEnd
           <span key={snap.countdown} class="bb-countdown__num">
             {snap.countdown}
           </span>
-          <small>📱 Punta il telefono verso la testa del cliente</small>
+          <small>📱 Tieni il telefono dritto e punta il retro verso la testa del cliente</small>
         </div>
       )}
 
       {phase === 'cutting' && barber && (
         <p class="bb-prompt" style={{ '--player': barber.color }}>
-          📱 Tieni premuto per la macchinetta · tocca per le forbici · gira la poltrona per vedere i lati
+          📱 Telefono dritto, retro verso la testa: tagli dove punti · cambia attrezzo sul telefono · gira la poltrona per i lati
         </p>
       )}
 

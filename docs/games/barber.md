@@ -20,18 +20,21 @@
 Bottega anni '60: pavimento a scacchi, poltrona da barbiere rossa, specchio con lampadine, barattoli e pettini colorati, insegna rotante a spirale (originale, nei colori dell'accento). Il **cliente** è un Piggy speciale, "peloso": un Piggy con una chioma morbida.
 
 ## Gesto
-Il telefono **è lo strumento**: lo si tiene come una macchinetta o un paio di forbici.
+Il telefono **è lo strumento** e si tiene **dritto, in verticale**, come una macchinetta: si taglia nel punto in cui guarda il retro del telefono.
 | Azione | Gesto | Riconoscimento |
 |---|---|---|
-| Muovere lo strumento | Inclinare e ruotare il telefono | **Orientamento → posizione sulla superficie della testa**: la direzione del telefono è un raggio che colpisce la testa del cliente (raycast su una sfera o capsula); è un puntamento relativo, non 1:1 nello spazio |
-| Macchinetta | Tenere premuto il tasto grande | Taglia alla lunghezza del "pettine" scelto; **vibrazione continua** su Android (su iOS, tick ritmati e ronzio audio) |
-| Forbici | Tap ritmici sul secondo tasto | Ogni tap è un taglio "a sforbiciata" con piccola area d'effetto |
-| Lunghezza pettine | Swipe su/giù sul trackpad | 3 livelli |
-| Ricalibrazione | Doppio tap | Lo strumento torna al centro della testa |
+| Muovere lo strumento | Puntare il retro del telefono sulla testa | **Mira assoluta** (`packages/motion/aim.ts`): l'altezza viene dall'inclinazione rispetto alla gravità (telefono dritto = centro, non deriva mai), il lato dall'imbardata rispetto al centro preso. Stesso orientamento = stesso punto; il rollio nel palmo non sposta niente |
+| Puntatore libero | Uscire dalla testa | Il puntatore **non è incollato alla testa**: a schermo l'attrezzo fluttua accanto al cliente e appoggia le lame sui capelli solo quando ci arriva sopra (sulla cute, o sul bordo se i capelli lì sporgono abbastanza) |
+| Scegliere l'attrezzo | Toccare l'attrezzo sul carrello | Come le mazze del golf: macchinetta col **rialzo 0 / 3 / 6** (a zero, corto, medio) o **forbici**, disegnati in SVG (`shared/ToolArt.tsx`); quello in mano si alza e prende il colore del giocatore |
+| Macchinetta | Tenere premuto il tasto grande | Taglia alla lunghezza del rialzo; **vibrazione continua** su Android (su iOS, ronzio audio) |
+| Forbici | Tap sul tasto grande | Ogni tap è una sforbiciata con piccola area d'effetto |
+| Centro | Automatico, o tasto "🎯 Centra" | A inizio turno il centro si prende da solo quando il telefono si ferma dritto per 0,3 s |
+| Girare la poltrona | Tasti ↺ / ↻ | Fronte, lato, nuca, altro lato |
 
 ## Simulazione dei capelli (leggera)
 - Il cuoio capelluto ha una **mappa UV** e una **DataTexture "lunghezze"** (es. 128×128, un byte per texel = lunghezza 0–255).
-- I capelli si renderizzano come **shell texturing** (8–16 gusci di mesh che si allargano, con alpha test letto dalla mappa delle lunghezze e da un rumore): è economico, morbido, molto "giocattolo" e coerente con lo stile.
+- I capelli si renderizzano come **shell texturing** (fino a 24 gusci, alpha-to-coverage letto dalla mappa delle lunghezze), ma con l'aspetto di capelli veri e non di un prato: le ciocche seguono un **flusso** (dal vortice sulla nuca verso il basso, i capelli lunghi si coricano), i fili sono fini e sparsi in 3D sulla radice, raggruppati in ciocche, con la luce dei capelli (**Kajiya-Kay**, due riflessi allungati) e un controluce. Dove i capelli sono corti la cute mostra la ricrescita, così una sfumatura passa dal pieno alla pelle.
+- **Qualità adattiva**: se i frame restano lenti (TV, portatili deboli) i gusci scendono a 16 e poi a 10.
 - Tagliare = scrivere nella DataTexture con un pennello (forma della macchinetta o delle forbici) dove punta lo strumento. Si aggiorna solo la regione toccata.
 - Particelle di ciuffi che cadono (`InstancedMesh`), quantità ∝ capelli tolti.
 
@@ -46,8 +49,8 @@ Il telefono **è lo strumento**: lo si tiene come una macchinetta o un paio di f
 - **Feedback aptico su iOS** limitato → ronzio audio ritmico come sostituto.
 
 ## Implementazione (MVP)
-- **Input continuo**: il pad manda `tool` {x, y, clip, comb} a ~20 Hz solo nel proprio turno (più `snip`, `rotate`, `finish`); il relay già scarta gli eventi di chi non è di turno. Il puntatore è `createPointer` + `aimRates` di `packages/motion`.
+- **Input continuo**: il pad manda `tool` {x, y, clip, comb, scissors} a ~20 Hz solo nel proprio turno (più `snip`, `rotate`, `finish`); il relay già scarta gli eventi di chi non è di turno. La mira è `createAimPointer` di `packages/motion`.
 - **Capelli**: mappa 128×128 (`screen/hair-map.ts`) → `DataTexture` letta da 16 gusci in una sola `InstancedMesh` (`screen/hair-shells.ts`). In Facile/Normale lo shader colora in menta i capelli ancora da tagliare (sagoma dell'assist).
-- **Puntamento**: raycast logico su sfera con la stessa inclinazione della telecamera (`screen/pointing.ts`); il cursore rallenta vicino ai bordi del taglio (dwell).
+- **Puntamento**: raycast logico su sfera con la stessa inclinazione della telecamera (`screen/pointing.ts`), `null` fuori dalla testa; il cursore rallenta vicino ai bordi del taglio (dwell). L'attrezzo 3D è in `screen/tool-model.ts`.
 - **Voto**: `screen/rules.ts` — errore medio pesato per area e zona, bonus simmetria, malus buchi; stelle × 100 + bonus tempo (da 3★).
 - **Da fare**: prova del puntamento su telefoni veri (frangia), modalità Salone e Corsa del sabato, camera che segue la zona di lavoro.

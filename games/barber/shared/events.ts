@@ -10,6 +10,31 @@ export type CombLevel = 0 | 1 | 2;
 export const COMB_LEVELS: readonly CombLevel[] = [0, 1, 2];
 export const COMB_LABELS: Readonly<Record<CombLevel, string>> = { 0: 'A zero', 1: 'Corto', 2: 'Medio' };
 
+/**
+ * Gli attrezzi sul carrello del barbiere: la macchinetta con tre rialzi (il pettino che si
+ * aggancia alle lame e decide la lunghezza) e le forbici. Si scelgono sul telefono come le mazze
+ * del golf; lo schermo mostra in mano al barbiere quello scelto.
+ */
+export type BarberTool = 'clip0' | 'clip1' | 'clip2' | 'scissors';
+export const BARBER_TOOLS: readonly BarberTool[] = ['clip0', 'clip1', 'clip2', 'scissors'];
+export const TOOL_COMB: Readonly<Record<Exclude<BarberTool, 'scissors'>, CombLevel>> = { clip0: 0, clip1: 1, clip2: 2 };
+export const TOOL_NAME: Readonly<Record<BarberTool, string>> = {
+  clip0: 'Rialzo 0',
+  clip1: 'Rialzo 3',
+  clip2: 'Rialzo 6',
+  scissors: 'Forbici',
+};
+export const TOOL_HINT: Readonly<Record<BarberTool, string>> = {
+  clip0: 'rasato, per sfumare',
+  clip1: 'corto, lati e nuca',
+  clip2: 'medio, la parte alta',
+  scissors: 'una sforbiciata a tocco',
+};
+
+export function toolFromComb(comb: CombLevel): BarberTool {
+  return comb === 0 ? 'clip0' : comb === 1 ? 'clip1' : 'clip2';
+}
+
 export const TOOL_EVENT = 'tool';
 export const SNIP_EVENT = 'snip';
 export const ROTATE_EVENT = 'rotate';
@@ -23,6 +48,8 @@ export interface ToolState {
   /** Macchinetta accesa (tasto grande premuto). */
   readonly clip: boolean;
   readonly comb: CombLevel;
+  /** In mano ci sono le forbici (la macchinetta resta spenta, si taglia coi `snip`). */
+  readonly scissors: boolean;
 }
 
 export interface SnipData {
@@ -45,7 +72,7 @@ const round3 = (v: number): number => Math.round(v * 1000) / 1000;
 const clamp01 = (v: number): number => Math.min(1, Math.max(0, v));
 
 export function toolEvent(t: ToolState): WireEvent {
-  return { kind: TOOL_EVENT, data: { x: round3(clamp01(t.x)), y: round3(clamp01(t.y)), clip: t.clip, comb: t.comb } };
+  return { kind: TOOL_EVENT, data: { x: round3(clamp01(t.x)), y: round3(clamp01(t.y)), clip: t.clip, comb: t.comb, scissors: t.scissors } };
 }
 
 export function snipEvent(s: SnipData): WireEvent {
@@ -75,7 +102,9 @@ export function parseBarberEvent(e: {
   switch (e.kind) {
     case TOOL_EVENT:
       if (!isUnit(d.x) || !isUnit(d.y) || typeof d.clip !== 'boolean' || !isCombLevel(d.comb)) return null;
-      return { type: 'tool', tool: { x: d.x, y: d.y, clip: d.clip, comb: d.comb } };
+      // `scissors` è arrivato dopo: un telefono vecchio non lo manda, vuol dire macchinetta
+      if (d.scissors !== undefined && typeof d.scissors !== 'boolean') return null;
+      return { type: 'tool', tool: { x: d.x, y: d.y, clip: d.clip, comb: d.comb, scissors: d.scissors === true } };
     case SNIP_EVENT:
       if (!isUnit(d.x) || !isUnit(d.y)) return null;
       return { type: 'snip', snip: { x: d.x, y: d.y } };
